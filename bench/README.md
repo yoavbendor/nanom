@@ -33,17 +33,28 @@ cloud host, ±3 ns run-to-run; overlay and nanotins trade places between runs.)
 ## How overlay reached parity (measured, not guessed)
 
 The first version of this bench had `overlay<>` at 35.6 ns/pkt (1.2× nanotins).
-Callgrind attribution of the walk showed the gap was **one thing**: the msb0
-bit-field decode ran a bit-*at-a-time* loop (`read_bits`), which was **~35% of
-the walk** (extracting `ihl`, `frag_offset`, `vid`, `data_offset`). It was *not*
-the `std::expected` result size and *not* per-packet allocation — the overlay
-path allocates nothing per packet.
+Callgrind attribution of the walk, then three targeted fixes — each verified to
+leave the field checksum and the 600k-case differential fuzz unchanged:
 
-The fix (in `decode_field`): for a byte-spanning `ubits<>/ibits<>` in msb0 order,
-load the covering bytes as one big-endian word and shift+mask — O(bytes), not
-O(bits) — exactly nanotins' technique. That single localized change took overlay
-from 35.6 → ~28 ns/pkt, i.e. to parity, with the checksum and the 600k-case
-differential fuzz unchanged.
+1. **msb0 bit-field decode was a bit-at-a-time loop** (`read_bits`), ~35% of the
+   walk (`ihl`, `frag_offset`, `vid`, `data_offset`). Fixed in `decode_field`:
+   load the covering bytes as one big-endian word and shift+mask (O(bytes)).
+2. **`be<>/le<>` scalar decode did two loops** — a copy into a temp, then a
+   second loop to assemble — on the *most common* reads (`ethertype`, ports,
+   `total_length`). Fixed to assemble directly from the buffer in one pass, which
+   the compiler lowers to a single load + bswap.
+3. **byte-array `get<>` materialized a `std::array`** (`get<"src">()[0]` decoded
+   all 4 bytes), ~11% of the walk. Fixed: for a `std::array<uint8_t,N>` field,
+   `get<>` now returns a **zero-copy `std::span`** into the buffer, so
+   `get<"src">()[0]` is a single byte load.
+
+The profiler also disproved two suspects: the `std::expected` result size
+(bypassing `result<view<T>>` with a manual size-check saves only ~0.5 ns — noise)
+and per-packet allocation (the overlay path allocates nothing per packet). After
+(1)–(3), nanom-overlay, a manual-view variant, and nanotins are a **three-way tie
+at ~28–30 ns/pkt** — all lowered to the same load+bswap+mask, memory-latency
+bound. There is no decisive win left on a scalar single-packet walk; a real speed
+step would need batch/SIMD (nanotins' bulk path), not micro-tuning.
 
 ## Reading the result
 

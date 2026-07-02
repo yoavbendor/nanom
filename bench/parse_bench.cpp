@@ -57,38 +57,41 @@ void walk_strct(std::uint32_t link, nm::bytes pkt, Sink& s) {
       [&](const P::Udp& x) { s.mix(x.src_port); s.mix(x.dst_port); });
 }
 
-// --- overlay<>: decode only the fields the walk actually reads ---
+// --- overlay<>: decode only the fields the walk actually reads (each field
+//     decoded once into a local, as a hand-tuned overlay parser would) ---
 void walk_overlay(std::uint32_t link, nm::bytes pkt, Sink& s) {
   if (link != P::kLinkTypeEthernet) return;
   nm::input in = nm::from(pkt);
   auto eth = nm::overlay<P::Ethernet>()(in);
   if (!eth) return;
-  s.mix(eth->value.get<"ethertype">()); s.mix(eth->value.get<"dst">()[0]);
   std::uint16_t et = eth->value.get<"ethertype">();
+  s.mix(et); s.mix(eth->value.get<"dst">()[0]);
   nm::input cur = eth->rest;
   while (et == P::kEtherTypeVlan || et == P::kEtherTypeQinQ) {
     auto v = nm::overlay<P::VlanTag>()(cur);
     if (!v) return;
-    s.mix(v->value.get<"vid">()); s.mix(v->value.get<"inner_ethertype">());
-    et = v->value.get<"inner_ethertype">(); cur = v->rest;
+    const std::uint16_t inner = v->value.get<"inner_ethertype">();
+    s.mix(v->value.get<"vid">()); s.mix(inner);
+    et = inner; cur = v->rest;
   }
   u8 proto = 0; bool has_l4 = true; nm::input after = cur;
   if (et == P::kEtherTypeIpv4) {
     auto ip = nm::overlay<P::Ipv4>()(cur);
     if (!ip) return;
-    s.mix(ip->value.get<"protocol">()); s.mix(ip->value.get<"ttl">());
-    s.mix(ip->value.get<"total_length">()); s.mix(ip->value.get<"src">()[0]);
-    auto fo = ip->value.get<"frag_offset">(); s.mix(fo);
+    proto = ip->value.get<"protocol">();
+    const auto fo = ip->value.get<"frag_offset">();
+    s.mix(proto); s.mix(ip->value.get<"ttl">());
+    s.mix(ip->value.get<"total_length">()); s.mix(ip->value.get<"src">()[0]); s.mix(fo);
     std::size_t hdr = std::size_t(ip->value.get<"ihl">()) * 4;
     std::size_t l3 = hdr >= nm::wire_size_v<P::Ipv4> ? hdr : nm::wire_size_v<P::Ipv4>;
     if (l3 > cur.size()) return;
-    after = cur.advance(l3); proto = ip->value.get<"protocol">(); has_l4 = fo == 0;
+    after = cur.advance(l3); has_l4 = fo == 0;
   } else if (et == P::kEtherTypeIpv6) {
     auto ip = nm::overlay<P::Ipv6>()(cur);
     if (!ip) return;
-    s.mix(ip->value.get<"next_header">()); s.mix(ip->value.get<"hop_limit">());
-    s.mix(ip->value.get<"flow_label">());
-    after = ip->rest; proto = ip->value.get<"next_header">();
+    proto = ip->value.get<"next_header">();
+    s.mix(proto); s.mix(ip->value.get<"hop_limit">()); s.mix(ip->value.get<"flow_label">());
+    after = ip->rest;
   } else {
     return;
   }

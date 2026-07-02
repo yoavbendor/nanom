@@ -1679,6 +1679,14 @@ template <class T> struct is_std_array : std::false_type {};
 template <class U, std::size_t N> struct is_std_array<std::array<U, N>> : std::true_type {};
 template <class T> constexpr bool is_std_array_v = is_std_array<T>::value;
 
+/// A std::array of a plain 1-byte integral (MAC / IP address, name field): its
+/// wire bytes ARE the value, so an overlay can hand back a zero-copy span.
+template <class T> struct is_byte_array : std::false_type {};
+template <class E, std::size_t N>
+struct is_byte_array<std::array<E, N>>
+    : std::bool_constant<std::is_integral_v<E> && sizeof(E) == 1> {};
+template <class T> constexpr bool is_byte_array_v = is_byte_array<T>::value;
+
 template <class F>
 constexpr F assign_field(const std::byte* p, std::size_t bitoff, std::endian dflt);
 
@@ -1727,9 +1735,19 @@ constexpr typename wire<F>::decoded decode_field(const std::byte* p, std::size_t
       return VT(raw);
     }
   } else if constexpr (requires { F::order; typename F::value_type; }) {  // be/le
-    F tmp;
-    for (std::size_t i = 0; i < tmp.raw.size(); ++i) tmp.raw[i] = p[bitoff / 8 + i];
-    return tmp.get();
+    // assemble the host value directly from the wire bytes in a single pass —
+    // for widths 2/4/8 the compiler lowers this to one load + bswap, matching
+    // a hand-tuned overlay parser (the old path copied to a temp, then that
+    // temp re-assembled: two loops on the hottest reads — ethertype, ports…).
+    using T = typename F::value_type;
+    using U = uint_for_bytes<sizeof(T)>;
+    const std::byte* q = p + bitoff / 8;
+    U u = 0;
+    if constexpr (F::order == std::endian::big)
+      for (std::size_t i = 0; i < sizeof(T); ++i) u = U(U(u << 8) | std::uint8_t(q[i]));
+    else
+      for (std::size_t i = 0; i < sizeof(T); ++i) u |= U(U(std::uint8_t(q[i])) << (8 * i));
+    return std::bit_cast<T>(u);
   } else if constexpr (is_std_array_v<F>) {
     using E = typename F::value_type;
     D out{};
@@ -1841,10 +1859,17 @@ struct view {
                   "nanom: no such field in this struct — check NANOM_DESCRIBE");
     using F = detail::field_type_at<T, I>;
     constexpr std::size_t off = detail::field_bit_offsets<T>()[I];
-    if constexpr (Described<F>)
+    if constexpr (Described<F>) {
       return view<F>{p + off / 8, dflt};
-    else
+    } else if constexpr (detail::is_byte_array_v<F>) {
+      // byte array (MAC / IPv4 / IPv6 address, name field…): the wire bytes ARE
+      // the value, so return a zero-copy span into the buffer instead of
+      // materializing a std::array. get<"src">()[0] is then a single byte load.
+      return std::span<const typename F::value_type, std::tuple_size_v<F>>(
+          reinterpret_cast<const typename F::value_type*>(p + off / 8), std::tuple_size_v<F>);
+    } else {
       return detail::decode_field<F>(p, off, dflt);
+    }
   }
   /// The struct's raw wire bytes.
   constexpr bytes raw() const { return {p, wire_size_v<T>}; }
