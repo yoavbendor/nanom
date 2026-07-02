@@ -137,4 +137,6 @@ auto csv = nm::separated_list1(nm::chr(','), nm::dec<int>());
 cmake -B build && cmake --build build -j && ctest --test-dir build
 ```
 
+Tests and all examples run clean under ASan + UBSan (`-fsanitize=address,undefined`).
+
 MIT license.
