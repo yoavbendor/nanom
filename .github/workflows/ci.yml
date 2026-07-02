@@ -18,14 +18,16 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        cxx: [g++-13, g++-14, clang++-17, clang++-18]
+        # clang-17's C++23 front-end can't compile bulk.hpp (std::apply fold);
+        # clang-18 is nanom's real floor. gcc-13 is the gcc floor.
+        cxx: [g++-13, g++-14, clang++-18]
         build: [Debug, Release]
     steps:
       - uses: actions/checkout@v4
       - name: install compiler
         run: |
           sudo apt-get update
-          sudo apt-get install -y ${{ startsWith(matrix.cxx, 'clang') && 'clang-17 clang-18' || 'g++-13 g++-14' }}
+          sudo apt-get install -y ${{ startsWith(matrix.cxx, 'clang') && 'clang-18' || 'g++-13 g++-14' }}
       - name: configure
         run: cmake -B build -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
              -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DNANOM_WERROR=ON
@@ -84,15 +86,21 @@ jobs:
               -I include -x c++ - -o /dev/null
           done
 
-  # ---- portability check on macOS (advisory) ----------------------------
+  # ---- portability check on macOS via Homebrew LLVM (AppleClang's C++23 is
+  #      too old for nanom; advisory so it can never block main) -------------
   macos:
     runs-on: macos-14
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
-      - run: cmake -B build -DCMAKE_BUILD_TYPE=Release   # AppleClang, no -Werror
-      - run: cmake --build build -j
-      - run: ctest --test-dir build --output-on-failure -j
+      - name: install LLVM
+        run: brew install llvm@18
+      - name: build + test with brew clang
+        run: |
+          CXX="$(brew --prefix llvm@18)/bin/clang++"
+          cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$CXX"
+          cmake --build build -j
+          ctest --test-dir build --output-on-failure -j
 
   # ---- extra warnings, non-blocking (surfaces shadow/conversion info) ---
   warnings-extra:

@@ -19,7 +19,7 @@ automatic schemas (Arrow / Avro / JSON / CSV) and columnar chunked storage for
   column-wise chunked accumulation ready for Arrow/Lance buffers.
 - **Localized errors.** Allocation-free error values; `render()` prints
   offset, `context()` chain, and a hex window with a caret.
-- Header-only, no dependencies. gcc ≥ 13, clang ≥ 17. (C++26 reflection will
+- Header-only, no dependencies. gcc ≥ 13, clang ≥ 18. (C++26 reflection will
   make `NANOM_DESCRIBE` optional; nothing else changes.)
 
 ```
@@ -162,7 +162,7 @@ CI (see `.github/workflows/`) runs on every push/PR:
 
 | workflow | what it does |
 |---|---|
-| **ci** | build + full `ctest` across `{g++-13, g++-14, clang-17, clang-18} × {Debug, Release}` with `-Werror`; ASan+UBSan and TSan runs; installed-package `find_package` consumer; each header compiles standalone; macOS portability, extra-warnings, clang-tidy and coverage as advisory jobs |
+| **ci** | build + full `ctest` across `{g++-13, g++-14, clang-18} × {Debug, Release}` with `-Werror`; ASan+UBSan and TSan runs; installed-package `find_package` consumer; each header compiles standalone; macOS portability, extra-warnings, clang-tidy and coverage as advisory jobs |
 | **fuzz** | coverage-guided libFuzzer over the pcap scan + L2–L4 walk (ASan+UBSan), 2 min per push, 15 min nightly, seeded from the pcap fixtures |
 | **bench** | Release benchmarks tracked over time with regression alerts (`benchmark-action`) |
 
