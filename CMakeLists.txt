@@ -56,4 +56,14 @@ if(PROJECT_IS_TOP_LEVEL)
       "-DARGS=${td}/lldp_rules.txt;${td}/dpar_sample.pcap"
       -DGOLDEN=${td}/lldp_sample.ndjson
       -P ${parity_dir}/diff_test.cmake)
+
+  # robustness fuzzer (self-contained): random/mutated bytes must not crash the
+  # scan + walk. Best run with -fsanitize=address,undefined.
+  add_executable(nm_self_fuzz fuzz/self_fuzz.cpp)
+  target_link_libraries(nm_self_fuzz PRIVATE nanom)
+  add_test(NAME self_fuzz COMMAND nm_self_fuzz)
+
+  # parse-only benchmark, built so it stays compiling (not run as a test)
+  add_executable(nm_parse_bench bench/parse_bench.cpp)
+  target_link_libraries(nm_parse_bench PRIVATE nanom)
 endif()
