@@ -25,7 +25,7 @@
 // docs/CHEATSHEET.md): tag, take, take_while1, alt, opt, many0, preceded,
 // delimited, separated_list0, length_data, map, verify, cut, context, be_u16…
 //
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 // ============================================================================
 #ifndef NANOM_HPP_INCLUDED
 #define NANOM_HPP_INCLUDED

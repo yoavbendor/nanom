@@ -19,7 +19,7 @@
 // GPU status: this header is written to be device-compilable (see docs/GPU.md);
 // the CPU `par_exec` path is what runs and is benchmarked here. Swapping in a
 // CUDA/HIP launcher for the executor is the only remaining step.
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 // ============================================================================
 #ifndef NANOM_BULK_HPP_INCLUDED
 #define NANOM_BULK_HPP_INCLUDED

@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 
 // Self-contained robustness fuzzer for the nanom packet walk — no external
 // deps, so it runs in CI. Feeds random, bit-flipped, truncated and extended

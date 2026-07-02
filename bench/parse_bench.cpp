@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 
 // Parse-only microbenchmark for the nanom packet walk. Loads a capture into
 // memory ONCE, then times only the decode over the resident bytes for N

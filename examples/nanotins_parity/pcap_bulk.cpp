@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 
 // pcap_bulk — data-parallel columnar decode on nanom (the "bulk" path).
 //

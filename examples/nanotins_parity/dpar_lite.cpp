@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 
 // dpar_lite — the nanom parity port of nanotins' dpar + lldp examples:
 // Dynamic Parser Application Rules. Read a rules file and a capture; for

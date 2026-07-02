@@ -158,4 +158,5 @@ cmake -B build && cmake --build build -j && ctest --test-dir build
 
 Tests and all examples run clean under ASan + UBSan (`-fsanitize=address,undefined`).
 
-MIT license.
+Licensed under [Apache-2.0](LICENSE) — see [NOTICE](NOTICE) and [THIRD-PARTY.md](THIRD-PARTY.md).
+The library has no third-party code dependencies (C++ standard library only).

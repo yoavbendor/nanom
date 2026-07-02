@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 
 // pcap2columns — the columnar data path of nanolance's pcapng2lance, on nanom.
 // It scans a capture, tabulates one flat row per packet into nanom's soa<T>

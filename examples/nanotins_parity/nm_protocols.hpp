@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 #pragma once
 
 // L2/L3/L4 protocol structs + the packet walk — the parity port of nanotins'

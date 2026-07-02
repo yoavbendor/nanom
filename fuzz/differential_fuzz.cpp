@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 
 // Differential fuzzer: nanom vs nanotins on random / mutated packet bytes.
 // For each input we run BOTH libs' Eth->VLAN->IPv4/IPv6->TCP/UDP walk and

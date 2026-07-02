@@ -1,4 +1,4 @@
-// SPDX-License-Identifier: MIT
+// SPDX-License-Identifier: Apache-2.0
 
 // pcapng2json (nanom port) — the parity rewrite of nanotins'
 // examples/pcapng2json: read a pcap/pcapng capture, print one JSON object per
