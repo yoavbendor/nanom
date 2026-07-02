@@ -55,6 +55,20 @@
 #include <utility>
 #include <vector>
 
+// NANOM_HD marks the functions on the zero-copy decode path as callable from a
+// GPU kernel. On a normal host build it expands to nothing (zero cost, zero API
+// change); under a CUDA/HIP compiler it becomes __host__ __device__ so the exact
+// same overlay/decode code runs on the device. The failure/formatting paths
+// (error::render, soa storage, the combinators that allocate) are deliberately
+// NOT annotated — they stay host-only. See docs/GPU.md and include/nanom/bulk.hpp.
+#ifndef NANOM_HD
+#  if defined(__CUDACC__) || defined(__HIPCC__) || defined(__CUDA__)
+#    define NANOM_HD __host__ __device__
+#  else
+#    define NANOM_HD
+#  endif
+#endif
+
 namespace nanom {
 
 
@@ -129,17 +143,17 @@ struct input {
                   bool lv = false)
       : first(f), last(l), base(b), live(lv) {}
 
-  constexpr std::size_t size()   const { return std::size_t(last - first); }
-  constexpr bool        empty()  const { return first == last; }
-  constexpr std::size_t offset() const { return std::size_t(first - base); }
+  NANOM_HD constexpr std::size_t size()   const { return std::size_t(last - first); }
+  NANOM_HD constexpr bool        empty()  const { return first == last; }
+  NANOM_HD constexpr std::size_t offset() const { return std::size_t(first - base); }
   constexpr bytes       span()   const { return {first, size()}; }
-  constexpr std::uint8_t operator[](std::size_t i) const {
+  NANOM_HD constexpr std::uint8_t operator[](std::size_t i) const {
     return std::uint8_t(first[i]);
   }
   /// Cursor advanced by n bytes (precondition: n <= size()).
-  constexpr input advance(std::size_t n) const { return {first + n, last, base, live}; }
+  NANOM_HD constexpr input advance(std::size_t n) const { return {first + n, last, base, live}; }
   /// First n bytes as a zero-copy span (precondition: n <= size()).
-  constexpr bytes take_span(std::size_t n) const { return {first, n}; }
+  NANOM_HD constexpr bytes take_span(std::size_t n) const { return {first, n}; }
 };
 
 /// Make an input from anything byte-like.
@@ -1302,7 +1316,7 @@ enum class bit_order : std::uint8_t { msb0, lsb0 };
 struct bit_input {
   input       in;
   std::size_t bit = 0;  ///< bits already consumed of in.first[0], 0..7
-  constexpr std::size_t bits_left() const { return in.size() * 8 - bit; }
+  NANOM_HD constexpr std::size_t bits_left() const { return in.size() * 8 - bit; }
 };
 
 template <class T> struct bdone { using type = T; T value; bit_input rest; };
@@ -1323,7 +1337,7 @@ using bit_parsed_t = typename std::invoke_result_t<const P&, bit_input>::value_t
 namespace detail {
 /// Consume n bits (n <= 64) in the given order; returns them as the low bits
 /// of a std::uint64_t.
-constexpr bresult<std::uint64_t> read_bits(bit_input bi, std::size_t n, bit_order ord) {
+NANOM_HD constexpr bresult<std::uint64_t> read_bits(bit_input bi, std::size_t n, bit_order ord) {
   if (bi.bits_left() < n) return make_incomplete(bi.in, (n - bi.bits_left() + 7) / 8);
   std::uint64_t out = 0;
   input cur = bi.in;
@@ -1451,7 +1465,7 @@ struct endian_scalar {
   constexpr endian_scalar() = default;
   constexpr endian_scalar(T v) { set(v); }
 
-  constexpr T get() const {
+  NANOM_HD constexpr T get() const {
     using U = detail::uint_for_bytes<sizeof(T)>;
     U u = 0;
     if constexpr (E == std::endian::big)
@@ -1461,7 +1475,7 @@ struct endian_scalar {
     if constexpr (std::floating_point<T>) return std::bit_cast<T>(u);
     else                                  return std::bit_cast<T>(U(u));
   }
-  constexpr void set(T v) {
+  NANOM_HD constexpr void set(T v) {
     using U = detail::uint_for_bytes<sizeof(T)>;
     U u = std::bit_cast<U>(v);
     if constexpr (E == std::endian::big)
@@ -1470,7 +1484,7 @@ struct endian_scalar {
     else
       for (std::size_t i = 0; i < sizeof(T); ++i) raw[i] = std::byte((u >> (8 * i)) & 0xff);
   }
-  constexpr operator T() const { return get(); }
+  NANOM_HD constexpr operator T() const { return get(); }
 };
 template <class T> using be = endian_scalar<T, std::endian::big>;
 template <class T> using le = endian_scalar<T, std::endian::little>;
@@ -1645,7 +1659,7 @@ constexpr std::size_t field_count_v = std::tuple_size_v<decltype(describe<T>::fi
 
 /// Bit offset of every field, computed once at compile time.
 template <Described T>
-constexpr auto field_bit_offsets() {
+NANOM_HD constexpr auto field_bit_offsets() {
   std::array<std::size_t, field_count_v<T>> off{};
   std::size_t cur = 0, i = 0;
   std::apply([&](auto... f) {
@@ -1688,12 +1702,12 @@ struct is_byte_array<std::array<E, N>>
 template <class T> constexpr bool is_byte_array_v = is_byte_array<T>::value;
 
 template <class F>
-constexpr F assign_field(const std::byte* p, std::size_t bitoff, std::endian dflt);
+NANOM_HD constexpr F assign_field(const std::byte* p, std::size_t bitoff, std::endian dflt);
 
 /// Decode one field value from wire bytes. `p` points at the struct start;
 /// bitoff is the field's bit offset from p. Used by both strct() and view<T>.
 template <class F>
-constexpr typename wire<F>::decoded decode_field(const std::byte* p, std::size_t bitoff,
+NANOM_HD constexpr typename wire<F>::decoded decode_field(const std::byte* p, std::size_t bitoff,
                                                  std::endian dflt) {
   using D = typename wire<F>::decoded;
   if constexpr (std::integral<F> || std::floating_point<F>) {
@@ -1770,7 +1784,7 @@ constexpr typename wire<F>::decoded decode_field(const std::byte* p, std::size_t
 /// Like decode_field, but produces the FIELD type (so be<u16> members keep
 /// their raw wire bytes instead of being converted to host order).
 template <class F>
-constexpr F assign_field(const std::byte* p, std::size_t bitoff, std::endian dflt) {
+NANOM_HD constexpr F assign_field(const std::byte* p, std::size_t bitoff, std::endian dflt) {
   if constexpr (requires(F f) { f.raw; typename F::value_type; }) {  // be/le: copy raw
     F out;
     for (std::size_t i = 0; i < out.raw.size(); ++i) out.raw[i] = p[bitoff / 8 + i];
@@ -1799,7 +1813,7 @@ constexpr F assign_field(const std::byte* p, std::size_t bitoff, std::endian dfl
 }
 
 template <Described T, fixed_string Name>
-constexpr std::size_t field_index() {
+NANOM_HD constexpr std::size_t field_index() {
   std::size_t idx = std::size_t(-1), i = 0;
   std::apply([&](auto... f) {
     ((decltype(f)::name == Name.sv() ? idx = i : i, ++i), ...);
@@ -1853,7 +1867,7 @@ struct view {
 
   /// Decoded value of the named field. Unknown names are a compile error.
   template <fixed_string Name>
-  constexpr auto get() const {
+  NANOM_HD constexpr auto get() const {
     constexpr std::size_t I = detail::field_index<T, Name>();
     static_assert(I != std::size_t(-1),
                   "nanom: no such field in this struct — check NANOM_DESCRIBE");
@@ -1872,9 +1886,9 @@ struct view {
     }
   }
   /// The struct's raw wire bytes.
-  constexpr bytes raw() const { return {p, wire_size_v<T>}; }
+  NANOM_HD constexpr bytes raw() const { return {p, wire_size_v<T>}; }
   /// Materialize a full T (same as strct would produce).
-  constexpr T to_struct() const {
+  NANOM_HD constexpr T to_struct() const {
     T out{};
     constexpr auto offs = detail::field_bit_offsets<T>();
     std::size_t i = 0;

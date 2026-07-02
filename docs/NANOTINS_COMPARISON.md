@@ -84,14 +84,18 @@ reflection-driven with no hand-maintained field catalog.
 | schema / Arrow / SoA columns | **=** both produce Arrow-ready columns |
 | ergonomics / LOC | **nanom** |
 | runtime endianness | **nanom** |
-| device-callable / GPU bulk | **nanotins** (nanom has no POD/no-alloc mode) |
+| CPU-parallel bulk decode | **=** `nm::bulk_decode` (disjoint SoA scatter), ~1.9×/4 cores, TSan-clean |
+| GPU bulk (run on silicon) | **nanotins** (nanom is device-*compile*-ready, not yet run) |
 
 ## What's still missing to fully close "≥"
 
-1. **A no-alloc, POD, device-callable mode** for nanom (no `std::expected`, no
-   `std::vector` in `many*`) — the prerequisite for matching nanotins' GPU/bulk
-   story. This is the one axis where nanom is structurally behind. Note the
-   profiling result: CPU overlay speed is *not* blocked on this — the overlay
-   walk already allocates nothing per packet and is at parity.
-2. **The real `.lance` write** (nanoarrow import of the `soa<T>` column buffers)
-   plus a tshark round-trip, once nanoarrow is on the include path.
+1. **An actual CUDA/HIP launch.** The bulk path (`include/nanom/bulk.hpp`) is now
+   in place: a POD, allocation-free, `NANOM_HD`-annotated kernel + a disjoint-write
+   SoA scatter, verified bit-identical to serial and race-free (TSan) over a CPU
+   thread-pool grid (`nm::par_exec`). The whole overlay/decode call tree is
+   `NANOM_HD` and the kernel I/O is `static_assert`-trivially-copyable, so the
+   remaining step is the ~6-line device launcher in `docs/GPU.md`. No GPU was
+   available here to run it. (nanom's *combinators* still allocate — but the bulk
+   decode deliberately uses the fixed-shape overlay path, not those.)
+2. **The real `.lance` write** (nanoarrow import of the `soa<T>` / `bulk_table`
+   column buffers) plus a tshark round-trip, once nanoarrow is on the include path.

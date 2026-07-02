@@ -41,6 +41,14 @@ if(PROJECT_IS_TOP_LEVEL)
   add_test(NAME parity_columns
     COMMAND nm_pcap2columns ${td}/ipv4_options_sample.pcap)
 
+  # data-parallel bulk decode: pkt_ref[] -> parallel scatter into SoA columns.
+  # Exits nonzero unless the parallel result is bit-identical to the serial one.
+  find_package(Threads REQUIRED)
+  add_executable(nm_pcap_bulk ${parity_dir}/pcap_bulk.cpp)
+  target_link_libraries(nm_pcap_bulk PRIVATE nanom Threads::Threads)
+  add_test(NAME bulk_parallel_equals_serial
+    COMMAND nm_pcap_bulk ${td}/srv6_sample.pcap 200 5)
+
   foreach(fx ipv4_options_sample srv6_sample)
     add_test(NAME parity_json_${fx}
       COMMAND ${CMAKE_COMMAND}
