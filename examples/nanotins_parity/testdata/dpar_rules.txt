@@ -1,0 +1,20 @@
+# dpar example rules — one rule per line:
+#
+#   <node>.<field> <op> <value> [&& <node>.<field> <op> <value>]*  =>  <parser>  <region>  "<label>"
+#
+#   op      : ==  <  >  <=  >=
+#   value   : decimal or 0x-hex (must fit the field width)
+#   parser  : someip_tlv | raw_tlv | oddtlv   (oddtlv is the downstream Kind defined in this example)
+#   region  : udp_payload | tcp_payload | someip_payload
+#
+# All matching rules fire (a packet can feed several tables); each output row carries the rule_id.
+
+# Treat the UDP payload on port 9999 from src port 0 as SOME/IP-TLV and tabulate its members.
+udp.src_port == 0 && udp.dst_port == 9999 => someip_tlv udp_payload "XYZtlv"
+
+# Tabulate generic [type][len][value] records in any UDP payload to port 4000.
+udp.dst_port == 4000 => raw_tlv udp_payload "raw4000"
+
+# Drive the downstream OddTlvKind over a SOME/IP message payload (requires the SOME/IP layer to be framed,
+# i.e. the well-known SD port 30490).
+udp.dst_port == 30490 => oddtlv someip_payload "odd_arrays"
