@@ -117,12 +117,17 @@ struct input {
   const std::byte* first = nullptr;
   const std::byte* last  = nullptr;
   const std::byte* base  = nullptr;
+  /// streaming mode: running out of bytes yields an `incomplete` error
+  /// (fetch more and retry) instead of a plain backtrackable error. Enable
+  /// with nm::streaming(in). Default is complete/whole-buffer mode.
+  bool live = false;
 
   constexpr input() = default;
   constexpr input(bytes b)
       : first(b.data()), last(b.data() + b.size()), base(b.data()) {}
-  constexpr input(const std::byte* f, const std::byte* l, const std::byte* b)
-      : first(f), last(l), base(b) {}
+  constexpr input(const std::byte* f, const std::byte* l, const std::byte* b,
+                  bool lv = false)
+      : first(f), last(l), base(b), live(lv) {}
 
   constexpr std::size_t size()   const { return std::size_t(last - first); }
   constexpr bool        empty()  const { return first == last; }
@@ -132,7 +137,7 @@ struct input {
     return std::uint8_t(first[i]);
   }
   /// Cursor advanced by n bytes (precondition: n <= size()).
-  constexpr input advance(std::size_t n) const { return {first + n, last, base}; }
+  constexpr input advance(std::size_t n) const { return {first + n, last, base, live}; }
   /// First n bytes as a zero-copy span (precondition: n <= size()).
   constexpr bytes take_span(std::size_t n) const { return {first, n}; }
 };
@@ -150,6 +155,11 @@ template <class T, std::size_t N>
 constexpr input from(const std::array<T, N>& a) {
   return from(a.data(), N);
 }
+
+/// Mark an input as a stream prefix: parsers that hit the end will report
+/// `incomplete` with the byte count still needed, so the caller can refill
+/// and retry (nom's streaming mode; default inputs behave like nom complete).
+constexpr input streaming(input in) { in.live = true; return in; }
 
 /// View a span of raw bytes as text (zero-copy).
 inline std::string_view as_str(bytes b) {
@@ -187,7 +197,7 @@ struct error {
     out += "parse ";
     out += kind == errk::incomplete ? "incomplete" : kind == errk::fail ? "failure" : "error";
     out += " at offset " + std::to_string(offset);
-    if (kind == errk::incomplete && needed)
+    if (needed)
       out += " (need " + std::to_string(needed) + " more byte(s))";
     out += ": expected ";
     out += expected;
@@ -241,9 +251,12 @@ inline unexpected<error> make_err(input at, const char* expected) {
   error e; e.kind = errk::err; e.offset = at.offset(); e.expected = expected;
   return unexp(e);
 }
-/// Build an "incomplete: need n more bytes" error (streaming semantics).
+/// Ran out of input: `incomplete` on streaming inputs (caller refills and
+/// retries), a plain backtrackable error on complete ones. `needed` is kept
+/// either way for diagnostics.
 inline unexpected<error> make_incomplete(input at, std::size_t needed) {
-  error e; e.kind = errk::incomplete; e.offset = at.offset() + at.size();
+  error e; e.kind = at.live ? errk::incomplete : errk::err;
+  e.offset = at.offset() + at.size();
   e.expected = "more input"; e.needed = needed;
   return unexp(e);
 }
