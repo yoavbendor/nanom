@@ -1,5 +1,7 @@
 # nanom
 
+[![ci](https://github.com/yoavbendor/nanom/actions/workflows/ci.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/ci.yml) [![fuzz](https://github.com/yoavbendor/nanom/actions/workflows/fuzz.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/fuzz.yml) [![bench](https://github.com/yoavbendor/nanom/actions/workflows/bench.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/bench.yml)
+
 A **single-header C++23 parser-combinator library** for binary formats, modeled
 on Rust's [nom](https://github.com/rust-bakery/nom) — plus struct reflection,
 automatic schemas (Arrow / Avro / JSON / CSV) and columnar chunked storage for
@@ -156,7 +158,22 @@ path is `static_assert`ed constexpr (device-pure). See [docs/GPU.md](docs/GPU.md
 cmake -B build && cmake --build build -j && ctest --test-dir build
 ```
 
-Tests and all examples run clean under ASan + UBSan (`-fsanitize=address,undefined`).
+CI (see `.github/workflows/`) runs on every push/PR:
+
+| workflow | what it does |
+|---|---|
+| **ci** | build + full `ctest` across `{g++-13, g++-14, clang-17, clang-18} × {Debug, Release}` with `-Werror`; ASan+UBSan and TSan runs; installed-package `find_package` consumer; each header compiles standalone; macOS portability, extra-warnings, clang-tidy and coverage as advisory jobs |
+| **fuzz** | coverage-guided libFuzzer over the pcap scan + L2–L4 walk (ASan+UBSan), 2 min per push, 15 min nightly, seeded from the pcap fixtures |
+| **bench** | Release benchmarks tracked over time with regression alerts (`benchmark-action`) |
+
+Reproduce any CI mode locally via CMake options:
+
+```sh
+cmake -B b -DNANOM_WERROR=ON                          # warnings are errors
+cmake -B b -DNANOM_SANITIZER=address,undefined        # or =thread
+cmake -B b -DNANOM_BUILD_FUZZERS=ON -DCMAKE_CXX_COMPILER=clang++-18
+python3 bench/collect.py b                             # benchmark numbers as JSON
+```
 
 Licensed under [Apache-2.0](LICENSE) — see [NOTICE](NOTICE) and [THIRD-PARTY.md](THIRD-PARTY.md).
 The library has no third-party code dependencies (C++ standard library only).

@@ -1,0 +1,47 @@
+name: bench
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write        # push benchmark history to the gh-pages branch
+  deployments: write
+  pull-requests: write   # comment on regressions
+
+concurrency:
+  group: bench-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: build (Release, native)
+        run: |
+          cmake -B build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=g++-13 -DCMAKE_CXX_FLAGS="-march=native"
+          cmake --build build -j
+
+      - name: run benchmarks -> bench/output.json
+        run: python3 bench/collect.py build
+
+      # Track over time and flag regressions. GitHub runners are noisy, so the
+      # threshold is wide and alerts only comment (fail-on-alert stays off);
+      # the value is the trend line, not any single absolute number.
+      - name: store + compare
+        uses: benchmark-action/github-action-benchmark@v1
+        with:
+          name: nanom decode benchmarks
+          tool: customSmallerIsBetter
+          output-file-path: bench/output.json
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          auto-push: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+          comment-on-alert: true
+          alert-threshold: "200%"
+          fail-on-alert: false
+          alert-comment-cc-users: "@yoavbendor"

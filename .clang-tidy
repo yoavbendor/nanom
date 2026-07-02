@@ -1,0 +1,12 @@
+# Advisory static analysis (the clang-tidy CI job is non-blocking). Focused on
+# real bug patterns; the noisy modernize/readability nitpicks are disabled
+# because a template-heavy single-header lib trips them constantly.
+Checks: >
+  clang-analyzer-*,
+  bugprone-*,
+  performance-*,
+  -bugprone-easily-swappable-parameters,
+  -bugprone-narrowing-conversions,
+  -clang-analyzer-optin.core.EnumCastOutOfRange
+WarningsAsErrors: ''
+HeaderFilterRegex: 'include/nanom/.*'

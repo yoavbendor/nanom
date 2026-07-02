@@ -1,20 +1,146 @@
 name: ci
+
 on:
   push:
+    branches: ["**"]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
+  # ---- matrix build + full ctest, warnings-as-errors --------------------
   build-test:
+    name: ${{ matrix.cxx }} / ${{ matrix.build }}
     runs-on: ubuntu-24.04
     strategy:
       fail-fast: false
       matrix:
-        cxx: [g++-13, clang++-18]
+        cxx: [g++-13, g++-14, clang++-17, clang++-18]
+        build: [Debug, Release]
     steps:
       - uses: actions/checkout@v4
+      - name: install compiler
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ${{ startsWith(matrix.cxx, 'clang') && 'clang-17 clang-18' || 'g++-13 g++-14' }}
       - name: configure
-        run: cmake -B build -DCMAKE_CXX_COMPILER=${{ matrix.cxx }} -DCMAKE_BUILD_TYPE=Release
+        run: cmake -B build -DCMAKE_CXX_COMPILER=${{ matrix.cxx }}
+             -DCMAKE_BUILD_TYPE=${{ matrix.build }} -DNANOM_WERROR=ON
       - name: build
         run: cmake --build build -j
       - name: test
-        run: ctest --test-dir build --output-on-failure
+        run: ctest --test-dir build --output-on-failure -j
+
+  # ---- sanitizers (gcc runtimes are always present on the runner) -------
+  sanitizers:
+    name: sanitize (${{ matrix.san }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        san: ["address,undefined", "thread"]
+    steps:
+      - uses: actions/checkout@v4
+      - name: configure
+        run: cmake -B build -DCMAKE_CXX_COMPILER=g++-13
+             -DCMAKE_BUILD_TYPE=RelWithDebInfo -DNANOM_SANITIZER=${{ matrix.san }}
+      - run: cmake --build build -j
+      - name: test
+        run: ctest --test-dir build --output-on-failure -j
+        env:
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+          ASAN_OPTIONS: detect_leaks=1
+
+  # ---- installed-package smoke: find_package(nanom) from a downstream ---
+  install-consumer:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: install nanom
+        run: |
+          cmake -B build -DCMAKE_INSTALL_PREFIX=$PWD/_prefix
+          cmake --install build
+      - name: build downstream consumer
+        run: |
+          cmake -S test/consumer -B _cons -DCMAKE_PREFIX_PATH=$PWD/_prefix
+          cmake --build _cons
+          ./_cons/consumer
+
+  # ---- every header compiles standalone (no missing includes) -----------
+  header-selfcontained:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: compile each header alone
+        run: |
+          set -e
+          for h in include/nanom/*.hpp; do
+            echo "== $h =="
+            echo "#include \"$h\"
+            int main(){}" | g++-13 -std=c++23 -Wall -Wextra -Wpedantic -Werror \
+              -I include -x c++ - -o /dev/null
+          done
+
+  # ---- portability check on macOS (advisory) ----------------------------
+  macos:
+    runs-on: macos-14
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -B build -DCMAKE_BUILD_TYPE=Release   # AppleClang, no -Werror
+      - run: cmake --build build -j
+      - run: ctest --test-dir build --output-on-failure -j
+
+  # ---- extra warnings, non-blocking (surfaces shadow/conversion info) ---
+  warnings-extra:
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - run: cmake -B build -DCMAKE_CXX_COMPILER=g++-13
+             -DCMAKE_CXX_FLAGS="-Wshadow -Wconversion -Wsign-conversion"
+      - run: cmake --build build -j 2>&1 | tee build.log
+      - run: 'echo "extra warnings: $(grep -c "warning:" build.log)"'
+
+  # ---- clang-tidy static analysis (advisory) ----------------------------
+  clang-tidy:
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y clang-tidy-18
+      - name: configure (export compile_commands.json)
+        run: cmake -B build -DCMAKE_CXX_COMPILER=clang++-18 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+      - name: tidy the sources
+        run: |
+          clang-tidy-18 -p build \
+            tests/test_nanom.cpp examples/*.cpp examples/nanotins_parity/*.cpp
+
+  # ---- line coverage of the test suite, uploaded as an artifact ---------
+  coverage:
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - run: sudo apt-get update && sudo apt-get install -y lcov
+      - name: build with coverage
+        run: |
+          cmake -B build -DCMAKE_CXX_COMPILER=g++-13 -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_CXX_FLAGS="--coverage -O0"
+          cmake --build build -j
+      - run: ctest --test-dir build -j
+      - name: collect coverage
+        run: |
+          lcov --capture --directory build --output-file coverage.info \
+               --ignore-errors mismatch,negative 2>/dev/null || \
+          lcov --capture --directory build --output-file coverage.info
+          lcov --extract coverage.info "*/include/nanom/*" --output-file nanom.info
+          lcov --list nanom.info
+          genhtml nanom.info --output-directory coverage-html 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        with:
+          name: coverage-html
+          path: coverage-html

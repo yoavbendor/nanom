@@ -1,0 +1,54 @@
+name: fuzz
+
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  schedule:
+    - cron: "0 3 * * *"   # nightly deep fuzz
+  workflow_dispatch:
+
+concurrency:
+  group: fuzz-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  libfuzzer:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: install clang + runtimes
+        run: sudo apt-get update && sudo apt-get install -y clang-18
+
+      - name: build the coverage-guided fuzzer
+        run: |
+          cmake -B build -DCMAKE_CXX_COMPILER=clang++-18 -DNANOM_BUILD_FUZZERS=ON
+          cmake --build build --target fuzz_scan_walk -j
+
+      - name: seed corpus from the pcap fixtures
+        run: |
+          mkdir -p corpus
+          cp examples/nanotins_parity/testdata/*.pcap examples/nanotins_parity/testdata/*.pcapng corpus/ || true
+
+      # short on PRs/pushes, long on the nightly schedule
+      - name: run
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then T=900; else T=120; fi
+          ./build/fuzz_scan_walk -max_total_time=$T -rss_limit_mb=4096 \
+            -print_final_stats=1 -artifact_prefix=crash- corpus/
+
+      - name: upload crashes (if any)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-crashes
+          path: crash-*
+          if-no-files-found: ignore
+
+      - name: upload evolved corpus
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: fuzz-corpus
+          path: corpus
+          if-no-files-found: ignore

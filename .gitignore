@@ -1,2 +1,10 @@
 build/
+b_*/
+_prefix/
+_cons/
 *.o
+bench/output.json
+coverage*.info
+coverage-html/
+corpus/
+crash-*
