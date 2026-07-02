@@ -1291,8 +1291,9 @@ inline constexpr auto double_ = [](input in) -> result<double> {
   const char* b = reinterpret_cast<const char*>(in.first);
   const char* e = reinterpret_cast<const char*>(in.last);
   double v{};
-  //auto [p, ec] = std::from_chars(b, e, v);
-  auto [p, ec] = std::from_chars(b, e, v, 10);
+  // NB: the floating-point from_chars overload takes std::chars_format (default
+  // = general), NOT an integer base — passing a base here is ill-formed.
+  auto [p, ec] = std::from_chars(b, e, v);
   if (ec != std::errc{} || p == b) return make_err(in, "floating point number");
   return done{v, in.advance(std::size_t(p - b))};
 };
