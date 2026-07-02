@@ -176,18 +176,26 @@ inline std::string_view as_str(bytes b) {
 ///   incomplete need more input (streaming) — complete() turns it into err
 enum class errk : std::uint8_t { err, fail, incomplete };
 
+/// Depth of the inline context() chain kept on the error. 4 is deeper than any
+/// realistic hand-written parser nests context() frames; keeping it small
+/// matters because std::expected sizes result<T> to max(sizeof(done<T>),
+/// sizeof(error)), so a fat error taxes every parser return on the SUCCESS
+/// path too. offsets are 32-bit for the same reason (a parse buffer over 4 GiB
+/// is out of scope; the whole point is zero-copy in-memory parsing).
+inline constexpr std::size_t max_context = 4;
+
 struct error {
-  struct frame { const char* label; std::size_t offset; };
+  struct frame { const char* label; std::uint32_t offset; };
 
   errk          kind     = errk::err;
   std::uint8_t  nctx     = 0;
-  std::size_t   offset   = 0;        ///< absolute byte offset of the failure
+  std::uint32_t offset   = 0;        ///< absolute byte offset of the failure
   const char*   expected = "";       ///< static string: what was expected here
-  std::size_t   needed   = 0;        ///< for incomplete: bytes missing (0 = unknown)
-  std::array<frame, 8> ctx{};        ///< context() chain, innermost first
+  std::uint32_t needed   = 0;        ///< for incomplete: bytes missing (0 = unknown)
+  std::array<frame, max_context> ctx{};  ///< context() chain, innermost first
 
   constexpr void push_context(const char* label, std::size_t off) {
-    if (nctx < ctx.size()) ctx[nctx++] = {label, off};
+    if (nctx < ctx.size()) ctx[nctx++] = {label, std::uint32_t(off)};
   }
 
   /// Pretty, localized message: offset, context chain, hex window with caret.
@@ -208,17 +216,18 @@ struct error {
     }
     // hex window: up to 8 bytes before and after the failure point
     const std::size_t total = std::size_t(whole.last - whole.base);
-    if (offset <= total) {
-      const std::size_t lo = offset >= 8 ? offset - 8 : 0;
-      const std::size_t hi = std::min(offset + 8, total);
+    const std::size_t off = offset;  // widen the 32-bit field for arithmetic
+    if (off <= total) {
+      const std::size_t lo = off >= 8 ? off - 8 : 0;
+      const std::size_t hi = std::min(off + 8, total);
       static constexpr char hexd[] = "0123456789abcdef";
       std::string line = "  ", caret = "  ";
       for (std::size_t i = lo; i < hi; ++i) {
         const auto b = std::uint8_t(whole.base[i]);
         line += hexd[b >> 4]; line += hexd[b & 15]; line += ' ';
-        caret += (i == offset) ? "^^ " : "   ";
+        caret += (i == off) ? "^^ " : "   ";
       }
-      if (offset == total) caret += "^^ (end of input)";
+      if (off == total) caret += "^^ (end of input)";
       out += "\n" + line + "\n" + caret;
     }
     return out;
@@ -248,7 +257,7 @@ struct unit {};  ///< value of parsers that produce nothing (eof, not_, tag ok�
 
 /// Build a recoverable error at the current position.
 inline unexpected<error> make_err(input at, const char* expected) {
-  error e; e.kind = errk::err; e.offset = at.offset(); e.expected = expected;
+  error e; e.kind = errk::err; e.offset = std::uint32_t(at.offset()); e.expected = expected;
   return unexp(e);
 }
 /// Ran out of input: `incomplete` on streaming inputs (caller refills and
@@ -256,8 +265,8 @@ inline unexpected<error> make_err(input at, const char* expected) {
 /// either way for diagnostics.
 inline unexpected<error> make_incomplete(input at, std::size_t needed) {
   error e; e.kind = at.live ? errk::incomplete : errk::err;
-  e.offset = at.offset() + at.size();
-  e.expected = "more input"; e.needed = needed;
+  e.offset = std::uint32_t(at.offset() + at.size());
+  e.expected = "more input"; e.needed = std::uint32_t(needed);
   return unexp(e);
 }
 
@@ -2265,7 +2274,7 @@ class soa {
 // ---------------------------------------------------------------------------
 // sanity pledges (see DESIGN.md §6)
 // ---------------------------------------------------------------------------
-static_assert(sizeof(error) <= 160, "error must stay POD-small");
+static_assert(sizeof(error) <= 96, "error must stay POD-small (it taxes the result<T> value path)");
 static_assert(std::is_trivially_copyable_v<error>);
 static_assert(std::is_trivially_copyable_v<input>);
 
