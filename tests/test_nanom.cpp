@@ -413,6 +413,28 @@ static void test_errors() {
   CHECK(m2.find("need 3 more") != std::string::npos);
 }
 
+// Device-purity guard: the zero-copy decode path (be/le, bit fields, plain
+// scalars) must be fully constexpr — i.e. free of allocation, I/O, exceptions
+// and other host-only runtime dependencies. If it evaluates at compile time it
+// is eligible to run in a GPU kernel (see docs/GPU.md). Checked at compile time.
+namespace cx_proof {
+constexpr std::array<std::byte, 8> vlan_bytes = [] {
+  std::array<std::byte, 8> a{};
+  const unsigned char b[8] = {0x60, 0x2a, 0x08, 0x00, /*mixed*/ 0x12, 0x34, 0x56, 0x78};
+  for (int i = 0; i < 8; ++i) a[i] = std::byte(b[i]);
+  return a;
+}();
+constexpr vlan_tag decode_vlan() {
+  nm::input in{nm::bytes(vlan_bytes.data(), 4)};
+  return nm::overlay<vlan_tag>()(in)->value.to_struct();
+}
+static_assert(decode_vlan().pcp == 3, "constexpr bit-field decode (msb0)");
+static_assert(decode_vlan().vid == 42, "constexpr multi-byte bit-field decode");
+static_assert(std::uint16_t(decode_vlan().ether) == 0x0800, "constexpr be<> decode");
+static_assert(nm::strct<vlan_tag>()(nm::input{nm::bytes(vlan_bytes.data(), 4)})->value.dei == 0,
+              "constexpr strct<> decode");
+}  // namespace cx_proof
+
 int main() {
   test_primitives();
   test_characters();

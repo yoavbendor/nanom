@@ -125,9 +125,28 @@ auto csv = nm::separated_list1(nm::chr(','), nm::dec<int>());
 | [examples/elf.cpp](examples/elf.cpp) | magic tags, runtime BE/LE selection, cut(), offset seeking, count() |
 | [examples/fat16.cpp](examples/fat16.cpp) | zero-copy views, lsb0 attribute bits, misaligned le<> fields, fixed 32-byte records |
 
+## Data-parallel bulk decode (CPU now, GPU-ready)
+
+For throughput, `<nanom/bulk.hpp>` decodes many packets in parallel into SoA
+columns — one task per packet, each scattering its row at its own index
+(disjoint writes: no locks, no atomics, no allocation). The per-packet kernel is
+a POD, `NANOM_HD`-annotated function written with `overlay<>`/`get<>`, so the
+same code runs on a CPU thread pool today and compiles for a CUDA/HIP grid.
+
+```cpp
+nm::bulk_table<PacketRow> tbl;
+nm::bulk_decode(packets, tbl, kernel, nm::par_exec{});   // kernel: bool(pkt_ref&, Row&)
+auto ports = tbl.column<std::uint16_t>("dst_port");      // contiguous, Arrow-ready
+```
+
+Verified bit-identical to the serial path and ThreadSanitizer-clean; the decode
+path is `static_assert`ed constexpr (device-pure). See [docs/GPU.md](docs/GPU.md).
+
 ## Docs
 
 - [docs/CHEATSHEET.md](docs/CHEATSHEET.md) — every nom name → nanom name, one line each
+- [docs/GPU.md](docs/GPU.md) — device readiness: what's `NANOM_HD`, and the CUDA launcher
+- [docs/NANOTINS_COMPARISON.md](docs/NANOTINS_COMPARISON.md) — measured scorecard vs nanotins
 - [DESIGN.md](DESIGN.md) — architecture, nom feature matrix, what was borrowed
   from Boost.Parser / parsi / ezpz / monadic-parser-combinator and why
 
