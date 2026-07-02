@@ -1698,16 +1698,33 @@ constexpr typename wire<F>::decoded decode_field(const std::byte* p, std::size_t
       for (std::size_t i = 0; i < sizeof(F); ++i) u |= U(U(std::uint8_t(q[i])) << (8 * i));
     return std::bit_cast<F>(U(u));
   } else if constexpr (requires { F::order; F::bits; }) {  // ubits / ibits
-    input fake{p + bitoff / 8, p + (bitoff + F::bits + 7) / 8, p};
-    auto r = read_bits(bit_input{fake, bitoff % 8}, F::bits, F::order);
-    if constexpr (std::is_signed_v<typename F::value_type>) {
-      using UV = std::make_unsigned_t<typename F::value_type>;
-      UV u = UV(r->value);
-      const UV sign = UV(1) << (F::bits - 1);
-      if (u & sign) u |= ~((sign << 1) - 1);          // sign-extend
-      return std::bit_cast<typename F::value_type>(u);
+    using VT = typename F::value_type;
+    constexpr unsigned N = F::bits;
+    std::uint64_t raw;
+    if constexpr (F::order == bit_order::msb0 && (7u + N) <= 64u) {
+      // fast path: load the covering bytes as one big-endian word and
+      // shift+mask — O(bytes) instead of read_bits' O(bits) loop. This is the
+      // hot path for network headers (msb0) and is what makes overlay<>()
+      // competitive with a hand-tuned overlay parser.
+      const std::byte* q = p + bitoff / 8;
+      const unsigned startbit = unsigned(bitoff % 8);
+      const unsigned nbytes = (startbit + N + 7) / 8;
+      std::uint64_t w = 0;
+      for (unsigned i = 0; i < nbytes; ++i) w = (w << 8) | std::uint8_t(q[i]);
+      const unsigned shift = nbytes * 8 - startbit - N;
+      raw = (w >> shift) & (N >= 64 ? ~std::uint64_t(0) : ((std::uint64_t(1) << N) - 1));
     } else {
-      return typename F::value_type(r->value);
+      input fake{p + bitoff / 8, p + (bitoff + N + 7) / 8, p};
+      raw = read_bits(bit_input{fake, bitoff % 8}, N, F::order)->value;
+    }
+    if constexpr (std::is_signed_v<VT>) {
+      using UV = std::make_unsigned_t<VT>;
+      UV u = UV(raw);
+      const UV sign = UV(1) << (N - 1);
+      if (u & sign) u |= ~((sign << 1) - 1);          // sign-extend
+      return std::bit_cast<VT>(u);
+    } else {
+      return VT(raw);
     }
   } else if constexpr (requires { F::order; typename F::value_type; }) {  // be/le
     F tmp;

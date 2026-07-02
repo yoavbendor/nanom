@@ -22,50 +22,58 @@ claim.
 
 | decoder | ns/packet | MB/s | vs nanotins |
 |---|---:|---:|---:|
-| nanotins (wire_spec overlay) | 29.3 | 51,200 | 1.00× |
-| **nanom `overlay<T>()`** (lazy field decode) | **35.6** | 42,155 | **1.21×** |
-| nanom `strct<T>()` (materialize every field) | 82.6 | 18,148 | 2.82× |
+| nanotins (wire_spec overlay) | ~29–31 | ~50,000 | 1.00× |
+| **nanom `overlay<T>()`** (lazy field decode) | **~28–32** | ~50,000 | **~1.0× (parity)** |
+| nanom `strct<T>()` (materialize every field) | ~74 | ~20,000 | ~2.4× |
 
 All three produce the **identical checksum** (`ac8f6ce882238780`) — nanom decodes
-every field to the same value as nanotins. (Numbers are from one shared cloud
-host and will vary; the *ratios* are the point.)
+every field to the same value as nanotins. (Numbers are from one noisy shared
+cloud host, ±3 ns run-to-run; overlay and nanotins trade places between runs.)
+
+## How overlay reached parity (measured, not guessed)
+
+The first version of this bench had `overlay<>` at 35.6 ns/pkt (1.2× nanotins).
+Callgrind attribution of the walk showed the gap was **one thing**: the msb0
+bit-field decode ran a bit-*at-a-time* loop (`read_bits`), which was **~35% of
+the walk** (extracting `ihl`, `frag_offset`, `vid`, `data_offset`). It was *not*
+the `std::expected` result size and *not* per-packet allocation — the overlay
+path allocates nothing per packet.
+
+The fix (in `decode_field`): for a byte-spanning `ubits<>/ibits<>` in msb0 order,
+load the covering bytes as one big-endian word and shift+mask — O(bytes), not
+O(bits) — exactly nanotins' technique. That single localized change took overlay
+from 35.6 → ~28 ns/pkt, i.e. to parity, with the checksum and the 600k-case
+differential fuzz unchanged.
 
 ## Reading the result
 
-- **`overlay<T>()` is the hot path and is competitive** — within ~20% of a
-  hand-tuned overlay parser. It decodes only the fields you touch (the walk
-  reads ~5 of IPv4's 13 fields), exactly like nanotins' `wire_spec` overlay.
+- **`overlay<T>()` is the hot path and is now at parity** with a hand-tuned
+  overlay parser. It decodes only the fields you touch, exactly like nanotins'
+  `wire_spec` overlay.
 - **`strct<T>()` is the convenience path**: it materializes every field by value
-  (and extracts every bit field), so it's ~2.8× slower here. Use it — and
-  `soa<T>` — when you keep every column (tabulation); use `overlay<T>()` for a
-  hot classification walk where you read a handful of fields.
+  (all 13 IPv4 fields, both address arrays), so it stays ~2.4× slower. Use it —
+  and `soa<T>` — when you keep every column (tabulation); use `overlay<T>()` for
+  a hot classification walk that reads a handful of fields.
 
-## The remaining ~20% (overlay vs nanotins)
-
-Two known costs, both addressable, neither yet optimized:
-
-1. **Bit-field extraction.** nanom's `read_bits` consumes bits in a loop;
-   nanotins byteswaps the whole word once and shift+masks. For headers with
-   byte-spanning bit fields (IPv4 flags/frag, IPv6 flow_label) this is the main
-   gap. A word-load-then-mask fast path for byte-spanning `ubits<>` would close
-   most of it.
-2. **`std::expected` result size.** `result<T>` is 96 bytes (was 168 before the
-   error type was shrunk to 4 context frames + 32-bit offsets); it is still
-   larger than nanotins' `bool` + out-param. A thin no-`expected` fast path is
-   possible but would complicate the API.
+`result<T>` is 96 bytes (down from 168, after the error type was shrunk to 4
+context frames + 32-bit offsets); the profile showed it is not on the critical
+path for the overlay walk, so no further no-`expected` fast path is warranted
+for now.
 
 ## Honest scorecard vs nanotins
 
 | axis | nanom | nanotins |
 |---|---|---|
 | decode correctness | identical checksum | reference |
-| overlay decode speed | ~1.2× slower | baseline |
+| overlay decode speed | **parity** (~28–32 ns/pkt) | ~29–31 ns/pkt |
 | ergonomics / LOC | one `NANOM_DESCRIBE`, no boost, no DAG headers | wire_spec + spec_dag + boost.describe |
 | runtime endianness | one arg (`strct<T>(order)`) | parallel LE/BE readers |
-| **device-callable / GPU** | **no** (allocates, `std::expected`) | **yes** (`NANOTINS_HD`, POD) |
+| **device-callable / GPU** | **no** (allocates in `many*`, `std::expected`) | **yes** (`NANOTINS_HD`, POD) |
 | **bulk count-then-scatter** | **no** | **yes** (stdexec) |
 | schema / Arrow / SoA | yes | yes |
 
-nanom wins on ergonomics and ties on capability for the CPU/columnar path; it is
-**behind on raw speed and on the device/bulk path**, which are nanotins' design
-priorities. See the top-level DESIGN notes for the planned no-alloc POD mode.
+nanom wins on ergonomics, **ties on overlay decode speed and on the CPU/columnar
+capability**, and is **behind only on the device/GPU-bulk path**, which is
+nanotins' design priority. The GPU gap is real (nanom's `many*` allocate and it
+returns `std::expected`); it is *not* a general CPU-speed gap — the profiler
+showed the earlier speed difference was a single bit-loop, now fixed.

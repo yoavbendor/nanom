@@ -7,13 +7,15 @@ claim here is reproduced by code in this repo (`examples/nanotins_parity/`,
 ## TL;DR
 
 nanom is a **behaviorally exact, more ergonomic** replacement for nanotins'
-reflection-struct parsing core on the CPU + columnar path, at **~1.2× the decode
-cost** when you use the zero-copy overlay path. It is **not** a replacement for
-nanotins' device-callable / GPU-bulk path — that is out of scope by design.
+reflection-struct parsing core on the CPU + columnar path, at **parity decode
+speed** when you use the zero-copy overlay path (~28–32 vs ~29–31 ns/pkt). It is
+**not** a replacement for nanotins' device-callable / GPU-bulk path — that is out
+of scope by design.
 
 "nanom ≥ nanotins" is therefore **true on ergonomics and correctness, a tie on
-CPU capability, false on raw speed and on the device/bulk axis.** Parity rewrites
-alone could never have shown this — the measurements did.
+CPU decode speed and columnar capability, and false only on the device/GPU-bulk
+axis.** Parity rewrites alone could never have shown this — the measurements did,
+and profiling turned an apparent 1.2× speed gap into a one-line fix (below).
 
 ## What was proven, and how
 
@@ -36,20 +38,24 @@ alone could never have shown this — the measurements did.
 - Round-trip invariant: `scan_blocks`+`parse_epb` reproduce payloads exactly
   (raw-walk vs pcap-wrapped-walk hashes cancel).
 
-### 3. Speed — nanom BEHIND (~1.2× overlay, ~2.8× strct)
+### 3. Speed — PARITY on overlay (was 1.2×, profiled and fixed)
 
 Parse-only, no JSON/IO, 44,800 packets, best of 300 (`bench/parse_bench.cpp`):
 
 | decoder | ns/pkt | vs nanotins |
 |---|---:|---:|
-| nanotins (wire_spec overlay) | 29.3 | 1.00× |
-| nanom `overlay<T>()` | 35.6 | 1.21× |
-| nanom `strct<T>()` (materialize all) | 82.6 | 2.82× |
+| nanotins (wire_spec overlay) | ~29–31 | 1.00× |
+| nanom `overlay<T>()` | ~28–32 | **~1.0× (parity)** |
+| nanom `strct<T>()` (materialize all) | ~74 | ~2.4× |
 
-The overlay gap is the bit-field extraction (`read_bits` loop vs word-mask) and
-the 96-byte `result<T>` (already shrunk from 168). Both are addressable; see
-`bench/README.md`. Lesson: **`overlay<>` for hot walks, `strct<>`/`soa<>` for
-tabulation.**
+**How, and why this matters methodologically.** The first bench had overlay at
+1.2×. Rather than guess, callgrind attributed the walk: the gap was **one thing**
+— the msb0 bit-field decode ran a *bit-at-a-time* loop, ~35% of the walk. It was
+**not** the `std::expected` result size and **not** allocation (the overlay path
+allocates nothing per packet). A word-load+shift-mask fast path in `decode_field`
+(O(bytes), nanotins' technique) closed it to parity — checksum and the 600k-case
+differential fuzz unchanged. `strct<>` stays ~2.4× because it materializes every
+field; lesson: **`overlay<>` for hot walks, `strct<>`/`soa<>` for tabulation.**
 
 ### 4. Capability (columnar → Lance) — PASS for the data path
 
@@ -73,8 +79,8 @@ reflection-driven with no hand-maintained field catalog.
 |---|---|
 | decode correctness | **=** identical checksums, 0 fuzz mismatches |
 | safety on malformed input | **=** 1.2M cases clean (both bounded) |
-| CPU overlay decode speed | **nanotins** by ~1.2× |
-| `strct<>` materialize speed | **nanotins** by ~2.8× (use overlay) |
+| CPU overlay decode speed | **=** parity (~28–32 vs ~29–31 ns/pkt) |
+| `strct<>` materialize speed | **nanotins** by ~2.4× (use overlay for hot walks) |
 | schema / Arrow / SoA columns | **=** both produce Arrow-ready columns |
 | ergonomics / LOC | **nanom** |
 | runtime endianness | **nanom** |
@@ -84,8 +90,8 @@ reflection-driven with no hand-maintained field catalog.
 
 1. **A no-alloc, POD, device-callable mode** for nanom (no `std::expected`, no
    `std::vector` in `many*`) — the prerequisite for matching nanotins' GPU/bulk
-   story. This is the one axis where nanom is structurally behind.
-2. **A word-mask fast path** for byte-spanning `ubits<>` to close most of the
-   overlay speed gap.
-3. **The real `.lance` write** (nanoarrow import of the `soa<T>` column buffers)
+   story. This is the one axis where nanom is structurally behind. Note the
+   profiling result: CPU overlay speed is *not* blocked on this — the overlay
+   walk already allocates nothing per packet and is at parity.
+2. **The real `.lance` write** (nanoarrow import of the `soa<T>` column buffers)
    plus a tshark round-trip, once nanoarrow is on the include path.
