@@ -34,6 +34,12 @@ if(PROJECT_IS_TOP_LEVEL)
   target_link_libraries(nm_pcapng2json PRIVATE nanom)
   add_executable(nm_dpar_lite ${parity_dir}/dpar_lite.cpp)
   target_link_libraries(nm_dpar_lite PRIVATE nanom)
+  add_executable(nm_pcap2columns ${parity_dir}/pcap2columns.cpp)
+  target_link_libraries(nm_pcap2columns PRIVATE nanom)
+  # columnar (SoA) data path: soa<T> -> contiguous column buffers -> lossless
+  # round-trip. Exit code is nonzero on any reconstruction mismatch.
+  add_test(NAME parity_columns
+    COMMAND nm_pcap2columns ${td}/ipv4_options_sample.pcap)
 
   foreach(fx ipv4_options_sample srv6_sample)
     add_test(NAME parity_json_${fx}
