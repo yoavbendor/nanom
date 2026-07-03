@@ -24,7 +24,8 @@
 #ifndef NANOM_BULK_HPP_INCLUDED
 #define NANOM_BULK_HPP_INCLUDED
 
-#include "nanom.hpp"
+#include "soa.hpp"  // its real dependency: soa<T> column layout + the describe/wire/for_each_field seam
+                    // (transitively pulls nom.hpp/reflect.hpp/schema.hpp). bulk stays a separate opt-in.
 
 #include <span>
 #include <thread>

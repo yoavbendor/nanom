@@ -30,8 +30,9 @@
 #ifndef NANOM26_HPP_INCLUDED
 #define NANOM26_HPP_INCLUDED
 
-#include "nanom.hpp"  // the core + seam types (benign re-entry: include guards make this safe
-                      // whether the user includes nanom.hpp or nanom26.hpp first)
+#include "reflect.hpp"  // the describe<T> seam (fixed_string, detail::fld, describe, Described).
+                       // reflect.hpp includes THIS file at its end once the seam is defined, so the
+                       // re-entry here is a guarded no-op — and we avoid dragging schema/soa back in.
 
 #if defined(NANOM_HAS_REFLECTION) && NANOM_HAS_REFLECTION
 
