@@ -102,6 +102,50 @@ jobs:
           cmake --build build -j
           ctest --test-dir build --output-on-failure -j
 
+  # ---- C++26 P2996 reflection: the macro-free nanom (nanom26.hpp) ----------
+  # Runs the FULL suite (incl. the golden-diff parity tests) twice: pure-reflection mode (every
+  # NANOM_DESCRIBE degrades to a coverage static_assert) and macro-parity mode (FORCE_MACRO's
+  # explicit specializations win) — the outputs must be identical either way. The only P2996
+  # compiler today is the experimental Bloomberg clang-p2996 fork, consumed as a community docker
+  # image pinned by immutable digest (vsavkov/clang-p2996:amd64, pulled 2026-07-03); advisory
+  # (continue-on-error) until a released compiler exists. <meta> lives in the fork's libc++,
+  # hence the -stdlib flag; NANOM_REFLECTION_FLAGS is the one knob to swap toolchains later.
+  reflection-cxx26:
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    container:
+      image: vsavkov/clang-p2996@sha256:6672c4227b09efc7318695c17e8a8f696e193f451b52d885d220f593593dc1c8
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [reflection, macro-parity]
+    steps:
+      - uses: actions/checkout@v4
+      - name: install build tools (image ships only the toolchain)
+        run: |
+          command -v cmake >/dev/null && command -v make >/dev/null || {
+            apt-get update && apt-get install -y --no-install-recommends cmake make git ca-certificates
+          }
+      - name: locate fork clang
+        run: |
+          CXX=$(command -v clang++ || ls /usr/local/bin/clang++ /opt/*/bin/clang++ 2>/dev/null | head -1)
+          echo "CXX=$CXX" >> "$GITHUB_ENV"
+          "$CXX" --version
+      - name: configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DCMAKE_CXX_COMPILER="$CXX"
+             -DNANOM_CXX26_REFLECTION=ON -DNANOM_WERROR=ON
+             -DCMAKE_CXX_FLAGS=${{ matrix.mode == 'macro-parity' && '-DNANOM_DESCRIBE_FORCE_MACRO' || '""' }}
+      - name: build
+        run: cmake --build build -j
+      - name: test
+        run: ctest --test-dir build --output-on-failure -j
+      - name: upload test log on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: reflection-cxx26-${{ matrix.mode }}-log
+          path: build/Testing/Temporary/LastTest.log
+
   # ---- extra warnings, non-blocking (surfaces shadow/conversion info) ---
   warnings-extra:
     runs-on: ubuntu-24.04
@@ -123,9 +167,11 @@ jobs:
       - name: configure (export compile_commands.json)
         run: cmake -B build -DCMAKE_CXX_COMPILER=clang++-18 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
       - name: tidy the sources
+        # reflect26/test_reflect26 are C++26-reflection-only TUs (#error without a P2996
+        # compiler), so a stock clang-tidy cannot analyze them — skip them here.
         run: |
           clang-tidy-18 -p build \
-            tests/test_nanom.cpp examples/*.cpp examples/nanotins_parity/*.cpp
+            tests/test_nanom.cpp $(ls examples/*.cpp | grep -v reflect26) examples/nanotins_parity/*.cpp
 
   # ---- line coverage of the test suite, uploaded as an artifact ---------
   coverage:

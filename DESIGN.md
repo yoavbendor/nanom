@@ -1,6 +1,6 @@
 # nanom — design
 
-`nanom` is a single-header C++23 parser-combinator library for **binary-first**
+`nanom` is a header-only C++23 parser-combinator library for **binary-first**
 parsing, modeled on Rust's [nom](https://github.com/rust-bakery/nom), with three
 extra pillars nom does not have:
 
@@ -18,6 +18,25 @@ Target users are AI agents: the API mirrors nom's names 1:1 so prior nom
 knowledge transfers without reading docs, and the docs are a cheat-sheet plus
 copy-paste examples.
 
+### Header layout (the layers, made physical)
+
+The three extra pillars are exactly why nanom is bigger than nom — so they live in their own headers,
+and the file tree reads as the dependency stack. `nanom.hpp` is a thin umbrella that includes them in
+order; each header also stands alone (the CI `header-selfcontained` job compiles every
+`include/nanom/*.hpp` by itself):
+
+- `nom.hpp` — the **pure nom parallel**: `input`/`result`/`Parser`, the combinator vocabulary, binary
+  + text numbers, bits. No reflection, schema, or storage. This is the "as fast, nicer-looking than
+  rust-nom" surface, and it depends on nothing but `prelude.hpp`.
+- `reflect.hpp` — pillar 1: `fixed_string`, wire types, the `describe<T>` seam, `strct<>`/`overlay<>`.
+  Ends by including the two `describe<T>` providers (`nanom26.hpp` reflection / `describe_macro.hpp`).
+- `schema.hpp` — pillar 2 (Arrow/Avro/JSON/CSV). `soa.hpp` — pillar 3 (columnar). `bulk.hpp` — the
+  opt-in data-parallel scatter on top of `soa`.
+
+Verified one-directional: nothing in `nom.hpp`/`reflect.hpp` references any schema/soa symbol, so the
+"extras" are strictly additive. The split is a pure code move — same code, same order, wrapped in
+per-header guards.
+
 ---
 
 ## 1. Sources studied and what was taken from each
@@ -31,12 +50,32 @@ copy-paste examples.
 | **OneBit74/ezpz** | The "results decay into your own structs" goal — realized here as `strct<T>()` aggregate parsing | Context-object mutation style |
 | **Boost.Describe** | The registration-macro approach (`NANOM_DESCRIBE`) as the C++23 stand-in for real reflection | Dependency itself — nanom re-implements the 5% it needs so the header stays standalone |
 
-### C++26 readiness
+### C++26: realized (nanom26)
 
-All struct metadata flows through one customization point,
-`nanom::describe<T>` (specialized by the `NANOM_DESCRIBE` macro). When P2996
-reflection lands, a single `template<class T> requires(std::meta::…)` fallback
-specialization makes the macro optional. Nothing else in the library changes.
+All struct metadata flows through one customization point — `describe<T>` returning a tuple of
+`detail::fld<Name, MemPtr>` — and that seam now has **two interchangeable providers**:
+
+- **`nanom26.hpp` (the primary design):** a constrained partial specialization
+  `template<Reflectable T> struct describe<T>` synthesizes the tuple by P2996 static reflection —
+  every eligible struct is auto-described, macro-free. `Reflectable` = named non-union class, no
+  bases, ≥1 NSDM, all members public/named/non-bitfield, namespace chain not rooted in `std` or
+  `nanom` (that fence keeps `std::array`, `be<>`, `ubits<>` on their dedicated core branches).
+  Qualified type names are rebuilt via a `parent_of` walk so `describe<T>::name()` matches the
+  macro's `#T` spelling exactly. Implementation deliberately avoids expansion statements and
+  `define_static_string`: per-index `constexpr std::meta::info` variables + `index_sequence`
+  expansion + `&[:m:]` splices are the entire fork-facing surface (~6 `std::meta` calls).
+- **`describe_macro.hpp`:** `NANOM_DESCRIBE` synthesizes the identical tuple with the
+  preprocessor (C++23). Under reflection the macro degrades to
+  `static_assert(Described<T>)` — every legacy registration line is a coverage proof — and
+  `NANOM_DESCRIBE_FORCE_MACRO` restores explicit registration (an explicit specialization beats
+  the partial one, so it doubles as the per-type override, e.g. registering a member subset).
+
+The core consumes only the seam (via `detail::for_each_field`) and cannot tell the providers
+apart — proven by running the full test + golden-parity corpus in pure-reflection mode,
+byte-identical (see `docs/P2996_COMPAT.md`). Semantic note: under C++26 every eligible aggregate
+satisfies `Described`, so "forgot to register" becomes silent success — that is the feature.
+`NANOM_HD` (CUDA host/device) remains a macro by nature; nvcc TUs keep the macro path since they
+never probe true for reflection.
 
 ---
 

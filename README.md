@@ -2,29 +2,49 @@
 
 [![ci](https://github.com/yoavbendor/nanom/actions/workflows/ci.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/ci.yml) [![fuzz](https://github.com/yoavbendor/nanom/actions/workflows/fuzz.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/fuzz.yml) [![bench](https://github.com/yoavbendor/nanom/actions/workflows/bench.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/bench.yml)
 
-A **single-header C++23 parser-combinator library** for binary formats, modeled
+A **header-only C++23 parser-combinator library** for binary formats, modeled
 on Rust's [nom](https://github.com/rust-bakery/nom) — plus struct reflection,
 automatic schemas (Arrow / Avro / JSON / CSV) and columnar chunked storage for
-[nanoarrow](https://github.com/apache/arrow-nanoarrow) / Lance.
+[nanoarrow](https://github.com/apache/arrow-nanoarrow) / Lance. The nom-parallel
+parser is one self-contained header ([`nom.hpp`](#library-layout)); the reflection
+and data-tooling extras layer cleanly on top.
 
 - **Zero-copy, always.** Parsers return spans/views into your buffer.
 - **nom names.** If you know nom, you already know nanom
   ([cheat sheet](docs/CHEATSHEET.md)). All of nom's combinators are here.
-- **Structs are parsers.** Register any C struct with `NANOM_DESCRIBE`; endian
-  (`be<>`, `le<>`, mixed) and bit fields (`ubits<>`, msb0 *and* lsb0) live in
-  the field types. `strct<T>()` parses by value, `overlay<T>()` gives a
-  zero-copy `view<T>` with `v.get<"field">()`.
+- **Structs are parsers.** Under **C++26 (P2996 reflection), any eligible struct
+  just works — zero registration, zero macros** ([nanom26](#c26-macro-free-nanom26)).
+  Under C++23, one `NANOM_DESCRIBE` line registers it. Endian (`be<>`, `le<>`,
+  mixed) and bit fields (`ubits<>`, msb0 *and* lsb0) live in the field types.
+  `strct<T>()` parses by value, `overlay<T>()` gives a zero-copy `view<T>` with
+  `v.get<"field">()`.
 - **Schemas for free.** `schema_of<T>()`, Arrow C-data format strings,
   `avro_schema<T>()`, `to_json` / `csv_row` for debugging, and `soa<T>` —
   column-wise chunked accumulation ready for Arrow/Lance buffers.
 - **Localized errors.** Allocation-free error values; `render()` prints
   offset, `context()` chain, and a hex window with a caret.
-- Header-only, no dependencies. gcc ≥ 13, clang ≥ 18. (C++26 reflection will
-  make `NANOM_DESCRIBE` optional; nothing else changes.)
+- Header-only, no dependencies. gcc ≥ 13, clang ≥ 18 for the C++23 macro path;
+  a P2996 compiler (Bloomberg clang-p2996) for the macro-free C++26 path.
 
 ```
-cmake: add_subdirectory(nanom) + link nanom::nanom     — or just copy include/nanom/nanom.hpp
+cmake: add_subdirectory(nanom) + link nanom::nanom     — or copy the include/nanom/ folder
 ```
+
+## Library layout
+
+`#include <nanom/nanom.hpp>` pulls in everything (that umbrella is all any consumer needs). But the
+code lives in layered headers, so the file structure itself is the map — pure nom parallel, then the
+reflection add-on, then the data-tooling extras:
+
+| header | what | depends on |
+|---|---|---|
+| `nanom/nom.hpp` | **the rust-nom parallel** — `input`/`result`/`Parser`, every combinator (tag/take/alt/many0/preceded/…), binary numbers (`be_u16`…), text numbers (`dec`/`hex`/`float`), bit-level parsing. **Include this alone for the parser-only subset.** | — (self-contained) |
+| `nanom/reflect.hpp` | struct reflection: `fixed_string`, wire types (`be<>`/`ubits<>`), the `describe<T>` seam, `strct<T>()`, `overlay<T>()`/`view<T>` | `nom.hpp` |
+| `nanom/schema.hpp` | *extra* — `schema_of<T>()`, Arrow format strings, `avro_schema`, `to_json`/`csv_row` | `reflect.hpp` |
+| `nanom/soa.hpp` | *extra* — `soa<T>` columnar (SoA) chunked storage | `schema.hpp` |
+| `nanom/bulk.hpp` | *extra, opt-in* — data-parallel (GPU-ready) SoA scatter | `soa.hpp` |
+| `nanom/nanom26.hpp`, `nanom/describe_macro.hpp` | the two `describe<T>` providers (C++26 reflection / `NANOM_DESCRIBE` macro), included by `reflect.hpp` | — |
+| `nanom/prelude.hpp` | shared config: std includes, `NANOM_HD`, feature probes | — |
 
 ## 60-second tour
 
@@ -72,6 +92,37 @@ table.for_each_chunk([](auto& ch) { /* ch.col(i) -> contiguous bytes */ });
 nm::avro_schema<eth_hdr>();                  // {"type":"record",...}
 nm::to_json(r->value); nm::csv_header<eth_hdr>(); nm::csv_row(r->value);
 ```
+
+## C++26: macro-free (nanom26)
+
+With a P2996 compiler the `NANOM_DESCRIBE` lines above simply disappear — the struct definitions
+ARE the registration ([include/nanom/nanom26.hpp](include/nanom/nanom26.hpp) auto-describes every
+eligible aggregate by static reflection, synthesizing the exact metadata the macro would have):
+
+```cpp
+struct eth_hdr {
+  std::array<std::uint8_t, 6> dst, src;
+  nm::be<std::uint16_t>       eth_type;
+};  // ...that's it. strct<>/overlay<>/soa<>/to_json/avro all work; nothing to register.
+```
+
+Eligible = named non-union class, no bases, ≥1 member, all members public/named/non-bitfield, and
+not inside `std`/`nanom` (`nanom::Reflectable`). Existing `NANOM_DESCRIBE` lines still compile:
+each becomes a `static_assert` proving reflection covers that type (define
+`NANOM_DESCRIBE_FORCE_MACRO` to keep explicit registration, which also overrides reflection
+per-type, e.g. for a member subset). See [examples/reflect26.cpp](examples/reflect26.cpp) — the
+zero-registration showcase — and [docs/P2996_COMPAT.md](docs/P2996_COMPAT.md) for the toolchain
+survey. Build:
+
+```sh
+# today's P2996 compiler: the Bloomberg clang-p2996 fork (<meta> needs its libc++)
+cmake -B b26 -DCMAKE_CXX_COMPILER=<fork>/bin/clang++ -DNANOM_CXX26_REFLECTION=ON
+cmake --build b26 -j && ctest --test-dir b26        # full suite runs macro-free
+```
+
+The whole test + parity corpus passes in pure-reflection mode byte-identically; CI runs it as the
+advisory `reflection-cxx26` job. One thing reflection cannot replace: `NANOM_HD` (the CUDA
+host/device qualifier) stays a macro, and nvcc TUs keep the macro path automatically.
 
 ## Copy-paste starters
 

@@ -32,6 +32,13 @@ endif()
 option(NANOM_WERROR         "Treat warnings as errors"                  OFF)
 option(NANOM_BUILD_FUZZERS  "Build the libFuzzer targets (Clang only)"  OFF)
 set(NANOM_SANITIZER "" CACHE STRING "Sanitizer: '', 'address,undefined', or 'thread'")
+# C++26 P2996 reflection mode: the whole tree (tests, examples, parity ports) builds at C++26 with
+# the reflection provider active — the macro-free nanom. Needs a P2996 compiler (today: the
+# Bloomberg clang-p2996 fork; <meta> lives in its bundled libc++, hence the default flags). Add
+# -DNANOM_DESCRIBE_FORCE_MACRO to CMAKE_CXX_FLAGS for the macro-parity crosscheck mode.
+option(NANOM_CXX26_REFLECTION "Build in C++26 P2996 reflection mode" OFF)
+set(NANOM_REFLECTION_FLAGS "-freflection-latest;-stdlib=libc++" CACHE STRING
+    "Extra compile/link flags for NANOM_CXX26_REFLECTION")
 
 # One interface target carrying the warning + sanitizer flags, linked by every
 # test/example/bench binary so the whole tree is checked uniformly.
@@ -47,6 +54,17 @@ target_compile_options(nanom_flags INTERFACE
 if(NANOM_SANITIZER)
   target_compile_options(nanom_flags INTERFACE -fsanitize=${NANOM_SANITIZER} -fno-omit-frame-pointer -g)
   target_link_options(nanom_flags    INTERFACE -fsanitize=${NANOM_SANITIZER})
+endif()
+if(NANOM_CXX26_REFLECTION)
+  set(CMAKE_CXX_STANDARD 26)  # compile features declare a 23 minimum; this raises the whole tree
+  target_compile_options(nanom_flags INTERFACE ${NANOM_REFLECTION_FLAGS})
+  target_link_options(nanom_flags    INTERFACE ${NANOM_REFLECTION_FLAGS})
+  # Binaries must find the toolchain's own libc++ at runtime when it isn't the system one.
+  get_filename_component(_nanom_p2996_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
+  if(EXISTS "${_nanom_p2996_bin}/../lib/x86_64-unknown-linux-gnu/libc++.so")
+    target_link_options(nanom_flags INTERFACE
+      "-Wl,-rpath,${_nanom_p2996_bin}/../lib/x86_64-unknown-linux-gnu")
+  endif()
 endif()
 
 find_package(Threads REQUIRED)
@@ -70,6 +88,16 @@ foreach(ex ethernet elf fat16)
   nanom_exe(example_${ex} examples/${ex}.cpp)
   add_test(NAME example_${ex} COMMAND example_${ex})
 endforeach()
+
+# ---- C++26 reflection mode only: the macro-free showcase + the provider-equivalence suite -----
+if(NANOM_CXX26_REFLECTION)
+  nanom_exe(example_reflect26 examples/reflect26.cpp)
+  add_test(NAME example_reflect26 COMMAND example_reflect26)
+  # Static-asserts that the reflection describe<T> == what NANOM_DESCRIBE would synthesize
+  # (names, member pointers, qualified type names, eligibility fences, override semantics).
+  nanom_exe(nanom_reflect26_tests tests/test_reflect26.cpp)
+  add_test(NAME reflect26_equivalence COMMAND nanom_reflect26_tests)
+endif()
 
 # ---- nanotins parity ports (golden-diff + round-trip + bulk equality) -----
 nanom_exe(nm_pcapng2json ${parity_dir}/pcapng2json.cpp)
