@@ -55,3 +55,14 @@ current standards and at `-std=c++26`?
   target (the library's own test suite ran under libstdc++ modes); a libc++ run of nanolance's
   full test suite is future work if ever needed — reflection only requires libc++ in TUs that
   include `<meta>`.
+
+## CI status (branch runs)
+
+- `reflection-cxx26 (reflection)` and `reflection-cxx26 (macro-parity)`: **green** on GitHub
+  runners — the digest-pinned image pulled, built, and passed the full suite in both modes.
+- The macOS advisory job fails on `std::from_chars(double)` (nanom.hpp:1314), unsupported by brew
+  libc++18 — **pre-existing** (fails identically on the pre-reflection commit; see the earlier
+  "revert invalid double from_chars" upstream commit) and unrelated to this port.
+- The clang-tidy advisory job briefly failed because its `examples/*.cpp` glob picked up the new
+  reflection-only `reflect26.cpp` (which `#error`s without a P2996 compiler); fixed by filtering
+  those TUs out of the tidy invocation.
