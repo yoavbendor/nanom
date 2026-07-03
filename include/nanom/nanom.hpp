@@ -45,6 +45,24 @@
 #else
 #define NANOM_HAS_STD_EXPECTED 0
 #endif
+
+// C++26 P2996 static reflection probe (drives the macro-free describe provider, nanom26.hpp).
+// The Bloomberg clang-p2996 fork defines NO __cpp feature-test macro yet, so the reliable signal
+// is __has_feature(reflection) (set by -freflection / -freflection-latest); a conforming C++26
+// compiler will define __cpp_impl_reflection instead. Either way <meta> must exist (today that
+// means -stdlib=libc++ on the fork). Override with -DNANOM_HAS_REFLECTION=0/1.
+#ifndef NANOM_HAS_REFLECTION
+#if defined(__cpp_impl_reflection) && __has_include(<meta>)
+#define NANOM_HAS_REFLECTION 1
+#elif defined(__has_feature)
+#if __has_feature(reflection) && __has_include(<meta>)
+#define NANOM_HAS_REFLECTION 1
+#endif
+#endif
+#endif
+#ifndef NANOM_HAS_REFLECTION
+#define NANOM_HAS_REFLECTION 0
+#endif
 #include <limits>
 #include <optional>
 #include <span>
@@ -1445,6 +1463,7 @@ constexpr auto bytes_(P p) {
 template <std::size_t N>
 struct fixed_string {
   char data[N]{};
+  constexpr fixed_string() = default;  // synthesized names (nanom26 reflection) fill data directly
   constexpr fixed_string(const char (&s)[N]) { std::copy_n(s, N, data); }
   constexpr std::string_view sv() const { return {data, N - 1}; }
   constexpr bool operator==(std::string_view s) const { return sv() == s; }
@@ -1548,60 +1567,8 @@ template <class C, class M> struct member_type<M C::*> { using type = M; };
 template <auto P> using member_t = typename member_type<std::remove_cv_t<decltype(P)>>::type;
 }  // namespace detail
 
-// --- preprocessor map machinery (bounded, 32 fields max) -------------------
-#define NANOM_PP_NARG(...) NANOM_PP_NARG_(__VA_ARGS__, NANOM_PP_RSEQ())
-#define NANOM_PP_NARG_(...) NANOM_PP_ARG_N(__VA_ARGS__)
-#define NANOM_PP_ARG_N(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,N,...) N
-#define NANOM_PP_RSEQ() 32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1
-#define NANOM_PP_CAT(a, b) NANOM_PP_CAT_(a, b)
-#define NANOM_PP_CAT_(a, b) a##b
-#define NANOM_FLD(T, m) ::nanom::detail::fld<#m, &T::m>{}
-#define NANOM_PP_M1(M,T,a) M(T,a)
-#define NANOM_PP_M2(M,T,a,...) M(T,a), NANOM_PP_M1(M,T,__VA_ARGS__)
-#define NANOM_PP_M3(M,T,a,...) M(T,a), NANOM_PP_M2(M,T,__VA_ARGS__)
-#define NANOM_PP_M4(M,T,a,...) M(T,a), NANOM_PP_M3(M,T,__VA_ARGS__)
-#define NANOM_PP_M5(M,T,a,...) M(T,a), NANOM_PP_M4(M,T,__VA_ARGS__)
-#define NANOM_PP_M6(M,T,a,...) M(T,a), NANOM_PP_M5(M,T,__VA_ARGS__)
-#define NANOM_PP_M7(M,T,a,...) M(T,a), NANOM_PP_M6(M,T,__VA_ARGS__)
-#define NANOM_PP_M8(M,T,a,...) M(T,a), NANOM_PP_M7(M,T,__VA_ARGS__)
-#define NANOM_PP_M9(M,T,a,...) M(T,a), NANOM_PP_M8(M,T,__VA_ARGS__)
-#define NANOM_PP_M10(M,T,a,...) M(T,a), NANOM_PP_M9(M,T,__VA_ARGS__)
-#define NANOM_PP_M11(M,T,a,...) M(T,a), NANOM_PP_M10(M,T,__VA_ARGS__)
-#define NANOM_PP_M12(M,T,a,...) M(T,a), NANOM_PP_M11(M,T,__VA_ARGS__)
-#define NANOM_PP_M13(M,T,a,...) M(T,a), NANOM_PP_M12(M,T,__VA_ARGS__)
-#define NANOM_PP_M14(M,T,a,...) M(T,a), NANOM_PP_M13(M,T,__VA_ARGS__)
-#define NANOM_PP_M15(M,T,a,...) M(T,a), NANOM_PP_M14(M,T,__VA_ARGS__)
-#define NANOM_PP_M16(M,T,a,...) M(T,a), NANOM_PP_M15(M,T,__VA_ARGS__)
-#define NANOM_PP_M17(M,T,a,...) M(T,a), NANOM_PP_M16(M,T,__VA_ARGS__)
-#define NANOM_PP_M18(M,T,a,...) M(T,a), NANOM_PP_M17(M,T,__VA_ARGS__)
-#define NANOM_PP_M19(M,T,a,...) M(T,a), NANOM_PP_M18(M,T,__VA_ARGS__)
-#define NANOM_PP_M20(M,T,a,...) M(T,a), NANOM_PP_M19(M,T,__VA_ARGS__)
-#define NANOM_PP_M21(M,T,a,...) M(T,a), NANOM_PP_M20(M,T,__VA_ARGS__)
-#define NANOM_PP_M22(M,T,a,...) M(T,a), NANOM_PP_M21(M,T,__VA_ARGS__)
-#define NANOM_PP_M23(M,T,a,...) M(T,a), NANOM_PP_M22(M,T,__VA_ARGS__)
-#define NANOM_PP_M24(M,T,a,...) M(T,a), NANOM_PP_M23(M,T,__VA_ARGS__)
-#define NANOM_PP_M25(M,T,a,...) M(T,a), NANOM_PP_M24(M,T,__VA_ARGS__)
-#define NANOM_PP_M26(M,T,a,...) M(T,a), NANOM_PP_M25(M,T,__VA_ARGS__)
-#define NANOM_PP_M27(M,T,a,...) M(T,a), NANOM_PP_M26(M,T,__VA_ARGS__)
-#define NANOM_PP_M28(M,T,a,...) M(T,a), NANOM_PP_M27(M,T,__VA_ARGS__)
-#define NANOM_PP_M29(M,T,a,...) M(T,a), NANOM_PP_M28(M,T,__VA_ARGS__)
-#define NANOM_PP_M30(M,T,a,...) M(T,a), NANOM_PP_M29(M,T,__VA_ARGS__)
-#define NANOM_PP_M31(M,T,a,...) M(T,a), NANOM_PP_M30(M,T,__VA_ARGS__)
-#define NANOM_PP_M32(M,T,a,...) M(T,a), NANOM_PP_M31(M,T,__VA_ARGS__)
-#define NANOM_PP_MAP(M, T, ...) \
-  NANOM_PP_CAT(NANOM_PP_M, NANOM_PP_NARG(__VA_ARGS__))(M, T, __VA_ARGS__)
-
-/// NANOM_DESCRIBE(type, field1, field2, …) — register a struct with nanom.
-/// Must appear at GLOBAL scope (it specializes nanom::describe). List fields
-/// in wire order.
-#define NANOM_DESCRIBE(T, ...)                                              \
-  template <>                                                               \
-  struct nanom::describe<T> {                                               \
-    static constexpr const char* name() { return #T; }                      \
-    static constexpr auto fields() {                                        \
-      return std::make_tuple(NANOM_PP_MAP(NANOM_FLD, T, __VA_ARGS__));      \
-    }                                                                       \
-  }
+// (The two describe<T> providers — nanom26.hpp reflection / describe_macro.hpp registration
+// macro — are included at the END of this header, outside namespace nanom; see there.)
 
 // ---------------------------------------------------------------------------
 // 18. wire traits & compile-time layout
@@ -2337,5 +2304,17 @@ static_assert(std::is_trivially_copyable_v<error>);
 static_assert(std::is_trivially_copyable_v<input>);
 
 }  // namespace nanom
+
+// --- the two describe providers ---------------------------------------------------------------
+// The section-17 seam (describe<T> -> tuple of fld<Name, MemPtr>) has two interchangeable
+// providers, included here at global scope:
+//   * nanom26.hpp — C++26 P2996 reflection auto-describes every eligible struct, macro-free
+//     (the primary design; see its header comment for the Reflectable eligibility rules);
+//   * describe_macro.hpp — NANOM_DESCRIBE synthesizes the same tuple with the preprocessor
+//     (the C++23 registration path; under reflection it degrades to a coverage static_assert).
+#if NANOM_HAS_REFLECTION
+#include "nanom26.hpp"
+#endif
+#include "describe_macro.hpp"
 
 #endif  // NANOM_HPP_INCLUDED
