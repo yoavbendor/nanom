@@ -10,17 +10,19 @@ automatic schemas (Arrow / Avro / JSON / CSV) and columnar chunked storage for
 - **Zero-copy, always.** Parsers return spans/views into your buffer.
 - **nom names.** If you know nom, you already know nanom
   ([cheat sheet](docs/CHEATSHEET.md)). All of nom's combinators are here.
-- **Structs are parsers.** Register any C struct with `NANOM_DESCRIBE`; endian
-  (`be<>`, `le<>`, mixed) and bit fields (`ubits<>`, msb0 *and* lsb0) live in
-  the field types. `strct<T>()` parses by value, `overlay<T>()` gives a
-  zero-copy `view<T>` with `v.get<"field">()`.
+- **Structs are parsers.** Under **C++26 (P2996 reflection), any eligible struct
+  just works — zero registration, zero macros** ([nanom26](#c26-macro-free-nanom26)).
+  Under C++23, one `NANOM_DESCRIBE` line registers it. Endian (`be<>`, `le<>`,
+  mixed) and bit fields (`ubits<>`, msb0 *and* lsb0) live in the field types.
+  `strct<T>()` parses by value, `overlay<T>()` gives a zero-copy `view<T>` with
+  `v.get<"field">()`.
 - **Schemas for free.** `schema_of<T>()`, Arrow C-data format strings,
   `avro_schema<T>()`, `to_json` / `csv_row` for debugging, and `soa<T>` —
   column-wise chunked accumulation ready for Arrow/Lance buffers.
 - **Localized errors.** Allocation-free error values; `render()` prints
   offset, `context()` chain, and a hex window with a caret.
-- Header-only, no dependencies. gcc ≥ 13, clang ≥ 18. (C++26 reflection will
-  make `NANOM_DESCRIBE` optional; nothing else changes.)
+- Header-only, no dependencies. gcc ≥ 13, clang ≥ 18 for the C++23 macro path;
+  a P2996 compiler (Bloomberg clang-p2996) for the macro-free C++26 path.
 
 ```
 cmake: add_subdirectory(nanom) + link nanom::nanom     — or just copy include/nanom/nanom.hpp
@@ -72,6 +74,37 @@ table.for_each_chunk([](auto& ch) { /* ch.col(i) -> contiguous bytes */ });
 nm::avro_schema<eth_hdr>();                  // {"type":"record",...}
 nm::to_json(r->value); nm::csv_header<eth_hdr>(); nm::csv_row(r->value);
 ```
+
+## C++26: macro-free (nanom26)
+
+With a P2996 compiler the `NANOM_DESCRIBE` lines above simply disappear — the struct definitions
+ARE the registration ([include/nanom/nanom26.hpp](include/nanom/nanom26.hpp) auto-describes every
+eligible aggregate by static reflection, synthesizing the exact metadata the macro would have):
+
+```cpp
+struct eth_hdr {
+  std::array<std::uint8_t, 6> dst, src;
+  nm::be<std::uint16_t>       eth_type;
+};  // ...that's it. strct<>/overlay<>/soa<>/to_json/avro all work; nothing to register.
+```
+
+Eligible = named non-union class, no bases, ≥1 member, all members public/named/non-bitfield, and
+not inside `std`/`nanom` (`nanom::Reflectable`). Existing `NANOM_DESCRIBE` lines still compile:
+each becomes a `static_assert` proving reflection covers that type (define
+`NANOM_DESCRIBE_FORCE_MACRO` to keep explicit registration, which also overrides reflection
+per-type, e.g. for a member subset). See [examples/reflect26.cpp](examples/reflect26.cpp) — the
+zero-registration showcase — and [docs/P2996_COMPAT.md](docs/P2996_COMPAT.md) for the toolchain
+survey. Build:
+
+```sh
+# today's P2996 compiler: the Bloomberg clang-p2996 fork (<meta> needs its libc++)
+cmake -B b26 -DCMAKE_CXX_COMPILER=<fork>/bin/clang++ -DNANOM_CXX26_REFLECTION=ON
+cmake --build b26 -j && ctest --test-dir b26        # full suite runs macro-free
+```
+
+The whole test + parity corpus passes in pure-reflection mode byte-identically; CI runs it as the
+advisory `reflection-cxx26` job. One thing reflection cannot replace: `NANOM_HD` (the CUDA
+host/device qualifier) stays a macro, and nvcc TUs keep the macro path automatically.
 
 ## Copy-paste starters
 

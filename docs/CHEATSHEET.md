@@ -94,7 +94,9 @@ Orders: `bit_order::msb0` (default, network; nom's only mode) and
 
 ```cpp
 struct hdr { nm::be<uint16_t> a; nm::ubits<4> hi; nm::ubits<4> lo; nm::le<uint32_t> b; };
-NANOM_DESCRIBE(hdr, a, hi, lo, b);           // global scope, wire order
+NANOM_DESCRIBE(hdr, a, hi, lo, b);           // C++23: global scope, wire order
+                                             // C++26 (P2996): DELETE this line — eligible
+                                             //   structs auto-describe (nanom26.hpp)
 
 nm::strct<hdr>()          // Parser<hdr>: by value.  strct<hdr>(std::endian::big)
                           //   sets the order of *plain* int fields at runtime
