@@ -1,6 +1,6 @@
 # nanom — design
 
-`nanom` is a single-header C++23 parser-combinator library for **binary-first**
+`nanom` is a header-only C++23 parser-combinator library for **binary-first**
 parsing, modeled on Rust's [nom](https://github.com/rust-bakery/nom), with three
 extra pillars nom does not have:
 
@@ -17,6 +17,25 @@ extra pillars nom does not have:
 Target users are AI agents: the API mirrors nom's names 1:1 so prior nom
 knowledge transfers without reading docs, and the docs are a cheat-sheet plus
 copy-paste examples.
+
+### Header layout (the layers, made physical)
+
+The three extra pillars are exactly why nanom is bigger than nom — so they live in their own headers,
+and the file tree reads as the dependency stack. `nanom.hpp` is a thin umbrella that includes them in
+order; each header also stands alone (the CI `header-selfcontained` job compiles every
+`include/nanom/*.hpp` by itself):
+
+- `nom.hpp` — the **pure nom parallel**: `input`/`result`/`Parser`, the combinator vocabulary, binary
+  + text numbers, bits. No reflection, schema, or storage. This is the "as fast, nicer-looking than
+  rust-nom" surface, and it depends on nothing but `prelude.hpp`.
+- `reflect.hpp` — pillar 1: `fixed_string`, wire types, the `describe<T>` seam, `strct<>`/`overlay<>`.
+  Ends by including the two `describe<T>` providers (`nanom26.hpp` reflection / `describe_macro.hpp`).
+- `schema.hpp` — pillar 2 (Arrow/Avro/JSON/CSV). `soa.hpp` — pillar 3 (columnar). `bulk.hpp` — the
+  opt-in data-parallel scatter on top of `soa`.
+
+Verified one-directional: nothing in `nom.hpp`/`reflect.hpp` references any schema/soa symbol, so the
+"extras" are strictly additive. The split is a pure code move — same code, same order, wrapped in
+per-header guards.
 
 ---
 

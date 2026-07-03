@@ -92,6 +92,10 @@ Orders: `bit_order::msb0` (default, network; nom's only mode) and
 
 ## beyond nom: structs, schemas, columns
 
+Everything above (the pure nom parallel) is in `<nanom/nom.hpp>` — include just that for the parser
+alone. The reflection + schema + SoA extras below layer on top and arrive via the `<nanom/nanom.hpp>`
+umbrella (or `reflect.hpp` / `schema.hpp` / `soa.hpp` individually).
+
 ```cpp
 struct hdr { nm::be<uint16_t> a; nm::ubits<4> hi; nm::ubits<4> lo; nm::le<uint32_t> b; };
 NANOM_DESCRIBE(hdr, a, hi, lo, b);           // C++23: global scope, wire order
