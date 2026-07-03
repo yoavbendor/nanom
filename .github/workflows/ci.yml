@@ -167,9 +167,11 @@ jobs:
       - name: configure (export compile_commands.json)
         run: cmake -B build -DCMAKE_CXX_COMPILER=clang++-18 -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
       - name: tidy the sources
+        # reflect26/test_reflect26 are C++26-reflection-only TUs (#error without a P2996
+        # compiler), so a stock clang-tidy cannot analyze them — skip them here.
         run: |
           clang-tidy-18 -p build \
-            tests/test_nanom.cpp examples/*.cpp examples/nanotins_parity/*.cpp
+            tests/test_nanom.cpp $(ls examples/*.cpp | grep -v reflect26) examples/nanotins_parity/*.cpp
 
   # ---- line coverage of the test suite, uploaded as an artifact ---------
   coverage:
