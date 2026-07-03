@@ -56,9 +56,7 @@ template <class F>
 NANOM_HD void scatter_one(std::byte* const* col_base, const std::size_t* elem,
                           std::size_t i, std::size_t& c, const F& v) {
   if constexpr (Described<F>) {
-    std::apply([&](auto... f) {
-      ((scatter_one(col_base, elem, i, c, v.*(decltype(f)::mem_ptr))), ...);
-    }, describe<F>::fields());
+    for_each_field<F>([&](auto f) { scatter_one(col_base, elem, i, c, v.*(decltype(f)::mem_ptr)); });
   } else if constexpr (is_std_array_v<F>) {
     using ED = typename wire<typename F::value_type>::decoded;
     std::byte* dst = col_base[c] + i * elem[c];
@@ -80,9 +78,9 @@ template <Described Row>
 NANOM_HD void scatter_row(std::byte* const* col_base, const std::size_t* elem,
                           std::size_t i, const Row& r) {
   std::size_t c = 0;
-  std::apply([&](auto... f) {
-    ((detail::scatter_one(col_base, elem, i, c, r.*(decltype(f)::mem_ptr))), ...);
-  }, describe<Row>::fields());
+  detail::for_each_field<Row>([&](auto f) {
+    detail::scatter_one(col_base, elem, i, c, r.*(decltype(f)::mem_ptr));
+  });
 }
 
 /// Column-major, index-addressed table: one contiguous buffer per flattened

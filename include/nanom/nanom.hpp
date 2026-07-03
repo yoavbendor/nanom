@@ -1565,6 +1565,15 @@ struct fld {
 template <class M> struct member_type;
 template <class C, class M> struct member_type<M C::*> { using type = M; };
 template <auto P> using member_t = typename member_type<std::remove_cv_t<decltype(P)>>::type;
+
+/// Visit every registered field of T in declaration order: v(f) receives a fld<> value — read
+/// decltype(f)::name / ::mem_ptr / member_t<decltype(f)::mem_ptr>. THE one field-iteration
+/// primitive: every walk over describe<T>::fields() in the library goes through here, so the
+/// tuple-unpacking boilerplate lives in exactly one place.
+template <class T, class V>
+NANOM_HD constexpr void for_each_field(V&& v) {
+  std::apply([&](auto... f) { (v(f), ...); }, describe<std::remove_cv_t<T>>::fields());
+}
 }  // namespace detail
 
 // (The two describe<T> providers — nanom26.hpp reflection / describe_macro.hpp registration
@@ -1614,9 +1623,7 @@ template <Described T>
 struct wire<T> {
   static constexpr std::size_t bits = []() {
     std::size_t total = 0;
-    std::apply([&](auto... f) {
-      ((total += wire<member_t<decltype(f)::mem_ptr>>::bits), ...);
-    }, describe<T>::fields());
+    for_each_field<T>([&](auto f) { total += wire<member_t<decltype(f)::mem_ptr>>::bits; });
     return total;
   }();
   static constexpr bool is_bits = false;
@@ -1631,9 +1638,10 @@ template <Described T>
 NANOM_HD constexpr auto field_bit_offsets() {
   std::array<std::size_t, field_count_v<T>> off{};
   std::size_t cur = 0, i = 0;
-  std::apply([&](auto... f) {
-    ((off[i++] = cur, cur += wire<member_t<decltype(f)::mem_ptr>>::bits), ...);
-  }, describe<T>::fields());
+  for_each_field<T>([&](auto f) {
+    off[i++] = cur;
+    cur += wire<member_t<decltype(f)::mem_ptr>>::bits;
+  });
   return off;
 }
 
@@ -1644,9 +1652,10 @@ constexpr bool layout_ok() {
   constexpr auto off = field_bit_offsets<T>();
   bool ok = wire<T>::bits % 8 == 0;
   std::size_t i = 0;
-  std::apply([&](auto... f) {
-    ((ok = ok && (wire<member_t<decltype(f)::mem_ptr>>::is_bits || off[i] % 8 == 0), ++i), ...);
-  }, describe<T>::fields());
+  for_each_field<T>([&](auto f) {
+    ok = ok && (wire<member_t<decltype(f)::mem_ptr>>::is_bits || off[i] % 8 == 0);
+    ++i;
+  });
   return ok;
 }
 
@@ -1742,10 +1751,10 @@ NANOM_HD constexpr typename wire<F>::decoded decode_field(const std::byte* p, st
     D out{};
     constexpr auto offs = field_bit_offsets<F>();
     std::size_t i = 0;
-    std::apply([&](auto... f) {
-      ((out.*(decltype(f)::mem_ptr) =
-            assign_field<member_t<decltype(f)::mem_ptr>>(p, bitoff + offs[i++], dflt)), ...);
-    }, describe<F>::fields());
+    for_each_field<F>([&](auto f) {
+      out.*(decltype(f)::mem_ptr) =
+          assign_field<member_t<decltype(f)::mem_ptr>>(p, bitoff + offs[i++], dflt);
+    });
     return out;
   }
 }
@@ -1773,10 +1782,10 @@ NANOM_HD constexpr F assign_field(const std::byte* p, std::size_t bitoff, std::e
     F out{};
     constexpr auto offs = field_bit_offsets<F>();
     std::size_t i = 0;
-    std::apply([&](auto... f) {
-      ((out.*(decltype(f)::mem_ptr) =
-            assign_field<member_t<decltype(f)::mem_ptr>>(p, bitoff + offs[i++], dflt)), ...);
-    }, describe<F>::fields());
+    for_each_field<F>([&](auto f) {
+      out.*(decltype(f)::mem_ptr) =
+          assign_field<member_t<decltype(f)::mem_ptr>>(p, bitoff + offs[i++], dflt);
+    });
     return out;
   }
 }
@@ -1784,9 +1793,10 @@ NANOM_HD constexpr F assign_field(const std::byte* p, std::size_t bitoff, std::e
 template <Described T, fixed_string Name>
 NANOM_HD constexpr std::size_t field_index() {
   std::size_t idx = std::size_t(-1), i = 0;
-  std::apply([&](auto... f) {
-    ((decltype(f)::name == Name.sv() ? idx = i : i, ++i), ...);
-  }, describe<T>::fields());
+  for_each_field<T>([&](auto f) {
+    if (decltype(f)::name == Name.sv()) idx = i;
+    ++i;
+  });
   return idx;
 }
 template <Described T, std::size_t I>
@@ -1814,11 +1824,10 @@ constexpr auto strct(std::endian dflt = std::endian::native) {
     T out{};
     constexpr auto offs = detail::field_bit_offsets<T>();
     std::size_t i = 0;
-    std::apply([&](auto... f) {
-      ((out.*(decltype(f)::mem_ptr) =
-            detail::assign_field<detail::member_t<decltype(f)::mem_ptr>>(
-                in.first, offs[i++], dflt)), ...);
-    }, describe<T>::fields());
+    detail::for_each_field<T>([&](auto f) {
+      out.*(decltype(f)::mem_ptr) =
+          detail::assign_field<detail::member_t<decltype(f)::mem_ptr>>(in.first, offs[i++], dflt);
+    });
     return done{std::move(out), in.advance(need)};
   };
 }
@@ -1861,10 +1870,10 @@ struct view {
     T out{};
     constexpr auto offs = detail::field_bit_offsets<T>();
     std::size_t i = 0;
-    std::apply([&](auto... f) {
-      ((out.*(decltype(f)::mem_ptr) =
-            detail::assign_field<detail::member_t<decltype(f)::mem_ptr>>(p, offs[i++], dflt)), ...);
-    }, describe<T>::fields());
+    detail::for_each_field<T>([&](auto f) {
+      out.*(decltype(f)::mem_ptr) =
+          detail::assign_field<detail::member_t<decltype(f)::mem_ptr>>(p, offs[i++], dflt);
+    });
     return out;
   }
 };
@@ -1958,9 +1967,9 @@ template <Described T>
 constexpr auto make_schema_fields() {
   std::array<schema_field, field_count_v<T>> out{};
   std::size_t i = 0;
-  std::apply([&](auto... f) {
-    ((out[i++] = field_schema<member_t<decltype(f)::mem_ptr>>(decltype(f)::name.sv())), ...);
-  }, describe<T>::fields());
+  for_each_field<T>([&](auto f) {
+    out[i++] = field_schema<member_t<decltype(f)::mem_ptr>>(decltype(f)::name.sv());
+  });
   return out;
 }
 
@@ -2067,11 +2076,14 @@ void json_value(const F& v, std::string& out) {
   if constexpr (Described<F>) {
     out += '{';
     bool first = true;
-    std::apply([&](auto... f) {
-      ((out += first ? "" : ",", first = false,
-        out += '"', out += decltype(f)::name.sv(), out += "\":",
-        json_value(v.*(decltype(f)::mem_ptr), out)), ...);
-    }, describe<F>::fields());
+    for_each_field<F>([&](auto f) {
+      out += first ? "" : ",";
+      first = false;
+      out += '"';
+      out += decltype(f)::name.sv();
+      out += "\":";
+      json_value(v.*(decltype(f)::mem_ptr), out);
+    });
     out += '}';
   } else if constexpr (is_std_array_v<F>) {
     using E = typename F::value_type;
@@ -2118,9 +2130,9 @@ template <class F>
 void csv_names(std::string prefix, std::string_view name, std::string& out, bool& first) {
   if constexpr (Described<F>) {
     std::string p2 = prefix + std::string(name) + ".";
-    std::apply([&](auto... f) {
-      ((csv_names<member_t<decltype(f)::mem_ptr>>(p2, decltype(f)::name.sv(), out, first)), ...);
-    }, describe<F>::fields());
+    for_each_field<F>([&](auto f) {
+      csv_names<member_t<decltype(f)::mem_ptr>>(p2, decltype(f)::name.sv(), out, first);
+    });
   } else {
     if (!first) out += ',';
     first = false;
@@ -2132,9 +2144,7 @@ void csv_names(std::string prefix, std::string_view name, std::string& out, bool
 template <class F>
 void csv_value(const F& v, std::string& out, bool& first) {
   if constexpr (Described<F>) {
-    std::apply([&](auto... f) {
-      ((csv_value(v.*(decltype(f)::mem_ptr), out, first)), ...);
-    }, describe<F>::fields());
+    for_each_field<F>([&](auto f) { csv_value(v.*(decltype(f)::mem_ptr), out, first); });
   } else {
     if (!first) out += ',';
     first = false;
@@ -2156,19 +2166,17 @@ template <Described T>
 std::string csv_header() {
   std::string out;
   bool first = true;
-  std::apply([&](auto... f) {
-    ((detail::csv_names<detail::member_t<decltype(f)::mem_ptr>>(
-         "", decltype(f)::name.sv(), out, first)), ...);
-  }, describe<T>::fields());
+  detail::for_each_field<T>([&](auto f) {
+    detail::csv_names<detail::member_t<decltype(f)::mem_ptr>>("", decltype(f)::name.sv(), out,
+                                                              first);
+  });
   return out;
 }
 template <Described T>
 std::string csv_row(const T& v) {
   std::string out;
   bool first = true;
-  std::apply([&](auto... f) {
-    ((detail::csv_value(v.*(decltype(f)::mem_ptr), out, first)), ...);
-  }, describe<T>::fields());
+  detail::for_each_field<T>([&](auto f) { detail::csv_value(v.*(decltype(f)::mem_ptr), out, first); });
   return out;
 }
 
@@ -2257,9 +2265,9 @@ class soa {
   }
   template <class F>
   void build_nested(std::string prefix) {
-    std::apply([&](auto... f) {
-      ((build_columns<detail::member_t<decltype(f)::mem_ptr>>(prefix, decltype(f)::name.sv())), ...);
-    }, describe<F>::fields());
+    detail::for_each_field<F>([&](auto f) {
+      build_columns<detail::member_t<decltype(f)::mem_ptr>>(prefix, decltype(f)::name.sv());
+    });
   }
 
   template <class F>
@@ -2284,9 +2292,7 @@ class soa {
   }
   template <class F>
   void push_fields(const F& v, std::size_t& c) {
-    std::apply([&](auto... f) {
-      ((push_one(v.*(decltype(f)::mem_ptr), c)), ...);
-    }, describe<F>::fields());
+    detail::for_each_field<F>([&](auto f) { push_one(v.*(decltype(f)::mem_ptr), c); });
   }
 
   std::size_t              chunk_rows_;
