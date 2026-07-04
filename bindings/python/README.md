@@ -84,3 +84,9 @@ to the decoded header fields.)
 - [`example_pcapng.cpp`](example_pcapng.cpp) — the nanobind module (`nanom_pcap`): the struct + parser.
 - [`demo.py`](demo.py) / [`bench.py`](bench.py) — the Python demo and the benchmark.
 - [`test_arrow_cpp.cpp`](test_arrow_cpp.cpp) — pure-C++ ASan/UBSan check of the exporter's lifetime.
+
+## Want a harder example?
+
+[`gptp/`](gptp/) is the comprehensive version: a full gPTP (IEEE 802.1AS) parser — 8 message kinds,
+runtime tagged dispatch, a bit-packed tag byte, a 48-bit timestamp, and two kinds of TLV — landing in 9
+zero-copy Arrow tables. Same `nanom_arrow.hpp` bridge, unchanged.

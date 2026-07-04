@@ -138,6 +138,42 @@ jobs:
           print("ok: zero-copy nanom -> pyarrow, values verified")
           PY
           python3 bench.py
+      # ---- gptp/: the comprehensive stress test — 8 message kinds, tagged dispatch, bit-packed tag
+      # byte, a 48-bit timestamp, and two TLV kinds, landing in 9 zero-copy Arrow tables. ----
+      - name: sanitize the gPTP dispatch/TLV parser (pure C++, no Python)
+        run: |
+          cat > /tmp/gptp_asan_smoke.cpp <<'EOF'
+          #include "gptp_parse.hpp"
+          #include <cassert>
+          int main() {
+            // A minimal Sync message is enough to exercise the header parse + dispatch + soa push
+            // under the sanitizers; the full 8-kind + TLV correctness suite runs in Python below.
+            std::vector<std::uint8_t> msg = {
+              0x00,0x02, 0x00,44, 0,0, 0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,
+              0xA0,0xA1,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7, 0,1, 0,100, 0,0,
+              0,0,0,0,0,0, 0,0,0,0,
+            };
+            nmgptp::GptpTables t;
+            bool ok = nmgptp::parse_gptp_message(t, nanom::from(msg.data(), msg.size()));
+            assert(ok && t.sync.rows() == 1);
+            return 0;
+          }
+          EOF
+          g++-13 -std=c++23 -fsanitize=address,undefined -fno-sanitize-recover=all \
+            -Wall -Wextra -I include -I bindings/python/gptp \
+            /tmp/gptp_asan_smoke.cpp -o /tmp/gptp_asan_smoke
+          /tmp/gptp_asan_smoke
+      - name: build the nanom_gptp extension
+        run: |
+          cmake -S bindings/python/gptp -B /tmp/nbgptp -DCMAKE_BUILD_TYPE=Release \
+            -DPython_EXECUTABLE="$(which python3)" -Dnanobind_DIR="$(python3 -m nanobind --cmake_dir)"
+          cmake --build /tmp/nbgptp -j
+      - name: gPTP correctness suite + demo
+        run: |
+          cp /tmp/nbgptp/nanom_gptp*.so bindings/python/gptp/
+          cd bindings/python/gptp
+          python3 test_gptp.py
+          python3 demo.py
 
   # ---- portability check on macOS via Homebrew LLVM (AppleClang's C++23 is
   #      too old for nanom; advisory so it can never block main) -------------
