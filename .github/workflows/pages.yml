@@ -1,0 +1,52 @@
+name: pages
+
+# Build the documentation site (MkDocs Material for the prose + Doxygen for the API reference) and
+# publish it to the gh-pages branch. The benchmark-action (bench.yml) also auto-pushes its history
+# chart to gh-pages under dev/bench/, so we deploy with keep_files: true to never clobber it.
+#
+# One-time manual step to go live: Settings -> Pages -> Source = "Deploy from a branch" ->
+# gh-pages / (root). After that + a push to main, the site is public at
+# https://yoavbendor.github.io/nanom/ (API at /api/, live benchmark chart at /dev/bench/).
+on:
+  push:
+    branches: ["main"]
+  workflow_dispatch:
+
+concurrency:
+  group: pages-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write   # peaceiris pushes the built site to the gh-pages branch
+
+jobs:
+  build-deploy:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: install tooling
+        run: |
+          python3 -m pip install --upgrade mkdocs-material
+          sudo apt-get update -q && sudo apt-get install -y -q doxygen
+
+      - name: build MkDocs site (prose) -> site/
+        run: |
+          cp DESIGN.md docs/design.md            # canonical DESIGN.md lives at root; site copy
+          mkdocs build --strict
+
+      - name: build Doxygen API reference -> site/api/
+        run: doxygen Doxyfile
+
+      - name: add machine-readable + drop-in artifacts to the site
+        run: |
+          python3 tools/amalgamate.py --out site/nanom-single.hpp   # Godbolt / drop-in payload
+          python3 tools/gen_llms.py --out site/llms-full.txt --single site/nanom-single.hpp
+          cp llms.txt site/llms.txt                                 # curated index (llmstxt.org)
+
+      - name: deploy to gh-pages (preserve dev/bench/ from the benchmark action)
+        uses: peaceiris/actions-gh-pages@v4
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
+          keep_files: true

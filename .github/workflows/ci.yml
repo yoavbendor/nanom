@@ -86,6 +86,24 @@ jobs:
               -I include -x c++ - -o /dev/null
           done
 
+  # ---- amalgamation: the generated single-file header must always compile ----
+  #      tools/amalgamate.py expands the layered include/nanom/*.hpp into one
+  #      nanom-single.hpp (the Godbolt "try it" / llms-full.txt payload). It is
+  #      gitignored and regenerated here so it can never silently rot: generate,
+  #      then compile + run the committed try/godbolt.cpp tour against it under -Werror.
+  amalgamation:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: generate nanom-single.hpp
+        run: python3 tools/amalgamate.py --out nanom-single.hpp
+      - name: compile + run the single-header tour (try/godbolt.cpp)
+        run: |
+          g++-13 -std=c++23 -Wall -Wextra -Werror -I . try/godbolt.cpp -o /tmp/tour
+          /tmp/tour
+      - name: generate llms-full.txt (fetch-once LLM context)
+        run: python3 tools/gen_llms.py --out llms-full.txt --single nanom-single.hpp
+
   # ---- portability check on macOS via Homebrew LLVM (AppleClang's C++23 is
   #      too old for nanom; advisory so it can never block main) -------------
   macos:

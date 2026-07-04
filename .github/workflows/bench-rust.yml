@@ -1,0 +1,25 @@
+name: bench-rust
+
+# Advisory: nanom vs stable Rust nom on streaming pcapng, with the verified-equal-output gate.
+# continue-on-error so a noisy runner or a Rust-toolchain hiccup never blocks the C++ CI; the value
+# is that the comparison is reproducible and the "identical output" assertion is machine-checked.
+on:
+  push:
+    branches: ["**"]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: bench-rust-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  compare:
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: rust toolchain
+        run: rustup toolchain install stable --profile minimal && rustc --version && cargo --version
+      - name: build + verify equal output + benchmark
+        run: python3 bench/compare_rust.py --build --iters 20000

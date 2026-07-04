@@ -8,3 +8,8 @@ coverage*.info
 coverage-html/
 corpus/
 crash-*
+bench/rust_nom/target/
+nanom-single.hpp
+llms-full.txt
+site/
+docs/design.md

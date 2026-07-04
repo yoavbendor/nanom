@@ -1,0 +1,51 @@
+# Doxygen config for nanom's API reference.
+# Builds the symbol reference from the header /// comments into site/api/, themed with the vendored
+# doxygen-awesome-css. Run AFTER `mkdocs build` (which writes site/) so it drops api/ alongside the
+# Material site. Regenerated in .github/workflows/pages.yml; not meant to be run by consumers.
+
+PROJECT_NAME           = "nanom"
+PROJECT_BRIEF          = "A nom-style binary parser-combinator library for C++23/26"
+OUTPUT_DIRECTORY       = site
+HTML_OUTPUT            = api
+GENERATE_LATEX         = NO
+GENERATE_HTML          = YES
+
+# Symbol reference only — the prose home is the MkDocs site at /; users reach this from its nav.
+INPUT                  = include/nanom
+FILE_PATTERNS          = *.hpp
+RECURSIVE              = YES
+
+# Complete reference: document everything, even undocumented symbols, so the page is a full map.
+EXTRACT_ALL            = YES
+EXTRACT_STATIC         = YES
+EXTRACT_PRIVATE        = NO
+EXTRACT_ANON_NSPACES   = NO
+HIDE_UNDOC_MEMBERS     = NO
+JAVADOC_AUTOBRIEF      = YES
+QT_AUTOBRIEF           = YES
+
+# C++23/26 parsing help + keep the internal detail namespace out of the public reference.
+BUILTIN_STL_SUPPORT    = YES
+EXCLUDE_SYMBOLS        = nanom::detail nanom::detail::*
+MACRO_EXPANSION        = YES
+EXPAND_ONLY_PREDEF     = YES
+PREDEFINED             = NANOM_HD= \
+                         NANOM_HAS_REFLECTION=0 \
+                         "NANOM_DESCRIBE(...)="
+
+QUIET                  = YES
+WARN_IF_UNDOCUMENTED   = NO
+WARNINGS               = NO
+
+# No Graphviz dependency: skip the collaboration/inheritance graphs (keeps the build clean and
+# self-contained without a `dot` binary in CI).
+HAVE_DOT               = NO
+CLASS_GRAPH            = NO
+COLLABORATION_GRAPH    = NO
+
+# doxygen-awesome-css theme (vendored at repo root). These flags match the theme's requirements.
+GENERATE_TREEVIEW      = YES
+DISABLE_INDEX          = NO
+FULL_SIDEBAR           = NO
+HTML_COLORSTYLE        = LIGHT
+HTML_EXTRA_STYLESHEET  = doxygen-awesome.css

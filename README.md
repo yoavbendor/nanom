@@ -1,6 +1,6 @@
 # nanom
 
-[![ci](https://github.com/yoavbendor/nanom/actions/workflows/ci.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/ci.yml) [![fuzz](https://github.com/yoavbendor/nanom/actions/workflows/fuzz.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/fuzz.yml) [![bench](https://github.com/yoavbendor/nanom/actions/workflows/bench.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/bench.yml)
+[![ci](https://github.com/yoavbendor/nanom/actions/workflows/ci.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/ci.yml) [![fuzz](https://github.com/yoavbendor/nanom/actions/workflows/fuzz.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/fuzz.yml) [![bench](https://github.com/yoavbendor/nanom/actions/workflows/bench.yml/badge.svg)](https://github.com/yoavbendor/nanom/actions/workflows/bench.yml) [![docs](https://img.shields.io/badge/docs-yoavbendor.github.io%2Fnanom-indigo)](https://yoavbendor.github.io/nanom/)
 
 A **header-only C++23 parser-combinator library** for binary formats, modeled
 on Rust's [nom](https://github.com/rust-bakery/nom) — plus struct reflection,
@@ -8,6 +8,41 @@ automatic schemas (Arrow / Avro / JSON / CSV) and columnar chunked storage for
 [nanoarrow](https://github.com/apache/arrow-nanoarrow) / Lance. The nom-parallel
 parser is one self-contained header ([`nom.hpp`](#library-layout)); the reflection
 and data-tooling extras layer cleanly on top.
+
+📖 **[Documentation site](https://yoavbendor.github.io/nanom/)** ·
+🗺️ **[nom → nanom cheat sheet](docs/CHEATSHEET.md)** ·
+📐 **[API reference](https://yoavbendor.github.io/nanom/api/)**
+
+## As fast as Rust nom — proven, not asserted
+
+The point of a C++ nom-alike is *"is it actually as fast as Rust nom?"* nanom answers falsifiably: the
+**same streaming pcapng parse in both languages, on the same file, with output proven byte-identical
+before any timing is reported** (the harness asserts the aggregate checksums match, then prints the
+table — [full methodology](docs/BENCH_RUST_NOM.md)). Every parser reads each Enhanced Packet Block's
+fixed fields **and walks all of its option TLVs** — the full block, not a subset.
+
+| parser | work | ns/packet | throughput | output |
+|---|---|---:|---:|---|
+| **nanom** (`nm::streaming`) | EPB fields + all options | **~110** | ~13 GiB/s | identical |
+| **Rust nom** (hand-written) | EPB fields + all options (equal work) | ~119 | ~12 GiB/s | identical |
+| Rust `pcap-parser` lib | same, + allocates options | ~203 | ~7 GiB/s | identical |
+
+**Equal-work head-to-head: nanom ~110 ns/pkt vs stable Rust nom ~119 ns/pkt — parity**, a hair in
+nanom's favour, both parsing the full block (fixed fields + every option) zero-copy with no per-packet
+allocation; against the real `pcap-parser` library doing the identical parse, nanom is ~1.85× faster
+(the difference is the library's per-packet `Vec`). Scoped and reproducible
+(`python3 bench/compare_rust.py --build`); it is *not* "nanom beats nom in general".
+
+## Try it
+
+Grab the generated single-file header — [`nanom-single.hpp`](https://yoavbendor.github.io/nanom/nanom-single.hpp)
+(an amalgamation of the layered headers; the modular ones stay canonical) — and paste it into
+[Compiler Explorer](https://godbolt.org/) alongside [`try/godbolt.cpp`](try/godbolt.cpp), or just:
+
+```sh
+python3 tools/amalgamate.py --out nanom-single.hpp   # regenerate locally
+g++-13 -std=c++23 -I . try/godbolt.cpp -o tour && ./tour
+```
 
 - **Zero-copy, always.** Parsers return spans/views into your buffer.
 - **nom names.** If you know nom, you already know nanom
