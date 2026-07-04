@@ -1225,14 +1225,107 @@ constexpr auto hex() {
     return done{v, in.advance(std::size_t(p - b))};
   };
 }
+namespace detail {
+// std::from_chars for *floating point* is, in practice, optional: libc++ (through LLVM 18) ships the
+// integer overloads but not the floating-point ones, so `std::from_chars(b, e, double&)` there
+// resolves to the deleted bool overload and fails to compile. Detect that and fall back to a
+// portable parser. Where the library does provide it (libstdc++, MSVC STL) we keep calling
+// std::from_chars unchanged, so its correctly-rounded conversion is preserved.
+template <class T>
+concept has_fp_from_chars = requires(const char* p, T& v) { std::from_chars(p, p, v); };
+
+// 10^0 .. 10^22 are each exactly representable as double.
+inline constexpr double pow10_exact[] = {
+    1e0,  1e1,  1e2,  1e3,  1e4,  1e5,  1e6,  1e7,  1e8,  1e9,  1e10, 1e11,
+    1e12, 1e13, 1e14, 1e15, 1e16, 1e17, 1e18, 1e19, 1e20, 1e21, 1e22};
+
+// m * 10^e. On the classic fast path (|e| <= 22 and m exact as a double, i.e. <= 15 significant
+// digits) this is a single correctly-rounded multiply/divide; with more digits or larger magnitudes
+// it scales in 10^22 chunks and can differ from a correctly-rounded conversion by a few ulp (e.g. at
+// full-precision DBL_MAX). Only the fallback stdlib (libc++) takes this path; libstdc++/MSVC keep
+// std::from_chars. A full Eisel-Lemire/big-integer path is deliberately not carried here.
+constexpr double scale10(double m, int e) {
+  if (m == 0.0) return 0.0;
+  if (e >= 0) {
+    while (e > 22) { m *= 1e22; e -= 22; }
+    return m * pow10_exact[e];
+  }
+  int k = -e;
+  while (k > 22) { m /= 1e22; k -= 22; }
+  return m / pow10_exact[k];
+}
+
+// Portable std::from_chars(double) for stdlibs lacking it. Matches from_chars' general-format
+// grammar: optional leading '-', at least one decimal digit, optional '.', optional [eE][+-]?digits;
+// no leading '+' or whitespace. ptr points one past the last consumed character; result_out_of_range
+// on overflow/underflow to inf/0.
+constexpr std::from_chars_result from_chars_double(const char* first, const char* last, double& out) {
+  const char* p = first;
+  bool neg = false;
+  if (p != last && *p == '-') { neg = true; ++p; }
+
+  std::uint64_t mant = 0;  // significand; digits capped so it can never overflow
+  int  digits = 0;
+  int  exp10  = 0;
+  bool any    = false;
+  auto eat = [&](bool fractional) {
+    for (; p != last && *p >= '0' && *p <= '9'; ++p) {
+      any = true;
+      if (digits < 18) { mant = mant * 10 + std::uint64_t(*p - '0'); ++digits; if (fractional) --exp10; }
+      else if (!fractional) ++exp10;  // extra integer digits scale up; extra fraction digits drop
+    }
+  };
+  eat(false);
+  if (p != last && *p == '.') { ++p; eat(true); }
+  if (!any) return {first, std::errc::invalid_argument};  // from_chars needs at least one digit
+
+  if (p != last && (*p == 'e' || *p == 'E')) {
+    const char* ep = p + 1;
+    bool eneg = false;
+    if (ep != last && (*ep == '+' || *ep == '-')) { eneg = (*ep == '-'); ++ep; }
+    if (ep != last && *ep >= '0' && *ep <= '9') {
+      int e = 0;
+      for (; ep != last && *ep >= '0' && *ep <= '9'; ++ep) e = e < 100000 ? e * 10 + (*ep - '0') : e;
+      exp10 += eneg ? -e : e;
+      p = ep;
+    }
+    // else: a bare 'e' with no exponent digits is not part of the number; leave p pointing at it.
+  }
+
+  double v = scale10(double(mant), exp10);
+  const bool overflow  = (v != 0.0 && v * 2.0 == v);  // v == +inf
+  const bool underflow = (v == 0.0 && mant != 0);
+  if (overflow || underflow) return {p, std::errc::result_out_of_range};
+  out = neg ? -v : v;
+  return {p, std::errc{}};
+}
+
+// Dispatch to the real from_chars where available (exact), the portable parser otherwise. Two
+// constrained overloads (rather than `if constexpr`) so the std::from_chars call lives in a
+// template body that is *only instantiated* when the overload is chosen — in a non-template
+// function even a discarded `if constexpr` branch is still type-checked, which re-triggers the
+// libc++ deleted-overload error. Fp is deduced as double; it only makes the from_chars call
+// dependent so it isn't checked at definition on stdlibs that lack it.
+template <class Fp>
+  requires has_fp_from_chars<Fp>
+std::from_chars_result parse_double(const char* first, const char* last, Fp& out) {
+  return std::from_chars(first, last, out);
+}
+template <class Fp>
+  requires (!has_fp_from_chars<Fp>)
+std::from_chars_result parse_double(const char* first, const char* last, Fp& out) {
+  return from_chars_double(first, last, out);
+}
+}  // namespace detail
+
 /// float_ / double_ — text floating point ("3.14", "-1e9"). (nom: float/double)
 inline constexpr auto double_ = [](input in) -> result<double> {
   const char* b = reinterpret_cast<const char*>(in.first);
   const char* e = reinterpret_cast<const char*>(in.last);
   double v{};
-  // NB: the floating-point from_chars overload takes std::chars_format (default
-  // = general), NOT an integer base — passing a base here is ill-formed.
-  auto [p, ec] = std::from_chars(b, e, v);
+  // std::from_chars(double) where the stdlib provides it (correct rounding), else a portable
+  // general-format fallback — libc++ through LLVM 18 ships no floating-point from_chars.
+  auto [p, ec] = detail::parse_double(b, e, v);
   if (ec != std::errc{} || p == b) return make_err(in, "floating point number");
   return done{v, in.advance(std::size_t(p - b))};
 };
