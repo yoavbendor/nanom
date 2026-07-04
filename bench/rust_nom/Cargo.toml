@@ -1,0 +1,24 @@
+# Streaming pcapng parse benchmark on stable Rust nom, via the rusticata `pcap-parser`
+# crate (which is itself built on nom). The apples-to-apples counterpart to
+# bench/streaming_pcapng_bench.cpp (nanom). See bench/compare_rust.py.
+[package]
+name = "nanom_rust_nom_bench"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[[bin]]
+name = "rust_nom_bench"
+path = "src/main.rs"
+
+[dependencies]
+# `min` mode uses stable nom's own streaming combinators directly (the fair, equal-work scanner);
+# `full` mode uses the nom-based pcap-parser library. Both pin the same current stable nom (8.x).
+nom = "8"
+pcap-parser = "0.17"
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+panic = "abort"
