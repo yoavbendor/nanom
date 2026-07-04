@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+
+<!-- Structured data so search engines and LLM crawlers recognize this as a software project.
+     schema.org SoftwareSourceCode; the site is the flat, crawlable mirror of the GitHub repo. -->
+{% block extrahead %}
+  {{ super() }}
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "SoftwareSourceCode",
+    "name": "nanom",
+    "description": "A header-only C++23/26 parser-combinator library for binary formats, modeled on Rust's nom, with struct reflection (macro-free under C++26 P2996), Arrow/Avro/JSON/CSV schemas, and columnar Struct-of-Arrays storage. Zero-copy; at parity with stable Rust nom on streaming pcapng.",
+    "url": "https://yoavbendor.github.io/nanom/",
+    "codeRepository": "https://github.com/yoavbendor/nanom",
+    "programmingLanguage": ["C++", "C++23", "C++26"],
+    "license": "https://www.apache.org/licenses/LICENSE-2.0",
+    "keywords": ["parser combinator", "nom", "binary parsing", "C++23", "C++26", "P2996", "reflection", "zero-copy", "Apache Arrow", "header-only"],
+    "author": {
+      "@type": "Person",
+      "name": "yoavbendor"
+    }
+  }
+  </script>
+{% endblock %}

@@ -11,7 +11,7 @@ buffer (a 64 KiB window that `refill()`s from the source — the whole file is n
 parser's working set) and read each **Enhanced Packet Block**'s fixed fields (`interface_id`,
 timestamp, `caplen`, `origlen`). No payload copy. No option-TLV walk. Every parser accumulates the
 same aggregate — `(packets, Σcaplen, Σoriglen, fnv1a(ts_raw, caplen, origlen))` — and the harness
-[`bench/compare_rust.py`](../bench/compare_rust.py) **asserts all aggregates are identical** before it
+[`bench/compare_rust.py`](https://github.com/yoavbendor/nanom/blob/main/bench/compare_rust.py) **asserts all aggregates are identical** before it
 prints a single timing number. (This is the cross-language analogue of the `parse_bench` field
 checksum.)
 
@@ -19,9 +19,9 @@ checksum.)
 
 | parser | file | work per packet |
 |---|---|---|
-| **nanom** | [`bench/streaming_pcapng_bench.cpp`](../bench/streaming_pcapng_bench.cpp) | `nm::streaming` header read + `strct<png_epb_body>` fixed fields |
-| **Rust nom** (hand-written) | [`bench/rust_nom` `min`](../bench/rust_nom/src/main.rs) | stable nom's own `streaming::{le,be}_u32` over the same window — **equal work** |
-| Rust `pcap-parser` (library) | [`bench/rust_nom` `full`](../bench/rust_nom/src/main.rs) | the standard nom-based pcapng crate — **also parses + allocates each packet's options** |
+| **nanom** | [`bench/streaming_pcapng_bench.cpp`](https://github.com/yoavbendor/nanom/blob/main/bench/streaming_pcapng_bench.cpp) | `nm::streaming` header read + `strct<png_epb_body>` fixed fields |
+| **Rust nom** (hand-written) | [`bench/rust_nom` `min`](https://github.com/yoavbendor/nanom/blob/main/bench/rust_nom/src/main.rs) | stable nom's own `streaming::{le,be}_u32` over the same window — **equal work** |
+| Rust `pcap-parser` (library) | [`bench/rust_nom` `full`](https://github.com/yoavbendor/nanom/blob/main/bench/rust_nom/src/main.rs) | the standard nom-based pcapng crate — **also parses + allocates each packet's options** |
 
 The **equal-work** row is `nanom` vs a hand-written minimal scanner on nom's *own* combinators — the
 honest parser-combinator head-to-head. The `pcap-parser` row is what people actually use; it is slower
