@@ -33,7 +33,11 @@ jobs:
       # Track over time and flag regressions. GitHub runners are noisy, so the
       # threshold is wide and alerts only comment (fail-on-alert stays off);
       # the value is the trend line, not any single absolute number.
+      # Only on main: this step fetches (and, on main, pushes) the gh-pages history
+      # branch, which doesn't exist on PRs/forks — so gate it to a real main push.
+      # PRs above still build + run the benchmark, catching a broken benchmark early.
       - name: store + compare
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         uses: benchmark-action/github-action-benchmark@v1
         with:
           name: nanom decode benchmarks
