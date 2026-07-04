@@ -90,37 +90,17 @@ jobs:
   #      tools/amalgamate.py expands the layered include/nanom/*.hpp into one
   #      nanom-single.hpp (the Godbolt "try it" / llms-full.txt payload). It is
   #      gitignored and regenerated here so it can never silently rot: generate,
-  #      then compile + run a tiny strct<>/soa<> smoke under -Werror.
+  #      then compile + run the committed try/godbolt.cpp tour against it under -Werror.
   amalgamation:
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
       - name: generate nanom-single.hpp
         run: python3 tools/amalgamate.py --out nanom-single.hpp
-      - name: compile + run single-header smoke
+      - name: compile + run the single-header tour (try/godbolt.cpp)
         run: |
-          cat > /tmp/amalg_smoke.cpp <<'EOF'
-          #include "nanom-single.hpp"
-          #include <array>
-          #include <cstdint>
-          #include <cstdio>
-          namespace nm = nanom;
-          struct eth_hdr {
-            std::array<std::uint8_t, 6> dst, src;
-            nm::be<std::uint16_t>       eth_type;
-          };
-          NANOM_DESCRIBE(eth_hdr, dst, src, eth_type);
-          int main() {
-            const std::array<std::uint8_t, 14> bytes = {
-              0x01,0x02,0x03,0x04,0x05,0x06, 0x0a,0x0b,0x0c,0x0d,0x0e,0x0f, 0x08,0x00};
-            auto r = nm::strct<eth_hdr>()(nm::from(bytes));
-            if (!r) { std::puts("parse failed"); return 1; }
-            nm::soa<eth_hdr> col; col.push(r->value);
-            return (r->value.eth_type == 0x0800 && col.rows() == 1) ? 0 : 2;
-          }
-          EOF
-          g++-13 -std=c++23 -Wall -Wextra -Werror -I . /tmp/amalg_smoke.cpp -o /tmp/amalg_smoke
-          /tmp/amalg_smoke
+          g++-13 -std=c++23 -Wall -Wextra -Werror -I . try/godbolt.cpp -o /tmp/tour
+          /tmp/tour
       - name: generate llms-full.txt (fetch-once LLM context)
         run: python3 tools/gen_llms.py --out llms-full.txt --single nanom-single.hpp
 
