@@ -13,3 +13,4 @@ nanom-single.hpp
 llms-full.txt
 site/
 docs/design.md
+try/godbolt_tour.cpp
