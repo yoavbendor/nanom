@@ -14,3 +14,6 @@ llms-full.txt
 site/
 docs/design.md
 try/godbolt_tour.cpp
+bindings/python/build/
+bindings/python/*.so
+bindings/python/**/__pycache__/

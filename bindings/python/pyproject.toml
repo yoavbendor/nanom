@@ -1,0 +1,21 @@
+[build-system]
+requires = ["scikit-build-core >=0.10", "nanobind >=2.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "nanom-pcap"
+version = "0.0.1"
+description = "Example: parse pcapng with nanom (C++) and hand Python a zero-copy Arrow table"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+# Runtime needs nothing but an Arrow consumer of your choice; these power the demo/benchmark:
+[project.optional-dependencies]
+demo = ["pyarrow>=14", "polars>=1.0"]
+bench = ["pyarrow>=14", "polars>=1.0", "dpkt", "python-pcapng"]
+
+[tool.scikit-build]
+minimum-version = "0.10"
+build-dir = "build/{wheel_tag}"
+# CMakeLists.txt lives here and pulls in ../../include (the nanom headers).
+cmake.source-dir = "."
