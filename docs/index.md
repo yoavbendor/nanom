@@ -24,17 +24,20 @@ layer cleanly on top.
 The headline question for a C++ nom-alike is *"is it actually as fast as Rust nom?"* nanom answers it
 falsifiably: the **same streaming pcapng parse in both languages, on the same file, with output proven
 byte-identical before any timing is reported** (the harness asserts the aggregate checksums match, then
-prints the table — see [the full methodology](BENCH_RUST_NOM.md)).
+prints the table — see [the full methodology](BENCH_RUST_NOM.md)). Every parser reads each Enhanced
+Packet Block's fixed fields **and walks all of its option TLVs** — the full block, not a subset.
 
 | parser | work | ns/packet | throughput | output |
 |---|---|---:|---:|---|
-| **nanom** (`nm::streaming`) | EPB fixed fields | **~46** | ~31 GiB/s | identical |
-| **Rust nom** (hand-written) | EPB fixed fields (equal work) | ~52 | ~28 GiB/s | identical |
-| Rust `pcap-parser` lib | + parses/allocs options | ~143 | ~10 GiB/s | identical |
+| **nanom** (`nm::streaming`) | EPB fields + all options | **~110** | ~13 GiB/s | identical |
+| **Rust nom** (hand-written) | EPB fields + all options (equal work) | ~119 | ~12 GiB/s | identical |
+| Rust `pcap-parser` lib | same, + allocates options | ~203 | ~7 GiB/s | identical |
 
-**Equal-work head-to-head: nanom ~46 ns/pkt vs stable Rust nom ~52 ns/pkt — parity**, a hair in
-nanom's favour, both zero-copy with no per-packet allocation. The claim is scoped and reproducible
-(`python3 bench/compare_rust.py --build`); it is not "nanom beats nom in general".
+**Equal-work head-to-head: nanom ~110 ns/pkt vs stable Rust nom ~119 ns/pkt — parity**, a hair in
+nanom's favour, both parsing the full block (fixed fields + every option) zero-copy with no per-packet
+allocation; against the real `pcap-parser` library doing the identical parse, nanom is ~1.85× faster.
+The claim is scoped and reproducible (`python3 bench/compare_rust.py --build`); it is not "nanom beats
+nom in general".
 
 ## Why nanom
 

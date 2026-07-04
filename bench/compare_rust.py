@@ -85,15 +85,15 @@ def main(argv) -> int:
         "rust-pcap-parser": run([str(rust_bin), fx, it, "full"]),
     }
 
-    # --- gate: every engine must have parsed the file identically ---
-    keys = ("packets", "sum_caplen", "sum_origlen", "checksum")
+    # --- gate: every engine must have parsed the file identically (fixed fields AND every option) ---
+    keys = ("packets", "sum_caplen", "sum_origlen", "opts", "checksum")
     ref = {k: results["nanom"][k] for k in keys}
     for eng, r in results.items():
         got = {k: r[k] for k in keys}
         if got != ref:
             print(f"MISMATCH: {eng} parsed differently: {got} != {ref}", file=sys.stderr)
             return 1
-    print(f"verified: all parsers agree — packets={ref['packets']} "
+    print(f"verified: all parsers agree — packets={ref['packets']} opts={ref['opts']} "
           f"sum_caplen={ref['sum_caplen']} checksum={ref['checksum']}\n")
 
     vers = lock_versions()
@@ -106,17 +106,18 @@ def main(argv) -> int:
     print("| parser | work | ns/packet | throughput | output |")
     print("|---|---|---:|---:|---|")
     rows = [
-        ("**nanom** (`nm::streaming`)", "EPB fixed fields", nm),
-        ("**Rust nom** (hand-written)", "EPB fixed fields (equal work)", rnm),
-        ("Rust `pcap-parser` lib", "+ parses/allocs options", results["rust-pcap-parser"]),
+        ("**nanom** (`nm::streaming`)", "EPB fields + all options", nm),
+        ("**Rust nom** (hand-written)", "EPB fields + all options (equal work)", rnm),
+        ("Rust `pcap-parser` lib", "same, + allocates options", results["rust-pcap-parser"]),
     ]
     for label, work, r in rows:
         print(f"| {label} | {work} | {float(r['ns_per_pkt']):.0f} | "
               f"{float(r['mbps'])/1024:.1f} GiB/s | identical |")
     print(f"\nEqual-work head-to-head: **nanom {float(nm['ns_per_pkt']):.0f} ns/pkt vs "
-          f"Rust nom {float(rnm['ns_per_pkt']):.0f} ns/pkt** (~{ratio:.2f}x — parity). "
-          "Both zero-copy, no allocation per packet; pcap-parser is slower because it also parses each "
-          "packet's option TLVs. Numbers are best-of-5 on one machine (noisy); the point is the ratio.")
+          f"Rust nom {float(rnm['ns_per_pkt']):.0f} ns/pkt** (~{ratio:.2f}x — parity). All three parse "
+          f"the full block including every option TLV ({ref['opts']} options over {ref['packets']} "
+          "packets); nanom and the hand-written scanner do it zero-copy, while pcap-parser also "
+          "allocates a Vec per packet. Best-of-5 on one machine (noisy); the point is the ratio.")
     return 0
 
 

@@ -48,6 +48,9 @@ struct png_epb_body {
   std::uint32_t ts_high, ts_low;
   std::uint32_t caplen, origlen;
 };
+struct png_opt_hdr {              // a pcapng option TLV header: code + declared length
+  std::uint16_t code, length;     // value follows, padded to a 32-bit boundary; code 0 = opt_endofopt
+};
 
 }  // namespace nmpcap
 
@@ -57,6 +60,7 @@ NANOM_DESCRIBE(nmpcap::png_block_hdr, type, total_len);
 NANOM_DESCRIBE(nmpcap::png_shb_body, byte_order_magic, major, minor, section_len);
 NANOM_DESCRIBE(nmpcap::png_idb_body, link_type, reserved, snaplen);
 NANOM_DESCRIBE(nmpcap::png_epb_body, interface_id, ts_high, ts_low, caplen, origlen);
+NANOM_DESCRIBE(nmpcap::png_opt_hdr, code, length);
 
 namespace nmpcap {
 

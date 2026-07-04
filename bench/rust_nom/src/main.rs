@@ -2,25 +2,27 @@
 // bench/streaming_pcapng_bench.cpp (nanom). Two modes so the comparison is honest:
 //
 //   min  : a HAND-WRITTEN minimal streaming scanner using nom's own combinators
-//          (nom::number::streaming::{le,be}_u32) over a bounded, refilling buffer — reads the block
-//          header + the Enhanced Packet Block FIXED fields only, no payload copy, NO option walk, no
-//          allocation per packet. This is EQUAL WORK to the nanom harness -> the fair parser-combinator
-//          number. (This is the headline "nanom vs Rust nom" row.)
+//          (nom::number::streaming::{le,be}_u32/u16) over a bounded, refilling buffer — reads the block
+//          header, the Enhanced Packet Block FIXED fields, AND walks every EPB option TLV (the same
+//          many0(parse_option) region pcap-parser walks), all zero-copy with no per-packet allocation.
+//          This is EQUAL WORK to the nanom harness -> the fair parser-combinator number. (Headline
+//          "nanom vs Rust nom" row.)
 //
-//   full : the community-standard nom-based `pcap-parser` crate via its streaming PcapNGReader. Realistic
-//          "what people actually use", but it ALSO parses every packet's options into a Vec<PcapNGOption>
-//          (opt_parse_options) — i.e. it does strictly MORE work than `min`/nanom. Reported as context,
-//          clearly labeled, so nobody can say the minimal scanner strawmans nom.
+//   full : the community-standard nom-based `pcap-parser` crate via its streaming PcapNGReader — "what
+//          people actually use". Same parse, but the library allocates each packet's options into a
+//          Vec<PcapNGOption> (opt_parse_options); reported as context so the difference is the
+//          allocation, not the work.
 //
-// Both modes emit the identical aggregate (packets, sum_caplen, sum_origlen, fnv1a checksum) so
-// bench/compare_rust.py can prove all parsers agree before reporting timings.
+// All modes emit the identical aggregate (packets, sum_caplen, sum_origlen, opts, and an fnv1a checksum
+// folding the fixed fields AND every option's code/length/value bytes) so bench/compare_rust.py can
+// prove all parsers agree before reporting timings.
 //
 // usage: rust_nom_bench <file.pcapng> <iters> <min|full>   (best of 5; parses in-memory bytes `iters`x)
 
 use std::io::Cursor;
 use std::time::Instant;
 
-use nom::number::streaming::{be_u32, le_u32};
+use nom::number::streaming::{be_u16, be_u32, le_u16, le_u32};
 use nom::Err as NomErr;
 use pcap_parser::traits::PcapReaderIterator;
 use pcap_parser::{Block, PcapBlockOwned, PcapError, PcapNGReader};
@@ -37,6 +39,7 @@ struct Agg {
     packets: u64,
     sum_caplen: u64,
     sum_origlen: u64,
+    opts: u64,
     checksum: u64,
 }
 #[inline]
@@ -48,6 +51,16 @@ fn u32_at(b: &[u8], off: usize, little: bool) -> u32 {
     let (i, v) = if little { le_u32::<_, ()>(&b[off..]) } else { be_u32::<_, ()>(&b[off..]) }.unwrap();
     let _ = i;
     v
+}
+#[inline]
+fn u16_at(b: &[u8], off: usize, little: bool) -> u16 {
+    let (i, v) = if little { le_u16::<_, ()>(&b[off..]) } else { be_u16::<_, ()>(&b[off..]) }.unwrap();
+    let _ = i;
+    v
+}
+#[inline]
+fn pad4(n: usize) -> usize {
+    (n + 3) & !3
 }
 
 // ---- `min`: hand-written minimal streaming scanner on nom combinators (equal work to nanom) --------
@@ -116,6 +129,27 @@ fn parse_min(data: &[u8]) -> Agg {
             a.checksum = mix(a.checksum, ts_raw);
             a.checksum = mix(a.checksum, caplen);
             a.checksum = mix(a.checksum, origlen);
+
+            // Walk the EPB options — same region + same many0(parse_option) behavior pcap-parser has,
+            // hand-written on nom's u16 combinators (still equal work to nanom): fold each TLV's
+            // code/length and (unpadded) value bytes, include opt_endofopt, advance past 32-bit padding.
+            let block = &buf[pos..pos + total as usize];
+            let mut o = 28 + pad4(caplen as usize); // after block header(8) + fixed(20) + padded packet data
+            let opt_end = total as usize - 4; // before the trailing block_total_length
+            while o + 4 <= opt_end {
+                let code = u16_at(block, o, little);
+                let olen = u16_at(block, o + 2, little) as usize;
+                if o + 4 + pad4(olen) > opt_end {
+                    break; // partial option -> stop (matches nom `complete`)
+                }
+                a.checksum = mix(a.checksum, code as u64);
+                a.checksum = mix(a.checksum, olen as u64);
+                for &vb in &block[o + 4..o + 4 + olen] {
+                    a.checksum = mix(a.checksum, vb as u64);
+                }
+                a.opts += 1;
+                o += 4 + pad4(olen);
+            }
         }
         pos += total as usize;
     }
@@ -152,6 +186,19 @@ fn parse_full(data: &[u8]) -> Agg {
                     a.checksum = mix(a.checksum, ts_raw);
                     a.checksum = mix(a.checksum, epb.caplen as u64);
                     a.checksum = mix(a.checksum, epb.origlen as u64);
+                    // Fold the options the library already parsed+allocated into its Vec (its many0 over
+                    // the region includes opt_endofopt), same order/content as the min & nanom walks:
+                    // code, declared length, then the value truncated to len (as_bytes()).
+                    for opt in &epb.options {
+                        a.checksum = mix(a.checksum, opt.code.0 as u64);
+                        a.checksum = mix(a.checksum, opt.len as u64);
+                        if let Ok(bytes) = opt.as_bytes() {
+                            for &vb in bytes {
+                                a.checksum = mix(a.checksum, vb as u64);
+                            }
+                        }
+                        a.opts += 1;
+                    }
                 }
                 reader.consume(offset);
             }
@@ -201,9 +248,9 @@ fn main() {
     let ns_per_pkt = best_ns as f64 / base.packets.max(1) as f64;
     let mbps = data.len() as f64 / (best_ns as f64 / 1e9) / (1024.0 * 1024.0);
     println!(
-        "RESULT engine={} packets={} sum_caplen={} sum_origlen={} checksum={:016x} \
+        "RESULT engine={} packets={} sum_caplen={} sum_origlen={} opts={} checksum={:016x} \
          file_bytes={} best_ns_per_pass={} ns_per_pkt={:.2} mbps={:.1}",
-        engine, base.packets, base.sum_caplen, base.sum_origlen, base.checksum, data.len(), best_ns,
-        ns_per_pkt, mbps
+        engine, base.packets, base.sum_caplen, base.sum_origlen, base.opts, base.checksum, data.len(),
+        best_ns, ns_per_pkt, mbps
     );
 }

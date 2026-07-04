@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: Apache-2.0
 //
 // Streaming pcapng parse on nanom — the apples-to-apples counterpart of bench/rust_nom (stable Rust
-// nom via the pcap-parser crate). BOTH do exactly the same work per packet: walk the pcapng block
-// stream through a bounded, refilling buffer (never the whole file resident) and read the Enhanced
-// Packet Block FIXED fields (interface_id, timestamp, caplen, origlen) via a describe'd struct. NO
-// payload copy, NO option-TLV walk on either side. Both emit the identical aggregate
-// (packets, sum_caplen, sum_origlen, fnv1a checksum of ts_raw/caplen/origlen) so bench/compare_rust.py
-// can prove the two parsers agree before reporting timings.
+// nom via the pcap-parser crate). BOTH do the same FULL work per packet: walk the pcapng block stream
+// through a bounded, refilling buffer (never the whole file resident), read the Enhanced Packet Block
+// fixed fields (interface_id, timestamp, caplen, origlen) via a describe'd struct, AND walk every
+// EPB option TLV (code/length/value, to opt_endofopt) exactly as pcap-parser's many0(parse_option)
+// does — proving nanom parses the whole block, not a fixed-field subset. Still zero-copy: no payload
+// copy, and (unlike the pcap-parser library) no per-packet option allocation. Every parser emits the
+// identical aggregate (packets, sum_caplen, sum_origlen, opts, fnv1a checksum of the fixed fields AND
+// every option's code/length/value bytes) so bench/compare_rust.py can prove they agree before timing.
 //
 // The block-header read uses nanom's STREAMING mode (nm::streaming -> errk::incomplete + .needed): a
 // short buffer yields `incomplete`, the harness refills and retries — nom's streaming contract.
@@ -32,7 +34,7 @@ constexpr std::uint64_t FNV_OFFSET = 0xcbf29ce484222325ULL;
 constexpr std::uint64_t FNV_PRIME = 0x00000100000001b3ULL;
 
 struct Agg {
-    std::uint64_t packets = 0, sum_caplen = 0, sum_origlen = 0, checksum = FNV_OFFSET;
+    std::uint64_t packets = 0, sum_caplen = 0, sum_origlen = 0, opts = 0, checksum = FNV_OFFSET;
 };
 inline std::uint64_t mix(std::uint64_t h, std::uint64_t v) { return (h ^ v) * FNV_PRIME; }
 
@@ -103,6 +105,27 @@ Agg parse_once(const std::vector<std::uint8_t>& data) {
                 a.checksum = mix(a.checksum, ts_raw);
                 a.checksum = mix(a.checksum, e->value.caplen);
                 a.checksum = mix(a.checksum, e->value.origlen);
+
+                // Walk the EPB options exactly as pcap-parser does — many0(parse_option) over the whole
+                // options region: read each TLV header with nanom's strct<png_opt_hdr>, fold its
+                // code/length and its (unpadded) value bytes, advance past the 32-bit-padded value, and
+                // include opt_endofopt (code 0). Zero-copy: values are hashed in place, never allocated.
+                std::size_t opt_off = pos + 28 + pad4(e->value.caplen);  // after header+fixed(20)+padded data
+                const std::size_t opt_end = pos + total - 4;             // before the trailing block_total_length
+                while (opt_off + 4 <= opt_end) {
+                    nm::input oh_in = nm::from(buf.data() + opt_off, opt_end - opt_off);
+                    auto oh = nm::strct<png_opt_hdr>(order_of(little))(oh_in);
+                    if (!oh) break;
+                    const std::uint16_t code = oh->value.code, olen = oh->value.length;
+                    const std::size_t padded = pad4(olen);
+                    if (opt_off + 4 + padded > opt_end) break;  // partial option -> stop (nom `complete`)
+                    a.checksum = mix(a.checksum, code);
+                    a.checksum = mix(a.checksum, olen);
+                    for (std::uint16_t k = 0; k < olen; ++k)
+                        a.checksum = mix(a.checksum, buf[opt_off + 4 + k]);
+                    a.opts += 1;
+                    opt_off += 4 + padded;
+                }
             }
         }
         pos += total;  // consume: advance the cursor only (no per-block memmove)
@@ -152,10 +175,11 @@ int main(int argc, char** argv) {
     const double ns_per_pkt = double(best_ns) / double(base.packets ? base.packets : 1);
     const double mbps = bytes / (double(best_ns) / 1e9) / (1024.0 * 1024.0);
     std::printf(
-        "RESULT engine=nanom packets=%llu sum_caplen=%llu sum_origlen=%llu checksum=%016llx "
+        "RESULT engine=nanom packets=%llu sum_caplen=%llu sum_origlen=%llu opts=%llu checksum=%016llx "
         "file_bytes=%zu best_ns_per_pass=%llu ns_per_pkt=%.2f mbps=%.1f\n",
         (unsigned long long)base.packets, (unsigned long long)base.sum_caplen,
-        (unsigned long long)base.sum_origlen, (unsigned long long)base.checksum, data.size(),
+        (unsigned long long)base.sum_origlen, (unsigned long long)base.opts,
+        (unsigned long long)base.checksum, data.size(),
         (unsigned long long)best_ns, ns_per_pkt, mbps);
     return 0;
 }
