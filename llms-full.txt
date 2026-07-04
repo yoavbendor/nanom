@@ -251,6 +251,23 @@ auto ports = tbl.column<std::uint16_t>("dst_port");      // contiguous, Arrow-re
 Verified bit-identical to the serial path and ThreadSanitizer-clean; the decode
 path is `static_assert`ed constexpr (device-pure). See [docs/GPU.md](docs/GPU.md).
 
+## From Python (zero-copy into Arrow / polars)
+
+Because `soa<T>` columns are already Arrow buffers, you can parse a binary format in C++ with nanom and
+hand Python a **zero-copy** Arrow table — straight into polars / pandas / pyarrow / duckdb. On a pcapng
+capture producing the same table, nanom is **~35× faster than dpkt and ~90× faster than python-pcapng**
+(it parses in C++; the columns need no conversion).
+
+```python
+import nanom_pcap, pyarrow as pa, polars as pl
+df = pl.from_arrow(pa.table(nanom_pcap.parse(open("cap.pcapng","rb").read())))   # zero-copy both hops
+df.group_by("ethertype").agg(pl.col("caplen").mean())
+```
+
+The C++ side is one struct + a parse loop; the Arrow bridge (`soa<T>` → `ArrowArrayStream` via the
+Arrow PyCapsule protocol) is reusable and nanoarrow-free. Full worked example — both sides, build, and
+the benchmark — in [`bindings/python/`](bindings/python/).
+
 ## Docs
 
 - [docs/CHEATSHEET.md](docs/CHEATSHEET.md) — every nom name → nanom name, one line each
