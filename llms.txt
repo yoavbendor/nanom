@@ -14,8 +14,14 @@ use alone); `reflect.hpp` adds struct parsing; `schema.hpp`/`soa.hpp` are the da
 `nanom.hpp` umbrella includes everything. A generated single-file `nanom-single.hpp` is provided as a
 drop-in / Compiler-Explorer convenience. All source is Apache-2.0 at https://github.com/yoavbendor/nanom.
 
+**Start here:** the full documentation site — getting-started, the nom→nanom cheat sheet, design notes,
+benchmarks, and a generated API reference, all as flat crawlable HTML — is at
+**https://yoavbendor.github.io/nanom/** (this file is its machine-readable index; a single fetch of
+https://yoavbendor.github.io/nanom/llms-full.txt inlines the prose *and* the entire source).
+
 ## Documentation
 
+- [Documentation site](https://yoavbendor.github.io/nanom/): **start here** — the complete docs (getting-started, cheat sheet, design, benchmarks) plus the generated API reference at `/api/`
 - [README](https://raw.githubusercontent.com/yoavbendor/nanom/main/README.md): overview, install, quick-start, library layout, benchmark hooks
 - [DESIGN](https://raw.githubusercontent.com/yoavbendor/nanom/main/DESIGN.md): architecture, the describe<T> seam, design rationale
 - [Cheat sheet](https://raw.githubusercontent.com/yoavbendor/nanom/main/docs/CHEATSHEET.md): nom-name → nanom-name API map (the fastest way in for a nom user)

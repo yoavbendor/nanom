@@ -44,9 +44,21 @@ allocation; against the real `pcap-parser` library doing the identical parse, na
 
 ## Try it
 
-Grab the generated single-file header — [`nanom-single.hpp`](https://yoavbendor.github.io/nanom/nanom-single.hpp)
-(an amalgamation of the layered headers; the modular ones stay canonical) — and paste it into
-[Compiler Explorer](https://godbolt.org/) alongside [`try/godbolt.cpp`](try/godbolt.cpp), or just:
+**▶ Try it live in Compiler Explorer** — a one-click, no-setup [tour](try/godbolt.cpp) (parse → overlay
+view → `soa<>` columns → Avro schema).
+<!-- maintainers: run `python3 tools/make_godbolt.py` to mint the permalink, then replace the line above
+     with:  **▶ [Try it live in Compiler Explorer](https://godbolt.org/z/XXXX)** -->
+
+Mint that permalink in one command (it inlines the single-header amalgamation and the tour into one
+Compiler Explorer session, then prints the `godbolt.org/z/…` link):
+
+```sh
+python3 tools/make_godbolt.py            # prints the permalink to drop into the link above
+```
+
+Or run the tour locally / paste it yourself — the generated single-file
+[`nanom-single.hpp`](https://yoavbendor.github.io/nanom/nanom-single.hpp) (an amalgamation of the
+layered headers; the modular ones stay canonical) plus [`try/godbolt.cpp`](try/godbolt.cpp):
 
 ```sh
 python3 tools/amalgamate.py --out nanom-single.hpp   # regenerate locally
