@@ -104,6 +104,41 @@ jobs:
       - name: generate llms-full.txt (fetch-once LLM context)
         run: python3 tools/gen_llms.py --out llms-full.txt --single nanom-single.hpp
 
+  # ---- python bindings: soa<T> -> zero-copy Arrow (nanobind) example -------
+  #      advisory (pip deps + a compiled extension). First the pure-C++ ASan/UBSan
+  #      check of the Arrow C Data Interface lifetime, then build the nanobind
+  #      module and smoke-test the zero-copy import into pyarrow + the benchmark.
+  python-bindings:
+    runs-on: ubuntu-24.04
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - name: sanitize the Arrow exporter (pure C++, no Python)
+        run: |
+          g++-13 -std=c++23 -fsanitize=address,undefined -fno-sanitize-recover=all \
+            -Wall -Wextra -I include -I bindings/python \
+            bindings/python/test_arrow_cpp.cpp -o /tmp/test_arrow_cpp
+          /tmp/test_arrow_cpp
+      - name: python deps
+        run: python3 -m pip install --upgrade nanobind scikit-build-core pyarrow polars dpkt python-pcapng
+      - name: build the nanom_pcap extension
+        run: |
+          cmake -S bindings/python -B /tmp/nbbuild -DCMAKE_BUILD_TYPE=Release \
+            -DPython_EXECUTABLE="$(which python3)" -Dnanobind_DIR="$(python3 -m nanobind --cmake_dir)"
+          cmake --build /tmp/nbbuild -j
+      - name: smoke test (parse -> zero-copy pyarrow, verify) + benchmark
+        run: |
+          cp /tmp/nbbuild/nanom_pcap*.so bindings/python/
+          cd bindings/python
+          python3 - <<'PY'
+          import nanom_pcap, pyarrow as pa, pyarrow.compute as pc
+          data = open("../../examples/nanotins_parity/testdata/SRL_front_left_51_short.pcapng","rb").read()
+          t = pa.table(nanom_pcap.parse(data)); t.validate(full=True)
+          assert t.num_rows == 224 and pc.sum(t["caplen"]).as_py() == 331884, (t.num_rows,)
+          print("ok: zero-copy nanom -> pyarrow, values verified")
+          PY
+          python3 bench.py
+
   # ---- portability check on macOS via Homebrew LLVM (AppleClang's C++23 is
   #      too old for nanom; advisory so it can never block main) -------------
   macos:
