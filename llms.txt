@@ -1,0 +1,49 @@
+# nanom
+
+> A header-only C++23/26 parser-combinator library for binary formats, modeled on Rust's
+> [nom](https://github.com/rust-bakery/nom). Every nom combinator a Rust user knows exists under the
+> same name (`tag`, `take`, `alt`, `opt`, `many0`, `preceded`, `length_data`, `be_u16`, `map`,
+> `verify`, `cut`, `context`, …). On top of the nom-parallel core it adds struct reflection
+> (`strct<T>`/`overlay<T>` parse straight into your struct — macro-free under C++26 P2996), automatic
+> schema emission (Apache Arrow / Avro / JSON / CSV), and columnar Struct-of-Arrays storage for
+> nanoarrow / Lance. Zero-copy and streaming-capable; on an equal-work streaming pcapng parse it is at
+> parity with stable Rust nom, with byte-identical verified output.
+
+The library is header-only and layered: `nom.hpp` is the pure rust-nom parallel (the parser you can
+use alone); `reflect.hpp` adds struct parsing; `schema.hpp`/`soa.hpp` are the data-tooling extras; the
+`nanom.hpp` umbrella includes everything. A generated single-file `nanom-single.hpp` is provided as a
+drop-in / Compiler-Explorer convenience. All source is Apache-2.0 at https://github.com/yoavbendor/nanom.
+
+## Documentation
+
+- [README](https://raw.githubusercontent.com/yoavbendor/nanom/main/README.md): overview, install, quick-start, library layout, benchmark hooks
+- [DESIGN](https://raw.githubusercontent.com/yoavbendor/nanom/main/DESIGN.md): architecture, the describe<T> seam, design rationale
+- [Cheat sheet](https://raw.githubusercontent.com/yoavbendor/nanom/main/docs/CHEATSHEET.md): nom-name → nanom-name API map (the fastest way in for a nom user)
+- [C++26 reflection compat](https://raw.githubusercontent.com/yoavbendor/nanom/main/docs/P2996_COMPAT.md): P2996 macro-free registration, eligibility rules, toolchain
+
+## Benchmarks (falsifiable)
+
+- [nanom vs stable Rust nom](https://raw.githubusercontent.com/yoavbendor/nanom/main/docs/BENCH_RUST_NOM.md): streaming pcapng, verified byte-identical output, equal-work head-to-head (~parity)
+- [nanom vs nanotins](https://raw.githubusercontent.com/yoavbendor/nanom/main/docs/NANOTINS_COMPARISON.md): overlay decode ns/packet scorecard
+- [GPU / bulk](https://raw.githubusercontent.com/yoavbendor/nanom/main/docs/GPU.md): data-parallel columnar scatter notes
+
+## Source (headers)
+
+- [nom.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/nom.hpp): the pure nom-parallel parser (input/result, combinators, binary + text numbers, bits)
+- [reflect.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/reflect.hpp): fixed_string, wire types, the describe<T> seam, strct<>/overlay<>
+- [schema.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/schema.hpp): schema tree + Arrow/Avro/JSON/CSV emission
+- [soa.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/soa.hpp): columnar (SoA) chunked storage
+- [nanom26.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/nanom26.hpp): the C++26 P2996 reflection describe<T> provider (macro-free)
+- [prelude.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/prelude.hpp): shared config, feature probes
+
+## Examples
+
+- [ethernet.cpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/examples/ethernet.cpp): parse an Ethernet header into a struct
+- [elf.cpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/examples/elf.cpp): ELF header parsing
+- [fat16.cpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/examples/fat16.cpp): FAT16 filesystem structures
+- [reflect26.cpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/examples/reflect26.cpp): macro-free C++26 reflection showcase (struct → parse → soa → json/avro, zero registration)
+
+## Optional
+
+- [Single-file header (llms-full.txt)](https://yoavbendor.github.io/nanom/llms-full.txt): README + DESIGN + cheat sheet + the entire amalgamated `nanom-single.hpp` in one fetch
+- [Third-party notices](https://raw.githubusercontent.com/yoavbendor/nanom/main/THIRD-PARTY.md)

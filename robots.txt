@@ -1,0 +1,5 @@
+# nanom docs — crawlers welcome. This static site is the flat, indexable mirror of the source repo.
+User-agent: *
+Allow: /
+
+Sitemap: https://yoavbendor.github.io/nanom/sitemap.xml
