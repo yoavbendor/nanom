@@ -89,7 +89,6 @@ add_test(NAME nanom_tests COMMAND nanom_tests)
 nanom_exe(nanom_memory_safety_tests tests/test_memory_safety.cpp)
 target_compile_definitions(nanom_memory_safety_tests PRIVATE NANOM_GUARD_VIEWS=1)
 add_test(NAME nanom_memory_safety_tests COMMAND nanom_memory_safety_tests)
-set_tests_properties(nanom_memory_safety_tests PROPERTIES WILL_FAIL TRUE)
 
 if(NANOM_MEMORY_SAFETY_UB_DEMOS)
   nanom_exe(nanom_memory_safety_ub_demos tests/test_memory_safety_ub.cpp)
