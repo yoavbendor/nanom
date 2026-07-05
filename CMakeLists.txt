@@ -31,6 +31,7 @@ endif()
 # ---- developer options (CI flips these on) --------------------------------
 option(NANOM_WERROR         "Treat warnings as errors"                  OFF)
 option(NANOM_BUILD_FUZZERS  "Build the libFuzzer targets (Clang only)"  OFF)
+option(NANOM_MEMORY_SAFETY_UB_DEMOS "Build UB red-team demos (ASan only)" OFF)
 set(NANOM_SANITIZER "" CACHE STRING "Sanitizer: '', 'address,undefined', or 'thread'")
 # C++26 P2996 reflection mode: the whole tree (tests, examples, parity ports) builds at C++26 with
 # the reflection provider active — the macro-free nanom. Needs a P2996 compiler (today: the
@@ -82,6 +83,16 @@ set(td ${parity_dir}/testdata)
 # ---- unit tests -----------------------------------------------------------
 nanom_exe(nanom_tests tests/test_nanom.cpp)
 add_test(NAME nanom_tests COMMAND nanom_tests)
+
+# Memory-safety regression suite: each CHECK asserts desired defensive behavior
+# nanom does not yet provide. WILL_FAIL keeps CI green until guards land.
+nanom_exe(nanom_memory_safety_tests tests/test_memory_safety.cpp)
+add_test(NAME nanom_memory_safety_tests COMMAND nanom_memory_safety_tests)
+set_tests_properties(nanom_memory_safety_tests PROPERTIES WILL_FAIL TRUE)
+
+if(NANOM_MEMORY_SAFETY_UB_DEMOS)
+  nanom_exe(nanom_memory_safety_ub_demos tests/test_memory_safety_ub.cpp)
+endif()
 
 # Parity audit vs Rust nom 8.0.0's own test suite -- see docs/NOM_PARITY_AUDIT.md.
 nanom_exe(nanom_nom_parity_tests tests/test_nom_parity.cpp)
