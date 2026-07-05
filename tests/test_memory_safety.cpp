@@ -310,9 +310,7 @@ void run() {
   const std::uint8_t wire[] = {0xff, 0xff, 0xff, 0xff};
   auto r = nm::take(1'000'000)(nm::streaming(nm::from(wire, sizeof wire)));
   CHECK(!r && r.error().kind == nm::errk::incomplete);
-
-  const bool needed_is_saturated = r.error().needed <= 64 * 1024;
-  CHECK(needed_is_saturated);
+  CHECK(r.error().needed <= nm::max_incomplete_needed);
 }
 
 }  // namespace incomplete_needed_saturation

@@ -136,6 +136,9 @@ enum class errk : std::uint8_t { err, fail, incomplete };
 /// path too. offsets are 32-bit for the same reason (a parse buffer over 4 GiB
 /// is out of scope; the whole point is zero-copy in-memory parsing).
 inline constexpr std::size_t max_context = 4;
+/// Upper bound on error::needed in streaming incomplete errors — avoids OOM when
+/// callers pre-allocate from a hostile length prefix. 0 still means unknown.
+inline constexpr std::uint32_t max_incomplete_needed = 64 * 1024;
 
 struct error {
   struct frame { const char* label; std::uint32_t offset; };
@@ -221,7 +224,8 @@ inline unexpected<error> make_err(input at, const char* expected) {
 inline unexpected<error> make_incomplete(input at, std::size_t needed) {
   error e; e.kind = at.live ? errk::incomplete : errk::err;
   e.offset = std::uint32_t(at.offset() + at.size());
-  e.expected = "more input"; e.needed = std::uint32_t(needed);
+  e.expected = "more input";
+  e.needed = std::uint32_t(std::min(needed, std::size_t(max_incomplete_needed)));
   return unexp(e);
 }
 
