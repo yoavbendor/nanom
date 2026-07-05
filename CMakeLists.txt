@@ -99,6 +99,13 @@ target_compile_definitions(nanom_generation_tests PRIVATE NANOM_GENERATION=1 NAN
                                                            NANOM_GUARD_VIEWS=1)
 add_test(NAME nanom_generation_tests COMMAND nanom_generation_tests)
 
+nanom_exe(nanom_generation_gap_tests tests/test_memory_safety_generation_gaps.cpp)
+target_compile_definitions(nanom_generation_gap_tests PRIVATE NANOM_GENERATION=1
+                                                              NANOM_GENERATION_THROW=1
+                                                              NANOM_GUARD_VIEWS=1)
+add_test(NAME nanom_generation_gap_tests COMMAND nanom_generation_gap_tests)
+set_tests_properties(nanom_generation_gap_tests PROPERTIES WILL_FAIL TRUE)
+
 if(NANOM_MEMORY_SAFETY_UB_DEMOS)
   nanom_exe(nanom_memory_safety_ub_demos tests/test_memory_safety_ub.cpp)
 endif()
