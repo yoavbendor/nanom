@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783227368775,
+  "lastUpdate": 1783252236329,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -175,6 +175,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 7.3,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e75e03a8ab65decf1f1c0e94d90c826ebe1a785c",
+          "message": "Merge pull request #6 from yoavbendor/cursor/memory-safety-failing-tests-1ef9\n\nAdd failing memory-safety regression tests for review",
+          "timestamp": "2026-07-05T14:50:10+03:00",
+          "tree_id": "55fcbc75c0f60a86a5129b873cf86a0098e6f919",
+          "url": "https://github.com/yoavbendor/nanom/commit/e75e03a8ab65decf1f1c0e94d90c826ebe1a785c"
+        },
+        "date": 1783252235581,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 15.1,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 61.5,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 11,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 7.2,
             "unit": "ns/pkt"
           }
         ]
