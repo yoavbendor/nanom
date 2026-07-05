@@ -145,8 +145,10 @@ add_test(NAME self_fuzz COMMAND nm_self_fuzz)
 # ---- benchmarks: built always (so they can't rot) and smoke-tested with a
 #      tiny iteration count; the bench.yml workflow runs them for real numbers.
 nanom_exe(nm_parse_bench bench/parse_bench.cpp)
+nanom_exe(nm_safety_microbench bench/safety_microbench.cpp)
 nanom_exe(nm_bulk_bench  examples/nanotins_parity/pcap_bulk.cpp)  # reuse as bulk bench
 add_test(NAME bench_smoke_parse COMMAND nm_parse_bench ${td}/srv6_sample.pcap 2)
+add_test(NAME bench_smoke_safety COMMAND nm_safety_microbench 2)
 add_test(NAME bench_smoke_bulk  COMMAND nm_bulk_bench  ${td}/srv6_sample.pcap 50 2)
 
 # ---- libFuzzer coverage-guided targets (Clang only, opt-in) ---------------
