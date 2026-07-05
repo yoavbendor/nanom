@@ -18,6 +18,7 @@ covers what the library **does** enforce and what remains **caller contract**.
 | Bulk descriptors | `pkt_ref_valid`, `bulk_decode` | Rejects null data + nonzero len |
 | Null view (debug) | `view::get` / `raw` / `to_struct` | `NANOM_GUARD_VIEWS` asserts `p != nullptr` |
 | Generation tracking (opt-in) | `wire_arena`, `from(buf, arena)`, `view::get` | `NANOM_GENERATION=1`; see below |
+| Attested `bytes` (opt-in) | `attested_bytes`, parser outputs (`take`, `tag`, …) | Guarded `operator[]` / `at()` when tracked |
 
 ## Opt-in generation tracking (`NANOM_GENERATION`)
 
@@ -29,28 +30,34 @@ nm::wire_arena arena;
 nm::input in = nm::from(nm::bytes(buf.data(), buf.size()), arena);
 auto r = nm::overlay<my_hdr>()(in);
 auto v = r->value;
+auto payload = nm::take(8)(in);  // bytes is attested_bytes when GENERATION=1
 buf.clear();
-arena.invalidate();           // or arena.open() after realloc
+arena.invalidate();
 // v.get<"field">() → generation_exception with stale_generation report
+// payload->value[0]   → same
 ```
 
 | API | Role |
 |-----|------|
 | `wire_arena` | Registers `[base, size)`; `invalidate()` bumps generation |
 | `from(span, arena)` | Attaches arena snapshot to `input` |
+| `attested_bytes` | `bytes` alias when `NANOM_GENERATION=1`; subscript checks gen |
 | `generation_exception` | Thrown when `NANOM_GENERATION_THROW=1` |
 | `render_generation_fault` | Human-readable report (gen diff, offset, hex) |
 | `generation_handler` | Optional callback; return `ignore` only in tests |
 
 CMake: `-DNANOM_GENERATION=ON` or define on one target. Tests: `nanom_generation_tests`.
 
+Gap tests (`nanom_generation_gap_tests`, `WILL_FAIL`): in-place mutation, realloc without
+`invalidate()`, cross-arena misuse — documented for future work.
+
 ## Caller contract (documented, not runtime-tracked without `NANOM_GENERATION`)
 
 These `constexpr` flags mark the contract surface:
 
 - `overlay_wire_must_be_immutable` — do not mutate bytes behind an active `view<T>`
-- `span_lifetime_is_caller_scoped` — `bytes` and field spans outlive their owner
-- `length_prefix_spans_are_unowned` — `length_data` payloads are plain spans
+- `span_lifetime_is_caller_scoped` — `bytes` and field spans outlive their owner (attested when `NANOM_GENERATION=1`)
+- `length_prefix_spans_are_unowned` — `length_data` payloads are attested spans when generation is on
 
 **Rules:**
 
@@ -65,13 +72,14 @@ These `constexpr` flags mark the contract surface:
 | Flag | Default | Effect |
 |------|---------|--------|
 | `NANOM_GUARD_VIEWS` | on in debug, off in `NDEBUG` | Assert null `view` access |
-| `NANOM_GENERATION` | **off** | `wire_arena` lifetime checks on `view::get` |
+| `NANOM_GENERATION` | **off** | `wire_arena` lifetime checks on `view::get` and `bytes` subscript |
 | `NANOM_GENERATION_THROW` | off (abort+print) | Throw `generation_exception` instead of abort |
 
-Future work: `attested_bytes` for guarded `bytes` subscript; auto-tracked containers.
+Future work: wire immutability detection; auto-tracked containers; cross-arena validation.
 
 ## Tests
 
 - `tests/test_memory_safety.cpp` — regression suite (`NANOM_GUARD_VIEWS=1`)
-- `tests/test_memory_safety_generation.cpp` — generation suite (`NANOM_GENERATION=1`)
+- `tests/test_memory_safety_generation.cpp` — generation + attested_bytes suite (`NANOM_GENERATION=1`)
+- `tests/test_memory_safety_generation_gaps.cpp` — documented gaps (`WILL_FAIL`)
 - `bench/safety_microbench.cpp` — performance baselines per guard
