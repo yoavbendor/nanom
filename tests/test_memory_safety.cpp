@@ -362,6 +362,6 @@ int main() {
     std::printf("%d FAILURE(S) — these document missing memory-safety guards\n", failures);
     return 1;
   }
-  std::printf("all memory-safety tests passed (unexpected — guards may already exist)\n");
+  std::printf("all memory-safety tests passed\n");
   return 0;
 }
