@@ -12,6 +12,7 @@ var structnanom_1_1input =
     [ "size", "structnanom_1_1input.html#a9bb99f924ba6f88630fe8c9089b205d6", null ],
     [ "span", "structnanom_1_1input.html#ae024becdb6757df57e4a1a77e1cda619", null ],
     [ "take_span", "structnanom_1_1input.html#ab83019b7985b958655e63bcc5ce2a032", null ],
+    [ "with_range", "structnanom_1_1input.html#a5213060ee275007c9f61784d542cdd5d", null ],
     [ "base", "structnanom_1_1input.html#af72347534aa556d4e1b8cda2acb7e3a0", null ],
     [ "first", "structnanom_1_1input.html#a6f105effdf5c9ead96ba44d48c283d4b", null ],
     [ "last", "structnanom_1_1input.html#adf016f31072057f6c428c5a0b3b4d0be", null ],

@@ -667,10 +667,21 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#caller-contract-documented-not-runtime-tracked" class="md-nav__link">
+  <a href="#opt-in-generation-tracking-nanom_generation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Caller contract (documented, not runtime-tracked)
+        Opt-in generation tracking (NANOM_GENERATION)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caller-contract-documented-not-runtime-tracked-without-nanom_generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caller contract (documented, not runtime-tracked without NANOM_GENERATION)
       
     </span>
   </a>
@@ -778,9 +789,56 @@ covers what the library <strong>does</strong> enforce and what remains <strong>c
 <td><code>view::get</code> / <code>raw</code> / <code>to_struct</code></td>
 <td><code>NANOM_GUARD_VIEWS</code> asserts <code>p != nullptr</code></td>
 </tr>
+<tr>
+<td>Generation tracking (opt-in)</td>
+<td><code>wire_arena</code>, <code>from(buf, arena)</code>, <code>view::get</code></td>
+<td><code>NANOM_GENERATION=1</code>; see below</td>
+</tr>
 </tbody>
 </table>
-<h2 id="caller-contract-documented-not-runtime-tracked">Caller contract (documented, not runtime-tracked)<a class="headerlink" href="#caller-contract-documented-not-runtime-tracked" title="Permanent link">&para;</a></h2>
+<h2 id="opt-in-generation-tracking-nanom_generation">Opt-in generation tracking (<code>NANOM_GENERATION</code>)<a class="headerlink" href="#opt-in-generation-tracking-nanom_generation" title="Permanent link">&para;</a></h2>
+<p>Off by default — <strong>no extra fields, code, or checks</strong> in Release when unset.</p>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">&gt;</span><span class="w"> </span><span class="n">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">load</span><span class="p">();</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">nm</span><span class="o">::</span><span class="n">wire_arena</span><span class="w"> </span><span class="n">arena</span><span class="p">;</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">nm</span><span class="o">::</span><span class="n">input</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">nm</span><span class="o">::</span><span class="n">bytes</span><span class="p">(</span><span class="n">buf</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="n">buf</span><span class="p">.</span><span class="n">size</span><span class="p">()),</span><span class="w"> </span><span class="n">arena</span><span class="p">);</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">auto</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">overlay</span><span class="o">&lt;</span><span class="n">my_hdr</span><span class="o">&gt;</span><span class="p">()(</span><span class="n">in</span><span class="p">);</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">auto</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="o">-&gt;</span><span class="n">value</span><span class="p">;</span>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">buf</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">arena</span><span class="p">.</span><span class="n">invalidate</span><span class="p">();</span><span class="w">           </span><span class="c1">// or arena.open() after realloc</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1">// v.get&lt;&quot;field&quot;&gt;() → generation_exception with stale_generation report</span>
+</code></pre></div>
+<table>
+<thead>
+<tr>
+<th>API</th>
+<th>Role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>wire_arena</code></td>
+<td>Registers <code>[base, size)</code>; <code>invalidate()</code> bumps generation</td>
+</tr>
+<tr>
+<td><code>from(span, arena)</code></td>
+<td>Attaches arena snapshot to <code>input</code></td>
+</tr>
+<tr>
+<td><code>generation_exception</code></td>
+<td>Thrown when <code>NANOM_GENERATION_THROW=1</code></td>
+</tr>
+<tr>
+<td><code>render_generation_fault</code></td>
+<td>Human-readable report (gen diff, offset, hex)</td>
+</tr>
+<tr>
+<td><code>generation_handler</code></td>
+<td>Optional callback; return <code>ignore</code> only in tests</td>
+</tr>
+</tbody>
+</table>
+<p>CMake: <code>-DNANOM_GENERATION=ON</code> or define on one target. Tests: <code>nanom_generation_tests</code>.</p>
+<h2 id="caller-contract-documented-not-runtime-tracked-without-nanom_generation">Caller contract (documented, not runtime-tracked without <code>NANOM_GENERATION</code>)<a class="headerlink" href="#caller-contract-documented-not-runtime-tracked-without-nanom_generation" title="Permanent link">&para;</a></h2>
 <p>These <code>constexpr</code> flags mark the contract surface:</p>
 <ul>
 <li><code>overlay_wire_must_be_immutable</code> — do not mutate bytes behind an active <code>view&lt;T&gt;</code></li>
@@ -810,14 +868,23 @@ covers what the library <strong>does</strong> enforce and what remains <strong>c
 <td>on in debug, off in <code>NDEBUG</code></td>
 <td>Assert null <code>view</code> access</td>
 </tr>
+<tr>
+<td><code>NANOM_GENERATION</code></td>
+<td><strong>off</strong></td>
+<td><code>wire_arena</code> lifetime checks on <code>view::get</code></td>
+</tr>
+<tr>
+<td><code>NANOM_GENERATION_THROW</code></td>
+<td>off (abort+print)</td>
+<td>Throw <code>generation_exception</code> instead of abort</td>
+</tr>
 </tbody>
 </table>
-<p>Future work (not yet in Release): generation tokens tying <code>view</code>/<code>bytes</code> to buffer
-lifetime — see <code>bench/safety_overhead.md</code> Tier D.</p>
+<p>Future work: <code>attested_bytes</code> for guarded <code>bytes</code> subscript; auto-tracked containers.</p>
 <h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
 <ul>
 <li><code>tests/test_memory_safety.cpp</code> — regression suite (<code>NANOM_GUARD_VIEWS=1</code>)</li>
-<li><code>tests/test_memory_safety_ub.cpp</code> — optional ASan red-team (<code>NANOM_MEMORY_SAFETY_UB_DEMOS=ON</code>)</li>
+<li><code>tests/test_memory_safety_generation.cpp</code> — generation suite (<code>NANOM_GENERATION=1</code>)</li>
 <li><code>bench/safety_microbench.cpp</code> — performance baselines per guard</li>
 </ul>
 

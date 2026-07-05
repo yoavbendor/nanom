@@ -125,6 +125,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a2f05fa0cf16328e6a3cb91d360bd9cae" id="r_a2f05fa0cf16328e6a3cb91d360bd9cae"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html#a2f05fa0cf16328e6a3cb91d360bd9cae">advance</a> (std::size_t n) const</td></tr>
 <tr class="memdesc:a2f05fa0cf16328e6a3cb91d360bd9cae"><td class="mdescLeft">&#160;</td><td class="mdescRight">Cursor advanced by n bytes (precondition: n &lt;= <a class="el" href="structnanom_1_1input.html#a9bb99f924ba6f88630fe8c9089b205d6">size()</a>).  <br /></td></tr>
 <tr class="separator:a2f05fa0cf16328e6a3cb91d360bd9cae"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5213060ee275007c9f61784d542cdd5d" id="r_a5213060ee275007c9f61784d542cdd5d"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html#a5213060ee275007c9f61784d542cdd5d">with_range</a> (const std::byte *f, const std::byte *l) const</td></tr>
+<tr class="memdesc:a5213060ee275007c9f61784d542cdd5d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Subspan cursor sharing arena metadata (for length_value / recognize).  <br /></td></tr>
+<tr class="separator:a5213060ee275007c9f61784d542cdd5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab83019b7985b958655e63bcc5ce2a032" id="r_ab83019b7985b958655e63bcc5ce2a032"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html#ab83019b7985b958655e63bcc5ce2a032">take_span</a> (std::size_t n) const</td></tr>
 <tr class="memdesc:ab83019b7985b958655e63bcc5ce2a032"><td class="mdescLeft">&#160;</td><td class="mdescRight">First n bytes as a zero-copy span (precondition: n &lt;= <a class="el" href="structnanom_1_1input.html#a9bb99f924ba6f88630fe8c9089b205d6">size()</a>).  <br /></td></tr>
 <tr class="separator:ab83019b7985b958655e63bcc5ce2a032"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -486,6 +489,44 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>First n bytes as a zero-copy span (precondition: n &lt;= <a class="el" href="structnanom_1_1input.html#a9bb99f924ba6f88630fe8c9089b205d6">size()</a>). </p>
+
+</div>
+</div>
+<a id="a5213060ee275007c9f61784d542cdd5d" name="a5213060ee275007c9f61784d542cdd5d"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5213060ee275007c9f61784d542cdd5d">&#9670;&#160;</a></span>with_range()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="structnanom_1_1input.html">input</a> nanom::input::with_range </td>
+          <td>(</td>
+          <td class="paramtype">const std::byte *&#160;</td>
+          <td class="paramname"><em>f</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const std::byte *&#160;</td>
+          <td class="paramname"><em>l</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Subspan cursor sharing arena metadata (for length_value / recognize). </p>
 
 </div>
 </div>

@@ -110,6 +110,14 @@
 # endif
 #endif
 
+// Opt-in wire generation tracking (see generation.hpp). Off by default — zero size/cost.
+#ifndef NANOM_GENERATION
+# define NANOM_GENERATION 0
+#endif
+#ifndef NANOM_GENERATION_THROW
+# define NANOM_GENERATION_THROW 0
+#endif
+
 // NANOM_HD marks the functions on the zero-copy decode path as callable from a
 // GPU kernel. On a normal host build it expands to nothing (zero cost, zero API
 // change); under a CUDA/HIP compiler it becomes __host__ __device__ so the exact
@@ -130,6 +138,237 @@
 // modifiers), binary numbers (be_/le_/ne_), text numbers (dec/hex/float), and bit-level parsing.
 // This layer has NO struct reflection, schema, or columnar storage — those sit on top in
 // reflect.hpp / schema.hpp / soa.hpp. Include just this header for the parser-only subset.
+
+#if NANOM_GENERATION
+// SPDX-License-Identifier: Apache-2.0
+// nanom/generation.hpp — opt-in wire-buffer generation tracking (NANOM_GENERATION).
+//
+// Compiled out entirely when NANOM_GENERATION=0. When enabled, register buffers with
+// wire_arena and parse via from(span, arena); view::get/raw/to_struct validate that
+// the arena generation is unchanged and the access lies in bounds.
+
+#if NANOM_GENERATION
+
+#include <cstdio>
+#include <exception>
+#include <string>
+
+#if defined(__cpp_lib_source_location) && __cpp_lib_source_location >= 201907L
+#include <source_location>
+#define NANOM_HAS_SOURCE_LOCATION 1
+#else
+#define NANOM_HAS_SOURCE_LOCATION 0
+#endif
+
+namespace nanom {
+
+enum class gen_fault_kind : std::uint8_t {
+  stale_generation,
+  out_of_arena,
+  null_arena,
+  null_pointer,
+};
+
+enum class gen_action : std::uint8_t { abort, ignore };
+
+/// Registration for a caller-owned wire buffer. Bump generation on invalidate()
+/// (free, realloc, vector::clear, scope end).
+struct wire_arena {
+  const std::byte* base       = nullptr;
+  std::size_t      size       = 0;
+  std::uint64_t    generation = 1;
+#if NANOM_HAS_SOURCE_LOCATION
+  std::source_location opened{};
+  std::source_location last_invalidate{};
+#endif
+
+  constexpr wire_arena() = default;
+
+  constexpr wire_arena(const void* data, std::size_t n) noexcept
+      : base(static_cast<const std::byte*>(data)), size(n) {}
+
+  void open(const void* data, std::size_t n
+#if NANOM_HAS_SOURCE_LOCATION
+            ,
+            std::source_location loc = std::source_location::current()
+#endif
+  ) noexcept {
+    base = static_cast<const std::byte*>(data);
+    size = n;
+    ++generation;
+#if NANOM_HAS_SOURCE_LOCATION
+    opened = loc;
+#endif
+  }
+
+  void invalidate(
+#if NANOM_HAS_SOURCE_LOCATION
+      std::source_location loc = std::source_location::current()
+#endif
+  ) noexcept {
+    ++generation;
+    base = nullptr;
+    size = 0;
+#if NANOM_HAS_SOURCE_LOCATION
+    last_invalidate = loc;
+#endif
+  }
+
+  [[nodiscard]] constexpr bool contains(const std::byte* p, std::size_t len) const noexcept {
+    if (len == 0) return true;
+    if (!base || !p) return false;
+    const auto* end = base + size;
+    return p >= base && p + len <= end;
+  }
+};
+
+struct generation_fault {
+  gen_fault_kind    kind = gen_fault_kind::null_pointer;
+  const wire_arena* arena = nullptr;
+  std::uint64_t     expected_gen = 0;
+  std::uint64_t     actual_gen   = 0;
+  const std::byte*  access_ptr     = nullptr;
+  std::size_t       access_len     = 0;
+  std::uint32_t     offset_in_arena = 0;
+  const char*       site           = "";
+};
+
+using generation_handler_fn = gen_action (*)(const generation_fault&);
+
+/// Optional fault hook (return ignore to continue — unsafe unless testing).
+inline generation_handler_fn generation_handler = nullptr;
+
+inline std::string render_generation_fault(const generation_fault& f) {
+  std::string out = "nanom generation fault: ";
+  switch (f.kind) {
+    case gen_fault_kind::stale_generation: out += "stale_generation"; break;
+    case gen_fault_kind::out_of_arena: out += "out_of_arena"; break;
+    case gen_fault_kind::null_arena: out += "null_arena"; break;
+    case gen_fault_kind::null_pointer: out += "null_pointer"; break;
+  }
+  if (f.site && f.site[0]) {
+    out += "\n  at ";
+    out += f.site;
+  }
+  if (f.arena) {
+    out += "\n  arena: base=";
+    char buf[24];
+    std::snprintf(buf, sizeof buf, "%p", static_cast<const void*>(f.arena->base));
+    out += buf;
+    out += " size=" + std::to_string(f.arena->size);
+    out += " gen expected=" + std::to_string(f.expected_gen);
+    out += " actual=" + std::to_string(f.actual_gen);
+#if NANOM_HAS_SOURCE_LOCATION
+    if (f.arena->last_invalidate.line())
+      out += "\n  last invalidate: " + std::string(f.arena->last_invalidate.file_name()) + ":" +
+             std::to_string(f.arena->last_invalidate.line());
+    if (f.arena->opened.line())
+      out += "\n  arena opened: " + std::string(f.arena->opened.file_name()) + ":" +
+             std::to_string(f.arena->opened.line());
+#endif
+  }
+  out += "\n  access: offset " + std::to_string(f.offset_in_arena);
+  out += " len " + std::to_string(f.access_len);
+  if (f.arena && f.arena->base && f.access_ptr) {
+    const std::size_t total = f.arena->size;
+    const std::size_t off   = f.offset_in_arena;
+    if (off < total) {
+      const std::size_t lo = off >= 8 ? off - 8 : 0;
+      const std::size_t hi = std::min(off + 8, total);
+      static constexpr char hexd[] = "0123456789abcdef";
+      std::string line = "  hex:", caret = "      ";
+      for (std::size_t i = lo; i < hi; ++i) {
+        const auto b = std::uint8_t(f.arena->base[i]);
+        line += ' ';
+        line += hexd[b >> 4];
+        line += hexd[b & 15];
+        caret += (i == off) ? " ^^" : "   ";
+      }
+      out += "\n" + line + "\n" + caret;
+    }
+  }
+  out += "\n  hint: keep wire_arena alive while using view/bytes; call invalidate() on free/realloc";
+  return out;
+}
+
+class generation_exception : public std::exception {
+ public:
+  explicit generation_exception(generation_fault f) : fault_(std::move(f)) {
+    msg_ = render_generation_fault(fault_);
+  }
+  const char* what() const noexcept override { return msg_.c_str(); }
+  const generation_fault& fault() const noexcept { return fault_; }
+
+ private:
+  generation_fault fault_;
+  std::string      msg_;
+};
+
+namespace detail {
+
+inline void dispatch_generation_fault(generation_fault f) {
+  if (generation_handler) {
+    if (generation_handler(f) == gen_action::ignore) return;
+  }
+  const std::string msg = render_generation_fault(f);
+#if NANOM_GENERATION_THROW
+  throw generation_exception(std::move(f));
+#else
+  std::fputs(msg.c_str(), stderr);
+  std::fputc('\n', stderr);
+  std::abort();
+#endif
+}
+
+inline void check_wire_access(const wire_arena* arena, std::uint64_t expected_gen,
+                              const std::byte* p, std::size_t len, const char* site) {
+  if (!arena) return;  // untracked parse — no generation checks
+  if (!p) {
+    generation_fault f{};
+    f.kind = gen_fault_kind::null_pointer;
+    f.arena = arena;
+    f.expected_gen = expected_gen;
+    f.actual_gen = arena ? arena->generation : 0;
+    f.access_ptr = p;
+    f.access_len = len;
+    f.site = site;
+    dispatch_generation_fault(std::move(f));
+    return;
+  }
+  if (arena->generation != expected_gen) {
+    generation_fault f{};
+    f.kind = gen_fault_kind::stale_generation;
+    f.arena = arena;
+    f.expected_gen = expected_gen;
+    f.actual_gen = arena->generation;
+    f.access_ptr = p;
+    f.access_len = len;
+    f.offset_in_arena =
+        p >= arena->base ? std::uint32_t(std::size_t(p - arena->base)) : 0;
+    f.site = site;
+    dispatch_generation_fault(std::move(f));
+    return;
+  }
+  if (!arena->contains(p, len)) {
+    generation_fault f{};
+    f.kind = gen_fault_kind::out_of_arena;
+    f.arena = arena;
+    f.expected_gen = expected_gen;
+    f.actual_gen = arena->generation;
+    f.access_ptr = p;
+    f.access_len = len;
+    f.offset_in_arena =
+        p >= arena->base ? std::uint32_t(std::size_t(p - arena->base)) : 0;
+    f.site = site;
+    dispatch_generation_fault(std::move(f));
+  }
+}
+
+}  // namespace detail
+}  // namespace nanom
+
+#endif  // NANOM_GENERATION
+#endif
 
 namespace nanom {
 
@@ -196,6 +435,10 @@ struct input {
   /// (fetch more and retry) instead of a plain backtrackable error. Enable
   /// with nm::streaming(in). Default is complete/whole-buffer mode.
   bool live = false;
+#if NANOM_GENERATION
+  const wire_arena* arena = nullptr;
+  std::uint64_t     gen   = 0;
+#endif
 
   constexpr input() = default;
   constexpr input(bytes b)
@@ -212,7 +455,23 @@ struct input {
     return std::uint8_t(first[i]);
   }
   /// Cursor advanced by n bytes (precondition: n <= size()).
-  NANOM_HD constexpr input advance(std::size_t n) const { return {first + n, last, base, live}; }
+  NANOM_HD constexpr input advance(std::size_t n) const {
+    input o{first + n, last, base, live};
+#if NANOM_GENERATION
+    o.arena = arena;
+    o.gen   = gen;
+#endif
+    return o;
+  }
+  /// Subspan cursor sharing arena metadata (for length_value / recognize).
+  NANOM_HD constexpr input with_range(const std::byte* f, const std::byte* l) const {
+    input o{f, l, base, live};
+#if NANOM_GENERATION
+    o.arena = arena;
+    o.gen   = gen;
+#endif
+    return o;
+  }
   /// First n bytes as a zero-copy span (precondition: n <= size()).
   NANOM_HD constexpr bytes take_span(std::size_t n) const { return {first, n}; }
   /// Bounds-checked index; empty when i >= size().
@@ -229,6 +488,18 @@ struct input {
 
 /// Make an input from anything byte-like.
 constexpr input from(bytes b) { return input(b); }
+#if NANOM_GENERATION
+inline input from(bytes b, wire_arena& arena) {
+  arena.open(b.data(), b.size());
+  input in = from(b);
+  in.arena = &arena;
+  in.gen   = arena.generation;
+  return in;
+}
+inline input from(const void* data, std::size_t len, wire_arena& arena) {
+  return from(bytes(static_cast<const std::byte*>(data), len), arena);
+}
+#endif
 inline input from(std::string_view s) {
   return input(bytes(reinterpret_cast<const std::byte*>(s.data()), s.size()));
 }
@@ -1052,7 +1323,7 @@ constexpr auto length_value(N np, P p) {
     auto rd = length_data(np)(in);
     if (!rd) return unexp(rd.error());
     // sub-input keeps the same base so error offsets remain absolute
-    input sub{rd->value.data(), rd->value.data() + rd->value.size(), in.base};
+    input sub = in.with_range(rd->value.data(), rd->value.data() + rd->value.size());
     auto r = p(sub);
     if (!r) {
       error e = r.error();
@@ -1114,7 +1385,7 @@ constexpr auto map_parser(P p, Q q) {
       else
         return r->value;
     }();
-    input sub{b.data(), b.data() + b.size(), in.base};
+    input sub = in.with_range(b.data(), b.data() + b.size());
     auto rq = q(sub);
     if (!rq) return unexp(rq.error());
     return done{std::move(rq->value), r->rest};
@@ -2089,6 +2360,10 @@ template <Described T>
 struct view {
   const std::byte* p    = nullptr;
   std::endian      dflt = std::endian::native;  ///< order for plain scalars
+#if NANOM_GENERATION
+  const wire_arena* arena = nullptr;
+  std::uint64_t     gen   = 0;
+#endif
 
   NANOM_HD constexpr bool valid() const noexcept { return p != nullptr; }
 
@@ -2096,13 +2371,23 @@ struct view {
   template <fixed_string Name>
   NANOM_HD constexpr auto get() const {
     detail::guard_view_pointer(p);
+#if NANOM_GENERATION
+    if consteval {
+    } else {
+      detail::check_wire_access(arena, gen, p, wire_size_v<T>, "view::get");
+    }
+#endif
     constexpr std::size_t I = detail::field_index<T, Name>();
     static_assert(I != std::size_t(-1),
                   "nanom: no such field in this struct — check NANOM_DESCRIBE");
     using F = detail::field_type_at<T, I>;
     constexpr std::size_t off = detail::field_bit_offsets<T>()[I];
     if constexpr (Described<F>) {
+#if NANOM_GENERATION
+      return view<F>{p + off / 8, dflt, arena, gen};
+#else
       return view<F>{p + off / 8, dflt};
+#endif
     } else if constexpr (detail::is_byte_array_v<F>) {
       // byte array (MAC / IPv4 / IPv6 address, name field…): the wire bytes ARE
       // the value, so return a zero-copy span into the buffer instead of
@@ -2116,11 +2401,23 @@ struct view {
   /// The struct's raw wire bytes.
   NANOM_HD constexpr bytes raw() const {
     detail::guard_view_pointer(p);
+#if NANOM_GENERATION
+    if consteval {
+    } else {
+      detail::check_wire_access(arena, gen, p, wire_size_v<T>, "view::raw");
+    }
+#endif
     return {p, wire_size_v<T>};
   }
   /// Materialize a full T (same as strct would produce).
   NANOM_HD constexpr T to_struct() const {
     detail::guard_view_pointer(p);
+#if NANOM_GENERATION
+    if consteval {
+    } else {
+      detail::check_wire_access(arena, gen, p, wire_size_v<T>, "view::to_struct");
+    }
+#endif
     T out{};
     constexpr auto offs = detail::field_bit_offsets<T>();
     std::size_t i = 0;
@@ -2141,7 +2438,11 @@ constexpr auto overlay(std::endian dflt = std::endian::native) {
   return [dflt](input in) -> result<view<T>> {
     constexpr std::size_t need = wire_size_v<T>;
     if (in.size() < need) return make_incomplete(in, need - in.size());
+#if NANOM_GENERATION
+    return done{view<T>{in.first, dflt, in.arena, in.gen}, in.advance(need)};
+#else
     return done{view<T>{in.first, dflt}, in.advance(need)};
+#endif
   };
 }
 }  // namespace nanom
