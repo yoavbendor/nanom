@@ -83,6 +83,10 @@ set(td ${parity_dir}/testdata)
 nanom_exe(nanom_tests tests/test_nanom.cpp)
 add_test(NAME nanom_tests COMMAND nanom_tests)
 
+# Parity audit vs Rust nom 8.0.0's own test suite -- see docs/NOM_PARITY_AUDIT.md.
+nanom_exe(nanom_nom_parity_tests tests/test_nom_parity.cpp)
+add_test(NAME nanom_nom_parity_tests COMMAND nanom_nom_parity_tests)
+
 # ---- worked examples (must run clean) -------------------------------------
 foreach(ex ethernet elf fat16)
   nanom_exe(example_${ex} examples/${ex}.cpp)

@@ -59,6 +59,10 @@ reports the error that got **furthest** (better than nom).
 `separated_list1` `fold_many0` `fold_many1` `fold_many_m_n`
 `length_data` `length_value` `length_count`
 — collect into `std::vector`; fold variants allocate nothing.
+**`fold_many0`/`fold_many1`/`fold_many_m_n` mutate the accumulator by reference**
+(`f(acc&, value)`, no return value) — unlike Rust's `fold`, whose `fold_fn` is
+functional (`FnMut(Acc, O) -> Acc`). A naive return-based port silently does
+nothing (the return value is discarded); write `f` as `[](Acc& acc, O v) { acc = ...; }`.
 
 ## combinator
 

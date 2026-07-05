@@ -66,6 +66,7 @@ nav:
   - Home: index.md
   - Getting started: getting-started.md
   - Cheat sheet (nom → nanom): CHEATSHEET.md
+  - nom parity audit: NOM_PARITY_AUDIT.md
   - Design: design.md
   - C++26 reflection: P2996_COMPAT.md
   - Benchmarks:
