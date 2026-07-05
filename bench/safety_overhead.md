@@ -165,7 +165,8 @@ Each tier is one PR series branch `cursor/safety-tier-<N>-1ef9`. After each tier
 - [x] Microbench harness (`nm_safety_microbench`)
 - [x] Baselines recorded (this file)
 - [x] Tier order + per-PR scope + bench gates
-- [ ] **Next:** open Tier A branch, implement A1→A3, flip 3 tests, remove partial `WILL_FAIL` or split test properties per tier
+- [x] **Tier A** — A1 render clamp, A2 needed cap, A3 pkt_ref validate (3/19 flipped)
+- [ ] **Next:** Tier B branch, implement B1→B3
 
 ## Command cheat sheet (execution)
 
@@ -192,7 +193,7 @@ cmake --build build-asan -j && ./build-asan/nm_self_fuzz
 
 | Tier | PRs | Tests fixed | Hot-path risk | Status |
 |------|-----|------------|---------------|--------|
-| **A** | A1–A3 | 3/19 | None | **Ready to execute** |
+| **A** | A1–A3 | 3/19 | None | **Done** (`cursor/safety-tier-a-1ef9`) |
 | **B** | B1–B3 | +5 (8/19) | Low | Ready after A |
 | **C** | C1 | +1 (9/19) | None in Release | Ready after B |
 | **D** | D1–D2 | +4 (13/19) | High if always-on | Debug-only path |

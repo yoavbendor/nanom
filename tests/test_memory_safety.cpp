@@ -275,12 +275,11 @@ void run() {
   nm::error e{};
   e.kind = nm::errk::err;
   e.offset = 1'000'000;
+  e.expected = "tag";
 
-  const bool render_clamps_offset = false;
-  CHECK(render_clamps_offset);
-  // Call render only with in-range offsets in this suite (see UB demos for OOB cases).
-  (void)whole;
-  (void)e;
+  std::string msg = e.render(whole);
+  CHECK(msg.find("offset beyond input") != std::string::npos);
+  CHECK(msg.find("end of input") != std::string::npos);  // clamped to total == 3
 }
 
 }  // namespace error_render_overrun
@@ -311,9 +310,7 @@ void run() {
   const std::uint8_t wire[] = {0xff, 0xff, 0xff, 0xff};
   auto r = nm::take(1'000'000)(nm::streaming(nm::from(wire, sizeof wire)));
   CHECK(!r && r.error().kind == nm::errk::incomplete);
-
-  const bool needed_is_saturated = r.error().needed <= 64 * 1024;
-  CHECK(needed_is_saturated);
+  CHECK(r.error().needed <= nm::max_incomplete_needed);
 }
 
 }  // namespace incomplete_needed_saturation
@@ -329,10 +326,16 @@ void run() {
   bad.data = nullptr;
   bad.len = 64;
   bad.link = 1;
+  CHECK(!nm::pkt_ref_valid(bad));
 
-  const bool pkt_ref_validates = false;
-  CHECK(pkt_ref_validates);
-  (void)bad;
+  nm::pkt_ref empty{};
+  CHECK(nm::pkt_ref_valid(empty));
+
+  const std::uint8_t b = 0xaa;
+  nm::pkt_ref ok{};
+  ok.data = reinterpret_cast<const std::byte*>(&b);
+  ok.len = 1;
+  CHECK(nm::pkt_ref_valid(ok));
 }
 
 }  // namespace bulk_null_pkt_ref
