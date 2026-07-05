@@ -97,9 +97,9 @@ void run() {
   const char wire[] = "abc";
   nm::input in = nm::from(wire, 3);
 
-  const bool has_safe_at = false;
-  CHECK(has_safe_at);
-  (void)in;
+  CHECK(in.safe_at(0).has_value());
+  CHECK(in.safe_at(0).value() == 'a');
+  CHECK(!in.safe_at(99).has_value());
 }
 
 }  // namespace unchecked_index
