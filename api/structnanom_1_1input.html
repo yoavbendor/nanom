@@ -128,6 +128,12 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ab83019b7985b958655e63bcc5ce2a032" id="r_ab83019b7985b958655e63bcc5ce2a032"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html#ab83019b7985b958655e63bcc5ce2a032">take_span</a> (std::size_t n) const</td></tr>
 <tr class="memdesc:ab83019b7985b958655e63bcc5ce2a032"><td class="mdescLeft">&#160;</td><td class="mdescRight">First n bytes as a zero-copy span (precondition: n &lt;= <a class="el" href="structnanom_1_1input.html#a9bb99f924ba6f88630fe8c9089b205d6">size()</a>).  <br /></td></tr>
 <tr class="separator:ab83019b7985b958655e63bcc5ce2a032"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a08de3b774e9e3f5e86a5806026dde076" id="r_a08de3b774e9e3f5e86a5806026dde076"><td class="memItemLeft" align="right" valign="top">constexpr std::optional&lt; std::uint8_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html#a08de3b774e9e3f5e86a5806026dde076">safe_at</a> (std::size_t i) const</td></tr>
+<tr class="memdesc:a08de3b774e9e3f5e86a5806026dde076"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bounds-checked index; empty when i &gt;= <a class="el" href="structnanom_1_1input.html#a9bb99f924ba6f88630fe8c9089b205d6">size()</a>.  <br /></td></tr>
+<tr class="separator:a08de3b774e9e3f5e86a5806026dde076"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af49b941361ccc4fcfa54f3060d37e399" id="r_af49b941361ccc4fcfa54f3060d37e399"><td class="memItemLeft" align="right" valign="top">constexpr std::optional&lt; <a class="el" href="structnanom_1_1input.html">input</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html#af49b941361ccc4fcfa54f3060d37e399">checked_advance</a> (std::size_t n) const</td></tr>
+<tr class="memdesc:af49b941361ccc4fcfa54f3060d37e399"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bounds-checked advance; empty when n &gt; <a class="el" href="structnanom_1_1input.html#a9bb99f924ba6f88630fe8c9089b205d6">size()</a>.  <br /></td></tr>
+<tr class="separator:af49b941361ccc4fcfa54f3060d37e399"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="pub-attribs" name="pub-attribs"></a>
 Public Attributes</h2></td></tr>
@@ -273,6 +279,34 @@ Public Attributes</h2></td></tr>
 
 </div>
 </div>
+<a id="af49b941361ccc4fcfa54f3060d37e399" name="af49b941361ccc4fcfa54f3060d37e399"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af49b941361ccc4fcfa54f3060d37e399">&#9670;&#160;</a></span>checked_advance()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::optional&lt; <a class="el" href="structnanom_1_1input.html">input</a> &gt; nanom::input::checked_advance </td>
+          <td>(</td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>n</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Bounds-checked advance; empty when n &gt; <a class="el" href="structnanom_1_1input.html#a9bb99f924ba6f88630fe8c9089b205d6">size()</a>. </p>
+
+</div>
+</div>
 <a id="a134bf84bcfbdd67a92195a05143807ee" name="a134bf84bcfbdd67a92195a05143807ee"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a134bf84bcfbdd67a92195a05143807ee">&#9670;&#160;</a></span>empty()</h2>
 
@@ -346,6 +380,34 @@ Public Attributes</h2></td></tr>
   </tr>
 </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a08de3b774e9e3f5e86a5806026dde076" name="a08de3b774e9e3f5e86a5806026dde076"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a08de3b774e9e3f5e86a5806026dde076">&#9670;&#160;</a></span>safe_at()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::optional&lt; std::uint8_t &gt; nanom::input::safe_at </td>
+          <td>(</td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>i</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Bounds-checked index; empty when i &gt;= <a class="el" href="structnanom_1_1input.html#a9bb99f924ba6f88630fe8c9089b205d6">size()</a>. </p>
 
 </div>
 </div>

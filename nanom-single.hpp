@@ -204,6 +204,16 @@ struct input {
   NANOM_HD constexpr input advance(std::size_t n) const { return {first + n, last, base, live}; }
   /// First n bytes as a zero-copy span (precondition: n <= size()).
   NANOM_HD constexpr bytes take_span(std::size_t n) const { return {first, n}; }
+  /// Bounds-checked index; empty when i >= size().
+  NANOM_HD constexpr std::optional<std::uint8_t> safe_at(std::size_t i) const {
+    if (i >= size()) return std::nullopt;
+    return std::uint8_t(first[i]);
+  }
+  /// Bounds-checked advance; empty when n > size().
+  NANOM_HD constexpr std::optional<input> checked_advance(std::size_t n) const {
+    if (n > size()) return std::nullopt;
+    return advance(n);
+  }
 };
 
 /// Make an input from anything byte-like.
@@ -212,6 +222,7 @@ inline input from(std::string_view s) {
   return input(bytes(reinterpret_cast<const std::byte*>(s.data()), s.size()));
 }
 inline input from(const void* data, std::size_t len) {
+  if (!data && len > 0) return input{};
   return input(bytes(static_cast<const std::byte*>(data), len));
 }
 template <class T, std::size_t N>
@@ -363,16 +374,54 @@ using parsed_t = typename std::invoke_result_t<const P&, input>::value_type::typ
 // 5. primitive byte parsers (nom::bytes)
 // ---------------------------------------------------------------------------
 
-/// tag("GET") / tag(bytes) — match an exact byte sequence, yield it zero-copy.
-/// NOTE: stores the pattern by reference; use with string literals or
-/// outliving buffers (same rule as nom).
-constexpr auto tag(std::string_view pattern) {
-  return [pattern](input in) -> result<bytes> {
-    if (in.size() < pattern.size()) return make_incomplete(in, pattern.size() - in.size());
-    if (std::memcmp(in.first, pattern.data(), pattern.size()) != 0)
-      return make_err(in, "tag");
-    return done{in.take_span(pattern.size()), in.advance(pattern.size())};
+namespace detail {
+inline constexpr std::size_t tag_sbo_cap = 15;
+constexpr char lower(char c) { return (c >= 'A' && c <= 'Z') ? char(c + 32) : c; }
+
+/// Owns a tag pattern by value (SBO ≤15 B, else heap string) so parsers outlive
+/// ephemeral std::string sources.
+struct owned_pattern {
+  std::array<char, 16> small{};
+  std::string          large;
+  std::size_t          len = 0;
+
+  explicit owned_pattern(std::string_view p) : len(p.size()) {
+    if (len <= tag_sbo_cap) {
+      for (std::size_t i = 0; i < len; ++i) small[static_cast<std::size_t>(i)] = p[i];
+    } else {
+      large.assign(p);
+    }
+  }
+
+  const char* data() const noexcept {
+    return len <= tag_sbo_cap ? small.data() : large.data();
+  }
+};
+
+inline auto make_tag_parser(owned_pattern pat) {
+  return [pat = std::move(pat)](input in) -> result<bytes> {
+    const std::size_t n = pat.len;
+    if (in.size() < n) return make_incomplete(in, n - in.size());
+    if (std::memcmp(in.first, pat.data(), n) != 0) return make_err(in, "tag");
+    return done{in.take_span(n), in.advance(n)};
   };
+}
+
+inline auto make_tag_no_case_parser(owned_pattern pat) {
+  return [pat = std::move(pat)](input in) -> result<bytes> {
+    const std::size_t n = pat.len;
+    if (in.size() < n) return make_incomplete(in, n - in.size());
+    for (std::size_t i = 0; i < n; ++i)
+      if (lower(char(in[i])) != lower(pat.data()[i])) return make_err(in, "tag_no_case");
+    return done{in.take_span(n), in.advance(n)};
+  };
+}
+}  // namespace detail
+
+/// tag("GET") / tag(bytes) — match an exact byte sequence, yield it zero-copy.
+/// Stores the pattern by value (small-buffer optimized up to 15 bytes).
+inline auto tag(std::string_view pattern) {
+  return detail::make_tag_parser(detail::owned_pattern(pattern));
 }
 constexpr auto tag(bytes pattern) {
   return [pattern](input in) -> result<bytes> {
@@ -383,19 +432,9 @@ constexpr auto tag(bytes pattern) {
   };
 }
 
-namespace detail {
-constexpr char lower(char c) { return (c >= 'A' && c <= 'Z') ? char(c + 32) : c; }
-}
-
 /// tag_no_case("http") — ASCII case-insensitive tag.
-constexpr auto tag_no_case(std::string_view pattern) {
-  return [pattern](input in) -> result<bytes> {
-    if (in.size() < pattern.size()) return make_incomplete(in, pattern.size() - in.size());
-    for (std::size_t i = 0; i < pattern.size(); ++i)
-      if (detail::lower(char(in[i])) != detail::lower(pattern[i]))
-        return make_err(in, "tag_no_case");
-    return done{in.take_span(pattern.size()), in.advance(pattern.size())};
-  };
+inline auto tag_no_case(std::string_view pattern) {
+  return detail::make_tag_no_case_parser(detail::owned_pattern(pattern));
 }
 
 /// take(n) — exactly n bytes, zero-copy.

@@ -1,8 +1,8 @@
 var searchData=
 [
-  ['tag_0',['tag',['../namespacenanom.html#accb0641f6d389ae01912487b7554474f',1,'nanom::tag(std::string_view pattern)'],['../namespacenanom.html#ace978ca1c4ac37a8fee0dc12f2c62c60',1,'nanom::tag(bytes pattern)']]],
+  ['tag_0',['tag',['../namespacenanom.html#a232088c3d5af378c4da8979fbc89aebc',1,'nanom::tag(std::string_view pattern)'],['../namespacenanom.html#ace978ca1c4ac37a8fee0dc12f2c62c60',1,'nanom::tag(bytes pattern)']]],
   ['tag_5fbits_1',['tag_bits',['../namespacenanom.html#aa6bddd3e94208212ca0f39b878a8bc9a',1,'nanom']]],
-  ['tag_5fno_5fcase_2',['tag_no_case',['../namespacenanom.html#afc7293bcbeacf8029509b7c60cdbb140',1,'nanom']]],
+  ['tag_5fno_5fcase_2',['tag_no_case',['../namespacenanom.html#a3948721811313979f035b184b85ca158',1,'nanom']]],
   ['take_3',['take',['../namespacenanom.html#a54516f5238db75fb4415ae57e222efe1',1,'nanom']]],
   ['take_5fbits_4',['take_bits',['../namespacenanom.html#a9f5573a5f435c4427be82d3215e89bb1',1,'nanom']]],
   ['take_5fspan_5',['take_span',['../structnanom_1_1input.html#ab83019b7985b958655e63bcc5ce2a032',1,'nanom::input']]],
