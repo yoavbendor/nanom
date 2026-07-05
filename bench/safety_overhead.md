@@ -198,6 +198,6 @@ cmake --build build-asan -j && ./build-asan/nm_self_fuzz
 | **B** | B1–B3 | +5 (8/19) | Low | **Done** (`cursor/safety-tier-b-1ef9`) |
 | **C** | C1 | +1 (10/19) | None in Release | **Done** |
 | **E** | E1–E2 | +8 (19/19) | None | **Done** |
-| **D** | D1–D2 | generation tokens | High | Deferred (debug prototype) |
+| **D** | D1 | generation tokens (opt-in) | Debug/optional | **Done** (`NANOM_GENERATION`) |
 
 **Agent status:** Tiers A–C+E complete on `cursor/safety-tier-cde-1ef9`. Tier D (runtime lifetime tokens) remains future work; E covers caller contracts.
