@@ -1,5 +1,7 @@
 # nanom parse-only benchmark
 
+`safety_microbench.cpp` / [`safety_overhead.md`](safety_overhead.md) — per-guard overhead models and the **safety hardening execution plan** (baselines, tiers A–E, bench gates). Run `nm_safety_microbench` before/after each tier.
+
 `parse_bench.cpp` times **only the decode** — capture is read into memory once,
 the block scan is done once, and the timed loop is purely the per-packet
 L2/L3/L4 walk. No file I/O, no JSON, no output allocation in the loop. A FNV-1a
