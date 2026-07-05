@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <vector>
 
 namespace nm = nanom;
 using std::uint8_t; using std::uint16_t; using std::uint32_t; using std::uint64_t;
@@ -413,6 +414,77 @@ static void test_errors() {
   CHECK(m2.find("need 3 more") != std::string::npos);
 }
 
+// ---------------------------------------------------------------- streaming incremental feed
+// Nom-style contract: caller grows the buffer (here, one byte at a time) and re-runs the parser
+// on nm::streaming(input). Partial prefixes yield errk::incomplete, not err; success is atomic.
+static void test_streaming_incremental() {
+  const uint8_t get[] = {'G', 'E', 'T', ' ', '/'};
+  std::vector<uint8_t> buf;
+  for (std::size_t n = 0; n < sizeof get; ++n) {
+    buf.push_back(get[n]);
+    auto r = nm::tag("GET")(nm::streaming(nm::from(buf.data(), buf.size())));
+    if (n < 2) {
+      CHECK(!r && r.error().kind == nm::errk::incomplete);
+    } else {
+      CHECK(r && nm::as_str(r->value) == "GET" && r->rest.size() == n + 1 - 3);
+    }
+  }
+
+  const uint8_t u32[] = {0x01, 0x02, 0x03, 0x04};
+  buf.clear();
+  for (std::size_t n = 0; n < sizeof u32; ++n) {
+    buf.push_back(u32[n]);
+    auto r = nm::be_u32(nm::streaming(nm::from(buf.data(), buf.size())));
+    if (n + 1 < sizeof u32) {
+      CHECK(!r && r.error().kind == nm::errk::incomplete);
+      CHECK(r.error().needed == sizeof u32 - (n + 1));
+    } else {
+      CHECK(r && r->value == 0x01020304u && r->rest.empty());
+    }
+  }
+
+  const uint8_t vt[] = {0x60, 0x2a, 0x08, 0x00};
+  buf.clear();
+  for (std::size_t n = 0; n < sizeof vt; ++n) {
+    buf.push_back(vt[n]);
+    auto r = nm::strct<vlan_tag>()(nm::streaming(nm::from(buf.data(), buf.size())));
+    if (n + 1 < sizeof vt) {
+      CHECK(!r && r.error().kind == nm::errk::incomplete);
+      CHECK(r.error().needed == sizeof vt - (n + 1));
+    } else {
+      CHECK(r && r->value.pcp == 3 && r->value.vid == 42 &&
+            uint16_t(r->value.ether) == 0x0800);
+    }
+  }
+
+  // Sequence combinator: three tags, one byte at a time (each step yields incomplete).
+  const uint8_t seq_wire[] = {'a', 'b', 'c', '!'};
+  auto seq_p = nm::seq(nm::tag("a"), nm::tag("b"), nm::tag("c"));
+  buf.clear();
+  for (std::size_t n = 0; n < 2; ++n) {
+    buf.push_back(seq_wire[n]);
+    auto r = seq_p(nm::streaming(nm::from(buf.data(), buf.size())));
+    CHECK(!r && r.error().kind == nm::errk::incomplete);
+  }
+  buf.push_back(seq_wire[2]);
+  {
+    auto r = seq_p(nm::streaming(nm::from(buf.data(), buf.size())));
+    CHECK(r && r->rest.empty());
+  }
+  buf.push_back(seq_wire[3]);
+  {
+    auto r = seq_p(nm::streaming(nm::from(buf.data(), buf.size())));
+    CHECK(r && r->rest.size() == 1 && r->rest[0] == std::uint8_t('!'));
+  }
+
+  // Default (complete) inputs treat EOF as err, not incomplete — same partial prefix.
+  buf.assign(vt, vt + 2);
+  auto complete = nm::strct<vlan_tag>()(nm::from(buf.data(), buf.size()));
+  CHECK(!complete && complete.error().kind == nm::errk::err);
+  auto stream = nm::strct<vlan_tag>()(nm::streaming(nm::from(buf.data(), buf.size())));
+  CHECK(!stream && stream.error().kind == nm::errk::incomplete);
+}
+
 // Device-purity guard: the zero-copy decode path (be/le, bit fields, plain
 // scalars) must be fully constexpr — i.e. free of allocation, I/O, exceptions
 // and other host-only runtime dependencies. If it evaluates at compile time it
@@ -449,6 +521,7 @@ int main() {
   test_schema();
   test_soa();
   test_errors();
+  test_streaming_incremental();
   if (failures) {
     std::printf("%d FAILURE(S)\n", failures);
     return 1;
