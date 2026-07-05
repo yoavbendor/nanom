@@ -262,6 +262,10 @@ the benchmark — in [`bindings/python/`](bindings/python/).
 ## Docs
 
 - [docs/CHEATSHEET.md](docs/CHEATSHEET.md) — every nom name → nanom name, one line each
+- [docs/NOM_PARITY_AUDIT.md](docs/NOM_PARITY_AUDIT.md) — nom's own test suite ported
+  against nanom (`tests/test_nom_parity.cpp`), verifying combinators like `alt`/`flat_map`
+  work like Rust's and documenting the real divergences found (`fold_many0`'s
+  mutate-by-reference contract, custom error types, `escaped`)
 - [docs/GPU.md](docs/GPU.md) — device readiness: what's `NANOM_HD`, and the CUDA launcher
 - [docs/NANOTINS_COMPARISON.md](docs/NANOTINS_COMPARISON.md) — measured scorecard vs nanotins
 - [DESIGN.md](DESIGN.md) — architecture, nom feature matrix, what was borrowed
