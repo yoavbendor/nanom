@@ -93,6 +93,16 @@ struct input {
   NANOM_HD constexpr input advance(std::size_t n) const { return {first + n, last, base, live}; }
   /// First n bytes as a zero-copy span (precondition: n <= size()).
   NANOM_HD constexpr bytes take_span(std::size_t n) const { return {first, n}; }
+  /// Bounds-checked index; empty when i >= size().
+  NANOM_HD constexpr std::optional<std::uint8_t> safe_at(std::size_t i) const {
+    if (i >= size()) return std::nullopt;
+    return std::uint8_t(first[i]);
+  }
+  /// Bounds-checked advance; empty when n > size().
+  NANOM_HD constexpr std::optional<input> checked_advance(std::size_t n) const {
+    if (n > size()) return std::nullopt;
+    return advance(n);
+  }
 };
 
 /// Make an input from anything byte-like.
@@ -101,6 +111,7 @@ inline input from(std::string_view s) {
   return input(bytes(reinterpret_cast<const std::byte*>(s.data()), s.size()));
 }
 inline input from(const void* data, std::size_t len) {
+  if (!data && len > 0) return input{};
   return input(bytes(static_cast<const std::byte*>(data), len));
 }
 template <class T, std::size_t N>

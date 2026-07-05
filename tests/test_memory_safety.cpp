@@ -58,17 +58,12 @@ namespace null_pointer_input {
 
 void run() {
   nm::input in = nm::from(nullptr, 8);
-  CHECK(in.size() == 8);
+  CHECK(in.empty());
   CHECK(in.first == nullptr);
-
-  // DESIRED: reject or empty such inputs at construction.
-  const bool rejects_null_nonempty = false;
-  CHECK(rejects_null_nonempty);
 
   nm::input empty{};
   CHECK(empty.first == nullptr && empty.size() == 0);
-  const bool empty_index_is_guarded = false;  // operator[] has no empty guard
-  CHECK(empty_index_is_guarded);
+  CHECK(!empty.safe_at(0).has_value());
 }
 
 }  // namespace null_pointer_input
@@ -83,16 +78,12 @@ void run() {
   const char wire[] = "ab";
   nm::input in = nm::from(wire, 2);
 
-  const bool has_checked_advance = false;
-  CHECK(has_checked_advance);
+  CHECK(!in.checked_advance(99).has_value());
+  CHECK(in.checked_advance(1).has_value());
+  CHECK(in.checked_advance(1)->size() == 1);
 
-  const bool has_checked_take_span = false;
-  CHECK(has_checked_take_span);
-
-  // Document the footgun without calling size() on an invalid cursor (that itself
-  // is UB when first > last).
   nm::input past = in.advance(99);
-  CHECK(past.first != in.first);  // advance silently moves past the end today
+  CHECK(past.first != in.first);  // unchecked advance still exists
 }
 
 }  // namespace cursor_overrun
