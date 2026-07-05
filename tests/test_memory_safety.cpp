@@ -326,10 +326,16 @@ void run() {
   bad.data = nullptr;
   bad.len = 64;
   bad.link = 1;
+  CHECK(!nm::pkt_ref_valid(bad));
 
-  const bool pkt_ref_validates = false;
-  CHECK(pkt_ref_validates);
-  (void)bad;
+  nm::pkt_ref empty{};
+  CHECK(nm::pkt_ref_valid(empty));
+
+  const std::uint8_t b = 0xaa;
+  nm::pkt_ref ok{};
+  ok.data = reinterpret_cast<const std::byte*>(&b);
+  ok.len = 1;
+  CHECK(nm::pkt_ref_valid(ok));
 }
 
 }  // namespace bulk_null_pkt_ref
