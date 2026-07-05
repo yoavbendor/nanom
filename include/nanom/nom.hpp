@@ -168,9 +168,11 @@ struct error {
       out += " (starting at offset " + std::to_string(ctx[i].offset) + ")";
     }
     // hex window: up to 8 bytes before and after the failure point
-    const std::size_t total = std::size_t(whole.last - whole.base);
-    const std::size_t off = offset;  // widen the 32-bit field for arithmetic
-    if (off <= total) {
+    const std::size_t total = whole.base ? std::size_t(whole.last - whole.base) : 0;
+    const std::size_t off = std::min<std::size_t>(offset, total);  // clamp bogus offsets
+    if (offset > total)
+      out += " (offset beyond input, hex window clamped)";
+    if (total > 0) {
       const std::size_t lo = off >= 8 ? off - 8 : 0;
       const std::size_t hi = std::min(off + 8, total);
       static constexpr char hexd[] = "0123456789abcdef";

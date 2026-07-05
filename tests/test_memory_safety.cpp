@@ -275,12 +275,11 @@ void run() {
   nm::error e{};
   e.kind = nm::errk::err;
   e.offset = 1'000'000;
+  e.expected = "tag";
 
-  const bool render_clamps_offset = false;
-  CHECK(render_clamps_offset);
-  // Call render only with in-range offsets in this suite (see UB demos for OOB cases).
-  (void)whole;
-  (void)e;
+  std::string msg = e.render(whole);
+  CHECK(msg.find("offset beyond input") != std::string::npos);
+  CHECK(msg.find("end of input") != std::string::npos);  // clamped to total == 3
 }
 
 }  // namespace error_render_overrun
