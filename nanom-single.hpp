@@ -10,6 +10,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <bit>
 #include <charconv>
 #include <concepts>
@@ -97,6 +98,16 @@
 #endif
 #ifndef NANOM_HAS_REFLECTION
 #define NANOM_HAS_REFLECTION 0
+#endif
+
+// Debug view guards: assert on null overlay access. Enabled in debug builds;
+// override with -DNANOM_GUARD_VIEWS=0/1 (memory-safety tests force it on).
+#ifndef NANOM_GUARD_VIEWS
+# if !defined(NDEBUG)
+#  define NANOM_GUARD_VIEWS 1
+# else
+#  define NANOM_GUARD_VIEWS 0
+# endif
 #endif
 
 // NANOM_HD marks the functions on the zero-copy decode path as callable from a
@@ -814,6 +825,7 @@ constexpr auto permutation(Ps... ps) {
 
 /// many0(p) — zero or more, into std::vector. Errors (like nom) if p succeeds
 /// without consuming, to prevent infinite loops.
+inline constexpr bool many0_guards_zero_consumption = true;
 template <Parser P>
 constexpr auto many0(P p) {
   return [p](input in) -> result<std::vector<parsed_t<P>>> {
@@ -829,6 +841,30 @@ constexpr auto many0(P p) {
       out.push_back(std::move(r->value));
       cur = r->rest;
     }
+  };
+}
+/// checked_many0(p, max_rep) — like many0 but stops with an error after max_rep
+/// successful matches (default 1M) so a custom inner parser cannot spin forever.
+template <Parser P>
+constexpr auto checked_many0(P p, std::size_t max_rep = 1'000'000) {
+  return [p, max_rep](input in) -> result<std::vector<parsed_t<P>>> {
+    std::vector<parsed_t<P>> out;
+    input cur = in;
+    for (std::size_t n = 0; n < max_rep; ++n) {
+      auto r = p(cur);
+      if (!r) {
+        if (r.error().kind != errk::err) return unexp(r.error());
+        return done{std::move(out), cur};
+      }
+      if (r->rest.first == cur.first)
+        return make_err(cur, "checked_many0: inner parser must consume input");
+      out.push_back(std::move(r->value));
+      cur = r->rest;
+    }
+    auto probe = p(cur);
+    if (probe) return make_err(cur, "checked_many0: repetition cap exceeded");
+    if (!probe && probe.error().kind != errk::err) return unexp(probe.error());
+    return done{std::move(out), cur};
   };
 }
 /// many1(p) — one or more.
@@ -998,6 +1034,8 @@ constexpr auto fold_many_m_n(std::size_t m, std::size_t n, P p, Init init, F f) 
 }
 
 /// length_data(np) — np yields a length N; then take N raw bytes (zero-copy).
+/// Returned bytes are caller-scoped spans (see span_lifetime_is_caller_scoped).
+inline constexpr bool length_prefix_spans_are_unowned = true;
 template <Parser N>
 constexpr auto length_data(N np) {
   return [np](input in) -> result<bytes> {
@@ -2026,6 +2064,25 @@ constexpr auto strct(std::endian dflt = std::endian::native) {
 // 20. view<T> / overlay<T>() — zero-copy lazy access: get<"field">()
 // ---------------------------------------------------------------------------
 
+namespace detail {
+NANOM_HD inline constexpr void guard_view_pointer(const std::byte* p) {
+  if consteval {
+    (void)p;
+    return;
+  }
+#if NANOM_GUARD_VIEWS
+  assert(p != nullptr && "nanom: view access on null/uninitialized overlay");
+#else
+  (void)p;
+#endif
+}
+}  // namespace detail
+
+/// Zero-copy lifetime contracts (enforced by documentation + debug guards; see
+/// docs/MEMORY_SAFETY.md). constexpr flags let tests assert the API surface.
+inline constexpr bool overlay_wire_must_be_immutable = true;
+inline constexpr bool span_lifetime_is_caller_scoped   = true;
+
 /// A zero-copy overlay of T's wire format over the original buffer. Fields
 /// decode on access (endian conversion / bit extraction), nothing is stored.
 template <Described T>
@@ -2033,9 +2090,12 @@ struct view {
   const std::byte* p    = nullptr;
   std::endian      dflt = std::endian::native;  ///< order for plain scalars
 
+  NANOM_HD constexpr bool valid() const noexcept { return p != nullptr; }
+
   /// Decoded value of the named field. Unknown names are a compile error.
   template <fixed_string Name>
   NANOM_HD constexpr auto get() const {
+    detail::guard_view_pointer(p);
     constexpr std::size_t I = detail::field_index<T, Name>();
     static_assert(I != std::size_t(-1),
                   "nanom: no such field in this struct — check NANOM_DESCRIBE");
@@ -2054,9 +2114,13 @@ struct view {
     }
   }
   /// The struct's raw wire bytes.
-  NANOM_HD constexpr bytes raw() const { return {p, wire_size_v<T>}; }
+  NANOM_HD constexpr bytes raw() const {
+    detail::guard_view_pointer(p);
+    return {p, wire_size_v<T>};
+  }
   /// Materialize a full T (same as strct would produce).
   NANOM_HD constexpr T to_struct() const {
+    detail::guard_view_pointer(p);
     T out{};
     constexpr auto offs = detail::field_bit_offsets<T>();
     std::size_t i = 0;

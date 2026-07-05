@@ -295,8 +295,11 @@ requires (sizeof...(Ps) &gt;= 1)</td></tr>
 <tr class="separator:a84b0481aa8a094e51299c0599a3ba3fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a86acb779d08f318ad9fcb2f74b70bdc5" id="r_a86acb779d08f318ad9fcb2f74b70bdc5"><td class="memTemplParams" colspan="2">template&lt;Parser P&gt; </td></tr>
 <tr class="memitem:a86acb779d08f318ad9fcb2f74b70bdc5"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a86acb779d08f318ad9fcb2f74b70bdc5">nanom::many0</a> (P p)</td></tr>
-<tr class="memdesc:a86acb779d08f318ad9fcb2f74b70bdc5"><td class="mdescLeft">&#160;</td><td class="mdescRight">many0(p) — zero or more, into std::vector.  <br /></td></tr>
 <tr class="separator:a86acb779d08f318ad9fcb2f74b70bdc5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acd6592713b5536de2c32dd5ed0f8995e" id="r_acd6592713b5536de2c32dd5ed0f8995e"><td class="memTemplParams" colspan="2">template&lt;Parser P&gt; </td></tr>
+<tr class="memitem:acd6592713b5536de2c32dd5ed0f8995e"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#acd6592713b5536de2c32dd5ed0f8995e">nanom::checked_many0</a> (P p, std::size_t max_rep=1 '000 '000)</td></tr>
+<tr class="memdesc:acd6592713b5536de2c32dd5ed0f8995e"><td class="mdescLeft">&#160;</td><td class="mdescRight">checked_many0(p, max_rep) — like many0 but stops with an error after max_rep successful matches (default 1M) so a custom inner parser cannot spin forever.  <br /></td></tr>
+<tr class="separator:acd6592713b5536de2c32dd5ed0f8995e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a77fa5ceb3e0eeac187f9fc96ca435f9d" id="r_a77fa5ceb3e0eeac187f9fc96ca435f9d"><td class="memTemplParams" colspan="2">template&lt;Parser P&gt; </td></tr>
 <tr class="memitem:a77fa5ceb3e0eeac187f9fc96ca435f9d"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a77fa5ceb3e0eeac187f9fc96ca435f9d">nanom::many1</a> (P p)</td></tr>
 <tr class="memdesc:a77fa5ceb3e0eeac187f9fc96ca435f9d"><td class="mdescLeft">&#160;</td><td class="mdescRight">many1(p) — one or more.  <br /></td></tr>
@@ -332,7 +335,6 @@ requires (sizeof...(Ps) &gt;= 1)</td></tr>
 <tr class="separator:adad0993c51cb1435585cb9347b44a526"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aae9a44d8e03a0bd9ec90a2e75fae1043" id="r_aae9a44d8e03a0bd9ec90a2e75fae1043"><td class="memTemplParams" colspan="2">template&lt;Parser N&gt; </td></tr>
 <tr class="memitem:aae9a44d8e03a0bd9ec90a2e75fae1043"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aae9a44d8e03a0bd9ec90a2e75fae1043">nanom::length_data</a> (N np)</td></tr>
-<tr class="memdesc:aae9a44d8e03a0bd9ec90a2e75fae1043"><td class="mdescLeft">&#160;</td><td class="mdescRight">length_data(np) — np yields a length N; then take N raw bytes (zero-copy).  <br /></td></tr>
 <tr class="separator:aae9a44d8e03a0bd9ec90a2e75fae1043"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a0b7edb09f605444d36d2aa22ca42d6d5" id="r_a0b7edb09f605444d36d2aa22ca42d6d5"><td class="memTemplParams" colspan="2">template&lt;Parser N, Parser P&gt; </td></tr>
 <tr class="memitem:a0b7edb09f605444d36d2aa22ca42d6d5"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a0b7edb09f605444d36d2aa22ca42d6d5">nanom::length_value</a> (N np, P p)</td></tr>
@@ -519,6 +521,12 @@ Variables</h2></td></tr>
 <tr class="separator:a6a8e53de84eb53899c2311a223bcee14"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afbcc370a9c788ba0127dcf891ac4cfa9" id="r_afbcc370a9c788ba0127dcf891ac4cfa9"><td class="memItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#afbcc370a9c788ba0127dcf891ac4cfa9">nanom::rest_len</a></td></tr>
 <tr class="separator:afbcc370a9c788ba0127dcf891ac4cfa9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acaf6cc260fec56602e1108104f035432" id="r_acaf6cc260fec56602e1108104f035432"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#acaf6cc260fec56602e1108104f035432">nanom::many0_guards_zero_consumption</a> = true</td></tr>
+<tr class="memdesc:acaf6cc260fec56602e1108104f035432"><td class="mdescLeft">&#160;</td><td class="mdescRight">many0(p) — zero or more, into std::vector.  <br /></td></tr>
+<tr class="separator:acaf6cc260fec56602e1108104f035432"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adb5bdd721cdb59c2708f1bb33f2b1edd" id="r_adb5bdd721cdb59c2708f1bb33f2b1edd"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#adb5bdd721cdb59c2708f1bb33f2b1edd">nanom::length_prefix_spans_are_unowned</a> = true</td></tr>
+<tr class="memdesc:adb5bdd721cdb59c2708f1bb33f2b1edd"><td class="mdescLeft">&#160;</td><td class="mdescRight">length_data(np) — np yields a length N; then take N raw bytes (zero-copy).  <br /></td></tr>
+<tr class="separator:adb5bdd721cdb59c2708f1bb33f2b1edd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a11f2b789519ef485e1420f69af721644" id="r_a11f2b789519ef485e1420f69af721644"><td class="memItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a11f2b789519ef485e1420f69af721644">nanom::be_u8</a> = [](<a class="el" href="structnanom_1_1input.html">input</a> in) { return detail::read_uint&lt;1&gt;(in, std::endian::big); }</td></tr>
 <tr class="separator:a11f2b789519ef485e1420f69af721644"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aefd5bac1a7d54bfd2d652543f1da7d3b" id="r_aefd5bac1a7d54bfd2d652543f1da7d3b"><td class="memItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aefd5bac1a7d54bfd2d652543f1da7d3b">nanom::be_u16</a> = [](<a class="el" href="structnanom_1_1input.html">input</a> in) { return detail::read_uint&lt;2&gt;(in, std::endian::big); }</td></tr>

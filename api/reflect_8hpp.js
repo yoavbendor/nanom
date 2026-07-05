@@ -10,5 +10,7 @@ var reflect_8hpp =
     [ "le", "reflect_8hpp.html#a1bc4fb4ecfebd272419a2cb269c60d9f", null ],
     [ "overlay", "reflect_8hpp.html#a44eb2817eaa48f8d02c36b0465d6974c", null ],
     [ "strct", "reflect_8hpp.html#ace252f499d7aef868ff1ea7efe58bbef", null ],
+    [ "overlay_wire_must_be_immutable", "reflect_8hpp.html#ad25a10d8efd4b863807f5d42dd95c1fb", null ],
+    [ "span_lifetime_is_caller_scoped", "reflect_8hpp.html#ac9c22bc09f8b4f30f28cef738130758a", null ],
     [ "wire_size_v", "reflect_8hpp.html#ad47fb5a1b8437c490c3a9b56faa24e8d", null ]
 ];

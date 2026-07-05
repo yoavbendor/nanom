@@ -15,13 +15,14 @@ var searchData=
   ['seq_5fexec_12',['seq_exec',['../structnanom_1_1seq__exec.html',1,'nanom']]],
   ['set_13',['set',['../structnanom_1_1endian__scalar.html#aabdfa4cb8a0c8b74bc1a74d32e389159',1,'nanom::endian_scalar']]],
   ['size_14',['size',['../structnanom_1_1schema__field.html#a5b05bef5c3c0a9f898c107df03a269fc',1,'nanom::schema_field::size'],['../structnanom_1_1input.html#a9bb99f924ba6f88630fe8c9089b205d6',1,'nanom::input::size()']]],
-  ['soa_15',['soa',['../classnanom_1_1soa.html#a8ccca996480aab4ebd6e2da48863b409',1,'nanom::soa::soa()'],['../classnanom_1_1soa.html',1,'nanom::soa&lt; T &gt;']]],
+  ['soa_15',['soa',['../classnanom_1_1soa.html',1,'nanom::soa&lt; T &gt;'],['../classnanom_1_1soa.html#a8ccca996480aab4ebd6e2da48863b409',1,'nanom::soa::soa()']]],
   ['soa_2ehpp_16',['soa.hpp',['../soa_8hpp.html',1,'']]],
   ['space0_17',['space0',['../namespacenanom.html#ab697bf8f81833cf286f710581225700f',1,'nanom']]],
   ['space1_18',['space1',['../namespacenanom.html#a200b20da9542ffcfa4e06dbe42a55264',1,'nanom']]],
   ['span_19',['span',['../structnanom_1_1input.html#ae024becdb6757df57e4a1a77e1cda619',1,'nanom::input']]],
-  ['strct_20',['strct',['../namespacenanom.html#ace252f499d7aef868ff1ea7efe58bbef',1,'nanom']]],
-  ['streaming_21',['streaming',['../namespacenanom.html#ac0c6f76d8bf93df7e308825ed6dfbd77',1,'nanom']]],
-  ['success_22',['success',['../namespacenanom.html#aba7346439180be9b329ec1ed1d2bab25',1,'nanom']]],
-  ['sv_23',['sv',['../structnanom_1_1fixed__string.html#af003a895be7b3269c06067470d593b3f',1,'nanom::fixed_string']]]
+  ['span_5flifetime_5fis_5fcaller_5fscoped_20',['span_lifetime_is_caller_scoped',['../namespacenanom.html#ac9c22bc09f8b4f30f28cef738130758a',1,'nanom']]],
+  ['strct_21',['strct',['../namespacenanom.html#ace252f499d7aef868ff1ea7efe58bbef',1,'nanom']]],
+  ['streaming_22',['streaming',['../namespacenanom.html#ac0c6f76d8bf93df7e308825ed6dfbd77',1,'nanom']]],
+  ['success_23',['success',['../namespacenanom.html#aba7346439180be9b329ec1ed1d2bab25',1,'nanom']]],
+  ['sv_24',['sv',['../structnanom_1_1fixed__string.html#af003a895be7b3269c06067470d593b3f',1,'nanom::fixed_string']]]
 ];

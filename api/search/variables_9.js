@@ -15,7 +15,8 @@ var searchData=
   ['le_5fu64_12',['le_u64',['../namespacenanom.html#a16c3f1c0c600ef9ab63c7e73af323a58',1,'nanom']]],
   ['le_5fu8_13',['le_u8',['../namespacenanom.html#adefe186aa2fc2b1c93424e2bb6e67162',1,'nanom']]],
   ['len_14',['len',['../structnanom_1_1pkt__ref.html#a66b6f207b2686a7112e9883e165fb0bb',1,'nanom::pkt_ref']]],
-  ['line_5fending_15',['line_ending',['../namespacenanom.html#aa012a60b4538dff10869f63fb43d4443',1,'nanom']]],
-  ['link_16',['link',['../structnanom_1_1pkt__ref.html#a02feb455151f832db9b4031ad7035740',1,'nanom::pkt_ref']]],
-  ['live_17',['live',['../structnanom_1_1input.html#a327f18ed3af96a1a84b41c846705b2e5',1,'nanom::input']]]
+  ['length_5fprefix_5fspans_5fare_5funowned_15',['length_prefix_spans_are_unowned',['../namespacenanom.html#adb5bdd721cdb59c2708f1bb33f2b1edd',1,'nanom']]],
+  ['line_5fending_16',['line_ending',['../namespacenanom.html#aa012a60b4538dff10869f63fb43d4443',1,'nanom']]],
+  ['link_17',['link',['../structnanom_1_1pkt__ref.html#a02feb455151f832db9b4031ad7035740',1,'nanom::pkt_ref']]],
+  ['live_18',['live',['../structnanom_1_1input.html#a327f18ed3af96a1a84b41c846705b2e5',1,'nanom::input']]]
 ];
