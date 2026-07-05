@@ -119,13 +119,16 @@ void run() {
 // =============================================================================
 namespace dangling_tag_pattern {
 
-void run() {
-  const bool stores_pattern_by_value = false;
-  CHECK(stores_pattern_by_value);
+static auto make_ephemeral_tag_parser() {
+  std::string pattern = "MAGIC";
+  return nm::tag(pattern);
+}
 
-  const bool documents_pattern_lifetime = false;
-  CHECK(documents_pattern_lifetime);
-  // Parser construction with ephemeral std::string is UB at match time — see UB demos.
+void run() {
+  const char wire[] = "MAGICtail";
+  auto parser = make_ephemeral_tag_parser();
+  auto r = parser(nm::from(wire, 9));
+  CHECK(r && nm::as_str(r->value) == "MAGIC");
 }
 
 }  // namespace dangling_tag_pattern
