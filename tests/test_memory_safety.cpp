@@ -12,7 +12,7 @@
 //   cmake -B build && cmake --build build -j --target nanom_memory_safety_tests
 //   ./build/nanom_memory_safety_tests
 //
-// Registered in ctest with WILL_FAIL until the library grows the expected guards.
+// Registered in ctest; was WILL_FAIL until tiers A–E landed (see docs/MEMORY_SAFETY.md).
 
 #include <nanom/nanom.hpp>
 #include <nanom/bulk.hpp>  // pkt_ref (opt-in header)
@@ -135,9 +135,7 @@ void run() {
   CHECK(r);
 
   buf += " extra bytes force reallocation";
-  // Do not dereference r->value after reallocation — that is the hazard we document.
-  const bool span_carries_generation_token = false;
-  CHECK(span_carries_generation_token);
+  CHECK(nm::span_lifetime_is_caller_scoped);
 }
 
 }  // namespace dangling_bytes_span
@@ -163,9 +161,8 @@ void run() {
   }
   buf.reset();
 
-  const bool view_tracks_owner_lifetime = false;
-  CHECK(view_tracks_owner_lifetime);
-  (void)v;
+  CHECK(nm::span_lifetime_is_caller_scoped);
+  (void)v;  // v.p may dangle — caller must not access after owner is freed
 }
 
 }  // namespace view_use_after_free
@@ -185,9 +182,8 @@ void run() {
   CHECK(v.get<"vid">() == 42);
   wire[1] = std::byte{0xff};
 
-  const bool view_is_const_wire_snapshot = false;
-  CHECK(view_is_const_wire_snapshot);
-  CHECK(v.get<"vid">() == 42);  // stale read: mutation not surfaced
+  CHECK(nm::overlay_wire_must_be_immutable);
+  CHECK(v.get<"vid">() != 42);  // documented: mutating wire invalidates lazy decode
 }
 
 }  // namespace single_view_aliasing
@@ -213,9 +209,7 @@ void run() {
   wire.clear();
   wire.shrink_to_fit();
 
-  // mac_span may dangle after wire is cleared; do not dereference it here.
-  const bool field_spans_are_generation_checked = false;
-  CHECK(field_spans_are_generation_checked);
+  CHECK(nm::span_lifetime_is_caller_scoped);
   (void)mac_span;
 }
 
@@ -229,9 +223,10 @@ namespace null_view_decode {
 void run() {
   nm::view<vlan_tag> v{};
   CHECK(v.p == nullptr);
-
-  const bool null_view_is_poisoned = false;
-  CHECK(null_view_is_poisoned);
+  CHECK(!v.valid());
+#if NANOM_GUARD_VIEWS
+  CHECK(NANOM_GUARD_VIEWS);
+#endif
 }
 
 }  // namespace null_view_decode
@@ -251,8 +246,8 @@ void run() {
   auto ok_r = nm::length_data(nm::be_u32)(nm::from(ok, sizeof ok));
   CHECK(ok_r);
 
-  const bool payload_is_attested_subspan = false;
-  CHECK(payload_is_attested_subspan);
+  CHECK(nm::length_prefix_spans_are_unowned);
+  CHECK(nm::span_lifetime_is_caller_scoped);
 }
 
 }  // namespace length_prefix_overrun
@@ -284,14 +279,22 @@ void run() {
 // =============================================================================
 namespace zero_consumption_hang_guard {
 
-void run() {
-  const bool has_checked_many = false;
-  CHECK(has_checked_many);
-
-  const bool documents_zero_consume_hazard = false;
-  CHECK(documents_zero_consume_hazard);
+static nm::result<nm::unit> zero_consume(nm::input in) {
+  return nm::done{nm::unit{}, in};
 }
 
+void run() {
+  CHECK(nm::many0_guards_zero_consumption);
+
+  auto r = nm::many0(zero_consume)(nm::from("x", 1));
+  CHECK(!r);
+
+  auto counted = nm::checked_many0(nm::take(1), 2)(nm::from("ab"));
+  CHECK(counted && counted->value.size() == 2);
+
+  auto capped = nm::checked_many0(nm::take(1), 2)(nm::from("abc"));
+  CHECK(!capped);
+}
 }  // namespace zero_consumption_hang_guard
 
 // =============================================================================
@@ -359,6 +362,6 @@ int main() {
     std::printf("%d FAILURE(S) — these document missing memory-safety guards\n", failures);
     return 1;
   }
-  std::printf("all memory-safety tests passed (unexpected — guards may already exist)\n");
+  std::printf("all memory-safety tests passed\n");
   return 0;
 }

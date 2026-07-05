@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <bit>
 #include <charconv>
 #include <concepts>
@@ -48,6 +49,16 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+// Debug view guards: assert on null overlay access. Enabled in debug builds;
+// override with -DNANOM_GUARD_VIEWS=0/1 (memory-safety tests force it on).
+#ifndef NANOM_GUARD_VIEWS
+# if !defined(NDEBUG)
+#  define NANOM_GUARD_VIEWS 1
+# else
+#  define NANOM_GUARD_VIEWS 0
+# endif
+#endif
 
 // NANOM_HD marks the functions on the zero-copy decode path as callable from a
 // GPU kernel. On a normal host build it expands to nothing (zero cost, zero API

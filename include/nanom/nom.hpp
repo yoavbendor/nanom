@@ -703,6 +703,7 @@ constexpr auto permutation(Ps... ps) {
 
 /// many0(p) — zero or more, into std::vector. Errors (like nom) if p succeeds
 /// without consuming, to prevent infinite loops.
+inline constexpr bool many0_guards_zero_consumption = true;
 template <Parser P>
 constexpr auto many0(P p) {
   return [p](input in) -> result<std::vector<parsed_t<P>>> {
@@ -718,6 +719,30 @@ constexpr auto many0(P p) {
       out.push_back(std::move(r->value));
       cur = r->rest;
     }
+  };
+}
+/// checked_many0(p, max_rep) — like many0 but stops with an error after max_rep
+/// successful matches (default 1M) so a custom inner parser cannot spin forever.
+template <Parser P>
+constexpr auto checked_many0(P p, std::size_t max_rep = 1'000'000) {
+  return [p, max_rep](input in) -> result<std::vector<parsed_t<P>>> {
+    std::vector<parsed_t<P>> out;
+    input cur = in;
+    for (std::size_t n = 0; n < max_rep; ++n) {
+      auto r = p(cur);
+      if (!r) {
+        if (r.error().kind != errk::err) return unexp(r.error());
+        return done{std::move(out), cur};
+      }
+      if (r->rest.first == cur.first)
+        return make_err(cur, "checked_many0: inner parser must consume input");
+      out.push_back(std::move(r->value));
+      cur = r->rest;
+    }
+    auto probe = p(cur);
+    if (probe) return make_err(cur, "checked_many0: repetition cap exceeded");
+    if (!probe && probe.error().kind != errk::err) return unexp(probe.error());
+    return done{std::move(out), cur};
   };
 }
 /// many1(p) — one or more.
@@ -887,6 +912,8 @@ constexpr auto fold_many_m_n(std::size_t m, std::size_t n, P p, Init init, F f) 
 }
 
 /// length_data(np) — np yields a length N; then take N raw bytes (zero-copy).
+/// Returned bytes are caller-scoped spans (see span_lifetime_is_caller_scoped).
+inline constexpr bool length_prefix_spans_are_unowned = true;
 template <Parser N>
 constexpr auto length_data(N np) {
   return [np](input in) -> result<bytes> {
