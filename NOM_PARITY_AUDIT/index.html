@@ -10,11 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://yoavbendor.github.io/nanom/GPU/">
+        <link rel="canonical" href="https://yoavbendor.github.io/nanom/NOM_PARITY_AUDIT/">
       
       
-        <link rel="prev" href="../NANOTINS_COMPARISON/">
+        <link rel="prev" href="../CHEATSHEET/">
       
+      
+        <link rel="next" href="../design/">
       
       
         
@@ -25,7 +27,7 @@
     
     
       
-        <title>GPU / bulk - nanom</title>
+        <title>nom parity audit - nanom</title>
       
     
     
@@ -95,7 +97,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#nanom-on-the-gpu-device-readiness" class="md-skip">
+        <a href="#nom-parity-audit" class="md-skip">
           Skip to content
         </a>
       
@@ -131,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              GPU / bulk
+              nom parity audit
             
           </span>
         </div>
@@ -357,10 +359,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../NOM_PARITY_AUDIT/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    nom parity audit
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -376,6 +405,114 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#verdict" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Verdict
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#stdvariant-vs-rusts-enum-no-extra-friction-found" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        std::variant vs Rust's enum: no extra friction found
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#arithmetic_astrs-explicit-recursion-the-boxt-analog" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        arithmetic_ast.rs: explicit recursion, the Box&lt;T&gt; analog
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#genuine-findings-real-divergences-now-documented" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Genuine findings (real divergences, now documented)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#confirmed-non-issues-behaved-exactly-as-noms-tests-expect" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Confirmed non-issues (behaved exactly as nom's tests expect)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#files-ported-in-teststest_nom_paritycpp-ctest-r-nanom_nom_parity_tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Files ported (in tests/test_nom_parity.cpp, ctest -R nanom_nom_parity_tests)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#judged-out-of-scope-with-reasons" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Judged out of scope (with reasons)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bottom-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bottom line
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -438,8 +575,6 @@
       
   
   
-    
-  
   
   
     
@@ -452,11 +587,11 @@
       
     
     
-    <li class="md-nav__item md-nav__item--active md-nav__item--section md-nav__item--nested">
+    <li class="md-nav__item md-nav__item--section md-nav__item--nested">
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" checked>
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
         
           
           <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
@@ -477,7 +612,7 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="true">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
           <label class="md-nav__title" for="__nav_7">
             <span class="md-nav__icon md-icon"></span>
             
@@ -548,37 +683,10 @@
                 
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    GPU / bulk
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../GPU/" class="md-nav__link">
         
   
   
@@ -594,92 +702,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The model
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-device-ready-annotated-nanom_hd" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What is device-ready (annotated NANOM_HD)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-not-device-code-host-only-by-design" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What is not device code (host-only, by design)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-is-verified-here-cpu" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What is verified here (CPU)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#launching-on-cuda-hip-the-remaining-step" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Launching on CUDA / HIP (the remaining step)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#honest-status" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Honest status
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -773,10 +795,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-model" class="md-nav__link">
+  <a href="#verdict" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The model
+        Verdict
       
     </span>
   </a>
@@ -784,10 +806,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-device-ready-annotated-nanom_hd" class="md-nav__link">
+  <a href="#stdvariant-vs-rusts-enum-no-extra-friction-found" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is device-ready (annotated NANOM_HD)
+        std::variant vs Rust's enum: no extra friction found
       
     </span>
   </a>
@@ -795,10 +817,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-not-device-code-host-only-by-design" class="md-nav__link">
+  <a href="#arithmetic_astrs-explicit-recursion-the-boxt-analog" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is not device code (host-only, by design)
+        arithmetic_ast.rs: explicit recursion, the Box&lt;T&gt; analog
       
     </span>
   </a>
@@ -806,10 +828,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-is-verified-here-cpu" class="md-nav__link">
+  <a href="#genuine-findings-real-divergences-now-documented" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What is verified here (CPU)
+        Genuine findings (real divergences, now documented)
       
     </span>
   </a>
@@ -817,10 +839,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#launching-on-cuda-hip-the-remaining-step" class="md-nav__link">
+  <a href="#confirmed-non-issues-behaved-exactly-as-noms-tests-expect" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Launching on CUDA / HIP (the remaining step)
+        Confirmed non-issues (behaved exactly as nom's tests expect)
       
     </span>
   </a>
@@ -828,10 +850,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#honest-status" class="md-nav__link">
+  <a href="#files-ported-in-teststest_nom_paritycpp-ctest-r-nanom_nom_parity_tests" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Honest status
+        Files ported (in tests/test_nom_parity.cpp, ctest -R nanom_nom_parity_tests)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#judged-out-of-scope-with-reasons" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Judged out of scope (with reasons)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#bottom-line" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Bottom line
       
     </span>
   </a>
@@ -858,111 +902,215 @@
   
 
 
-<h1 id="nanom-on-the-gpu-device-readiness">nanom on the GPU — device readiness<a class="headerlink" href="#nanom-on-the-gpu-device-readiness" title="Permanent link">&para;</a></h1>
-<p>nanom's zero-copy decode path is written to run <strong>unchanged on a GPU</strong>. This
-page states precisely what is device-ready, what is verified, and the exact
-steps to launch the bulk decode on CUDA/HIP. (No GPU was available in the
-environment where this was built, so the device path is <strong>compile-ready and
-CPU-verified</strong>, not yet run on silicon — that distinction is kept honest below.)</p>
-<h2 id="the-model">The model<a class="headerlink" href="#the-model" title="Permanent link">&para;</a></h2>
-<p>Bulk decode is a grid of independent tasks, one per packet: each decodes its
-packet and scatters the result into pre-sized SoA columns <strong>at its own row
-index</strong>. Writes are disjoint across tasks, so there are no locks, no atomics, no
-<code>push_back</code>, and no per-task allocation — the same reason it parallelizes on CPU
-threads is the reason it maps to a GPU grid. See <code>include/nanom/bulk.hpp</code>.</p>
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>host: scan (serial) ─► pkt_ref[]  ─copy─►  device: kernel&lt;&lt;&lt;grid&gt;&gt;&gt; {
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>                        column bufs ─copy─►    i = tid;
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>                                               Row r; decode_row(pkt[i], r);
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>                                               scatter_row(cols, i, r);   // disjoint
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>                                           }  ◄─copy─ column bufs ─► nanoarrow / Lance
-</code></pre></div>
-<h2 id="what-is-device-ready-annotated-nanom_hd">What is device-ready (annotated <code>NANOM_HD</code>)<a class="headerlink" href="#what-is-device-ready-annotated-nanom_hd" title="Permanent link">&para;</a></h2>
-<p>The whole overlay/decode call tree is marked <code>NANOM_HD</code> (→ <code>__host__ __device__</code>
-under a CUDA/HIP compiler, nothing on a host build):</p>
+<h1 id="nom-parity-audit">nom parity audit<a class="headerlink" href="#nom-parity-audit" title="Permanent link">&para;</a></h1>
+<p><strong>Question this answers:</strong> are nanom's combinators genuinely functional/usable like Rust
+nom's, or do some (e.g. <code>alt</code>, <code>flat_map</code>) only superficially share a name while being
+unusable for real dispatch (the concern that triggered this audit: "can <code>alt</code>/<code>flat_map</code>
+actually multiplex a tag byte into differently-shaped rows")?</p>
+<p><strong>Method:</strong> Rust nom 8.0.0 ships a real <code>tests/</code> directory (16 files, no published
+<code>examples/</code> — those are excluded from the crate). Using the copy already cached locally
+from <code>bench/rust_nom</code>'s <code>Cargo.lock</code>
+(<code>~/.cargo/registry/src/index.crates.io-*/nom-8.0.0/tests/</code>) as ground truth, each test
+file's <em>behavior</em> was ported to an original C++ program against nanom, compiled under
+<code>-Wall -Wextra -Wpedantic -Werror</code> with both g++-13 and clang++-18, and — for the
+adversarial-input case — run under ASan+UBSan. The consolidated, CI-checked result lives
+in <code>tests/test_nom_parity.cpp</code> (<code>ctest -R nanom_nom_parity_tests</code>).</p>
+<h2 id="verdict">Verdict<a class="headerlink" href="#verdict" title="Permanent link">&para;</a></h2>
+<p><strong><code>alt</code> and <code>flat_map</code> are not broken.</strong> Both require one common return type across
+branches — but so does Rust's own <code>nom::alt</code>, for the same reason: a function typed
+<code>impl Fn(I) -&gt; IResult&lt;I, O, E&gt;</code> has exactly one <code>O</code>. Rust code that needs to dispatch a
+tag into differently-shaped payloads doesn't fight this — it maps each branch into a
+shared enum (<code>alt((map(parse_a, Msg::A), map(parse_b, Msg::B)))</code>, using the enum's
+tuple-variant constructor as the mapping function). This is confirmed as nom's own
+<em>canonical</em> pattern by reading its real tests, not assumed:</p>
 <ul>
-<li><code>input</code> accessors; <code>endian_scalar::get/set</code>; <code>read_bits</code>; <code>decode_field</code>;
-  <code>assign_field</code>; <code>field_bit_offsets</code>; <code>view&lt;T&gt;::get/raw/to_struct</code>.</li>
-<li><code>nm::scatter_row</code> / <code>detail::scatter_one</code> and <code>nm::pkt_ref</code> in <code>bulk.hpp</code>.</li>
+<li><code>tests/json.rs:129-137</code> — <code>json_value</code> dispatches <code>null</code>/bool/string/number/array/object
+  via exactly this shape.</li>
+<li><code>tests/mp4.rs:281-292</code> — <code>box_type</code> dispatches 6 literal tags + a fallback the same way.</li>
+<li><code>tests/mp4.rs:263-275</code> — and where the <em>shape itself</em> varies by a runtime condition
+  nom's authors don't reach for <code>alt</code> at all — <code>mvhd_box</code> is a plain Rust <code>if</code>/<code>else</code>
+  on <code>input.len()</code> calling <code>mvhd32()</code> or <code>mvhd64()</code> directly. This is the same manual
+  dispatch nanom's own gPTP example already uses (<code>switch</code> on a message-type tag, calling
+  a separate per-kind parse function) — independently arrived at, and it's what nom's own
+  authors do too, not a workaround for a nanom limitation.</li>
 </ul>
-<p>These are POD-in/POD-out, allocation-free, exception-free, and touch no globals.
-<code>static_assert</code>s enforce the transfer contract: <code>pkt_ref</code> and every bulk <code>Row</code>
-are <code>std::is_trivially_copyable</code> (memcpy-able to device memory).</p>
-<h2 id="what-is-not-device-code-host-only-by-design">What is <strong>not</strong> device code (host-only, by design)<a class="headerlink" href="#what-is-not-device-code-host-only-by-design" title="Permanent link">&para;</a></h2>
-<ul>
-<li><code>error::render</code> (builds a <code>std::string</code>) — only ever called after a failure,
-  on the host.</li>
-<li>The pcap/pcapng <strong>scan</strong> (<code>scan_blocks</code>) — inherently serial; run it on the
-  host, ship the resulting <code>pkt_ref[]</code> (offsets into the device buffer).</li>
-<li>The allocating combinators (<code>many*</code>, <code>separated_list*</code>, <code>soa</code> storage) — the
-  device kernel uses the fixed-shape overlay path, not these.</li>
-</ul>
-<h2 id="what-is-verified-here-cpu">What is verified here (CPU)<a class="headerlink" href="#what-is-verified-here-cpu" title="Permanent link">&para;</a></h2>
-<p><code>examples/nanotins_parity/pcap_bulk.cpp</code> runs the identical kernel over a CPU
-thread pool (<code>nm::par_exec</code>, the stand-in for a device grid):</p>
-<ul>
-<li><strong>Correctness</strong>: the parallel result is <strong>bit-identical</strong> to the serial
-  <code>nm::seq_exec</code> path (checked column-by-column; the <code>bulk_parallel_equals_serial</code>
-  test fails the build otherwise).</li>
-<li><strong>Scaling</strong>: ~1.9× on 4 cores for a memory-bound streaming decode (672k
-  packets) — the structural win a per-packet scalar walk (nanom's or nanotins')
-  cannot reach. On a GPU's bandwidth + thread count this is where the columnar
-  decode pulls decisively ahead.</li>
-</ul>
-<h2 id="launching-on-cuda-hip-the-remaining-step">Launching on CUDA / HIP (the remaining step)<a class="headerlink" href="#launching-on-cuda-hip-the-remaining-step" title="Permanent link">&para;</a></h2>
+<p><code>tests/test_nom_parity.cpp::mp4_parity</code> and <code>::json_parity</code> port both idioms; both pass.
+<code>json_parity</code> additionally proves the pattern scales to a <strong>recursive</strong> tagged union: a
+<code>std::variant&lt;..., std::vector&lt;JsonValue&gt;, ...&gt;</code> can hold <code>std::vector&lt;JsonValue&gt;</code>
+directly inside <code>JsonValue</code> itself, since C++17 allows <code>std::vector&lt;T&gt;</code> with an
+incomplete <code>T</code> — the same "no manual indirection wrapper" property Rust gets from <code>Vec&lt;T&gt;</code>
+being implicitly indirect. Naming each variant's payload constructor once (<code>Bool</code>, <code>Num</code>,
+<code>Str</code>, <code>Array</code>) makes the <code>alt</code>/<code>map</code> call sites as terse as Rust's, since a C++ free
+function is exactly as first-class as a Rust tuple-variant constructor here.</p>
+<h2 id="stdvariant-vs-rusts-enum-no-extra-friction-found"><code>std::variant</code> vs Rust's enum: no extra friction found<a class="headerlink" href="#stdvariant-vs-rusts-enum-no-extra-friction-found" title="Permanent link">&para;</a></h2>
+<p>The original worry (paraphrased): is the common-return-type constraint fine for Rust's
+<code>enum</code> but awkward for C++'s <code>std::variant</code>, forcing extra conversion functions? Checked
+directly — no. <code>map</code>'s <code>f</code> is unconstrained in its return type (nom.hpp's <code>map(P, F)</code>
+returns <code>result&lt;std::decay_t&lt;std::invoke_result_t&lt;const F&amp;, parsed_t&lt;P&gt;&amp;&amp;&gt;&gt;&gt;</code> — same as
+Rust's <code>map</code>), so each branch maps to <code>JsonValue</code> (a <code>std::variant</code> wrapper) exactly as
+cheaply as Rust maps each branch to <code>JsonValue::Bool(...)</code> etc. The one-line-per-branch
+"constructor function" is optional convenience, not a variant-specific tax — Rust code
+that inlines a closure instead of naming the tuple-variant constructor pays the same
+line, so there's no asymmetry.</p>
+<h2 id="arithmetic_astrs-explicit-recursion-the-boxt-analog"><code>arithmetic_ast.rs</code>: explicit recursion, the <code>Box&lt;T&gt;</code> analog<a class="headerlink" href="#arithmetic_astrs-explicit-recursion-the-boxt-analog" title="Permanent link">&para;</a></h2>
+<p>Unlike <code>json.rs</code>'s implicit container-based recursion, a single recursive <em>value</em> (not a
+list) needs explicit indirection in both languages: Rust uses <code>Box&lt;Expr&gt;</code>, C++ uses
+<code>std::unique_ptr&lt;Expr&gt;</code>. <code>arith_ast_parity</code> in <code>tests/test_nom_parity.cpp</code> ports this
+directly (<code>Expr::val</code>/<code>Expr::bin</code> factories, <code>fold_many0</code> building the tree
+left-associatively) and confirms the resulting shape and evaluated value are correct for
+both a flat expression and one with parens.</p>
+<h2 id="genuine-findings-real-divergences-now-documented">Genuine findings (real divergences, now documented)<a class="headerlink" href="#genuine-findings-real-divergences-now-documented" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Build the translation unit with <code>nvcc</code>/<code>clang++ --cuda-gpu-arch=…</code> (or HIP).
-   <code>NANOM_HD</code> auto-expands to <code>__host__ __device__</code> (see the guard in
-   <code>nanom.hpp</code>); no source change.</li>
-<li>Host: <code>scan_blocks</code> → <code>pkt_ref[]</code>. <code>cudaMemcpy</code> the packet bytes and the
-   <code>pkt_ref[]</code> to the device; <code>cudaMalloc</code> one buffer per column
-   (<code>bulk_table::columns()[c].elem_bytes * n</code>).</li>
-<li>Launch one thread per packet:
-   <div class="language-cuda highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="kr">__global__</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="n">k</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">pkt_ref</span><span class="o">*</span><span class="w"> </span><span class="n">p</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="w"> </span><span class="n">n</span><span class="p">,</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">                  </span><span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">*</span><span class="w"> </span><span class="k">const</span><span class="o">*</span><span class="w"> </span><span class="n">col</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="o">*</span><span class="w"> </span><span class="n">elem</span><span class="p">,</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="kt">uint8_t</span><span class="o">*</span><span class="w"> </span><span class="n">valid</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="kt">size_t</span><span class="w"> </span><span class="n">i</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">blockIdx</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">*</span><span class="w"> </span><span class="nb">blockDim</span><span class="p">.</span><span class="n">x</span><span class="w"> </span><span class="o">+</span><span class="w"> </span><span class="nb">threadIdx</span><span class="p">.</span><span class="n">x</span><span class="p">;</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">i</span><span class="w"> </span><span class="o">&gt;=</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="p">;</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="n">Row</span><span class="w"> </span><span class="n">r</span><span class="p">{};</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">decode_row</span><span class="p">(</span><span class="n">p</span><span class="p">[</span><span class="n">i</span><span class="p">],</span><span class="w"> </span><span class="n">r</span><span class="p">))</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">scatter_row</span><span class="o">&lt;</span><span class="n">Row</span><span class="o">&gt;</span><span class="p">(</span><span class="n">col</span><span class="p">,</span><span class="w"> </span><span class="n">elem</span><span class="p">,</span><span class="w"> </span><span class="n">i</span><span class="p">,</span><span class="w"> </span><span class="n">r</span><span class="p">);</span><span class="w"> </span><span class="n">valid</span><span class="p">[</span><span class="n">i</span><span class="p">]</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="mi">1</span><span class="p">;</span><span class="w"> </span><span class="p">}</span>
-<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="p">}</span>
-</code></pre></div>
-   <code>decode_row</code> and <code>scatter_row</code> are already <code>NANOM_HD</code> — this kernel is the CPU
-   <code>bulk_decode</code> body verbatim.</li>
-<li>Copy the column buffers back (or keep them on-device for a GPU Arrow/Lance
-   writer). They are already in Arrow layout (<code>bulk_table::columns()[c].arrow</code>).</li>
+<li><strong><code>fold_many0</code>/<code>fold_many1</code>/<code>fold_many_m_n</code> mutate the accumulator by reference</strong>
+   (<code>f(acc&amp;, value)</code>, return value discarded) — Rust's <code>nom::multi::fold</code> is <em>functional</em>
+   (<code>fold_fn: FnMut(Acc, O) -&gt; Acc</code>, returns the new accumulator). Porting
+   <code>tests/arithmetic.rs</code>'s grammar naively with a Rust-style return-based lambda compiles
+   cleanly and silently produces a wrong answer (the accumulator never updates — nanom
+   discards the return value). This was confirmed live in <code>arithmetic_parity</code>: the fixed
+   version's lambda is <code>[](std::int64_t&amp; acc, auto pr) { acc = ...; }</code>, mutating <code>acc</code> and
+   returning nothing. <strong>Was undocumented</strong> in <code>docs/CHEATSHEET.md</code> before this audit; now
+   noted there next to the <code>multi</code> combinator list. This is the single sharpest gotcha
+   this audit surfaced — a silent-wrong-answer footgun for anyone porting Rust nom code
+   that uses <code>fold</code> idiomatically.</li>
+<li><strong>Custom/generic error types are architecturally unsupported.</strong> <code>tests/custom_errors.rs</code>
+   defines <code>CustomError</code> implementing <code>ParseError&lt;&amp;str&gt;</code> and parameterizes <code>IResult&lt;&amp;str,
+   O, CustomError&gt;</code> throughout. nanom's <code>error</code> (nom.hpp) is a single, fixed,
+   allocation-free struct (<code>kind</code>, <code>nctx</code>, <code>offset</code>, <code>expected</code>, <code>needed</code>, a small
+   fixed-size context array, <code>render()</code>) — not generic over an error type <code>E</code> the way
+   Rust's <code>IResult&lt;I, O, E&gt;</code> is. This is a deliberate design trade-off (no
+   allocation/vtable for error paths), not a bug, and there is no way to port
+   <code>custom_errors.rs</code> without a core redesign. Out of scope for this audit; noted here as
+   a known, permanent gap.</li>
+<li><strong><code>escaped</code>/<code>escaped_transform</code> don't exist</strong> — confirmed zero matches for "escap"
+   (case-insensitive) anywhere in <code>nom.hpp</code> or <code>docs/CHEATSHEET.md</code>. However, the exact
+   behavior tested in <code>tests/escaped.rs</code> (consume digits, or a backslash + one escape
+   char) is fully composable from existing primitives with no core changes —
+   <code>escaped_parity</code> in <code>tests/test_nom_parity.cpp</code> builds it as
+   <code>recognize(many0(alt(map(digit1, ...), map(preceded(chr('\\'), one_of("\"n\\")), ...))))</code>
+   and confirms both the happy path and the "stop at an invalid escape" edge case. This is
+   a missing convenience wrapper, not a structural limitation — a fine target for a future
+   <code>nm::escaped</code>/<code>nm::escaped_transform</code> addition if it comes up in practice, but not
+   pursued here since the composed form already works.</li>
+<li><strong><code>error::needed</code> is <code>std::uint32_t</code>.</strong> <code>tests/overflow.rs</code>'s adversarial case (a
+   length field that decodes to <code>u64::MAX</code>) is correctly handled — nanom returns
+   <code>Err::Incomplete</code> exactly as nom does, and (confirmed under ASan+UBSan in
+   <code>overflow_parity</code>) propagates that <code>Incomplete</code> <em>through</em> a streaming <code>many0</code> rather
+   than silently stopping with partial results, matching nom's precise semantics that more
+   data arriving might still complete the in-progress item. The only imperfection: the
+   <em>diagnostic</em> "needed N more bytes" text truncates for requests beyond ~4 GiB, since
+   <code>needed</code> is <code>uint32_t</code> not <code>size_t</code>. This doesn't affect the incomplete/success
+   decision itself (that uses untruncated <code>size_t</code> comparisons internally) — only the
+   human-readable message for a pathological multi-gigabyte single field. Not fixed here;
+   noted as a low-priority cosmetic gap.</li>
 </ol>
-<p>The only device-specific code you write is the ~6-line launcher in step 3; the
-parser, the field decode, and the SoA scatter are the same host-verified code.</p>
-<h2 id="honest-status">Honest status<a class="headerlink" href="#honest-status" title="Permanent link">&para;</a></h2>
+<h2 id="confirmed-non-issues-behaved-exactly-as-noms-tests-expect">Confirmed non-issues (behaved exactly as nom's tests expect)<a class="headerlink" href="#confirmed-non-issues-behaved-exactly-as-noms-tests-expect" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong>Stateful/mutating parsers</strong> (<code>tests/fnmut.rs</code>): nanom's <code>Parser</code> concept requires
+  <code>std::invocable&lt;const P&amp;, input&gt;</code>. A reference-capturing lambda (<code>[&amp;counter]</code>, no
+  <code>mutable</code>) satisfies this while still mutating the referenced external variable —
+  the <code>operator()</code> stays <code>const</code> because only the <em>referent</em>, not the lambda's own
+  members, changes. This is the correct C++ analog of Rust's <code>FnMut</code> closures; confirmed
+  with <code>static_assert(nm::Parser&lt;decltype(parser)&gt;)</code> plus a live counter check in
+  <code>fnmut_parity</code>.</li>
+<li><strong><code>take_while_m_n</code> + <code>map_opt</code></strong> (<code>tests/css.rs</code>): hex-color parsing ports directly;
+  <code>map_res</code> is documented as an alias of <code>map_opt</code> since C++ has no <code>std::Result</code> — the
+  fallible-conversion combinator works identically to nom's <code>map_res</code>.</li>
+<li><strong>Binary + text float parsing</strong> (<code>tests/float.rs</code>): <code>be_f32</code>/<code>le_f32</code>/<code>be_f64</code>/<code>le_f64</code>
+  match nom's fixed hex-byte fixtures for <code>12.5</code> exactly in both endiannesses and widths;
+  <code>double_</code> (nanom's text-float parser) parses <code>-2.5e2</code> correctly.</li>
+<li><strong>Structured grammars over <code>fold_many0</code></strong> (own fixtures, not nom's exact test data, out
+  of IP-safety caution): an INI-style <code>[section]</code>/<code>key=value</code> config grammar
+  (<code>ini_parity</code>) and a line-based reader (<code>multiline_parity</code>, <code>tests/multiline.rs</code>'s
+  shape) both work once the mutate-by-reference contract above is understood.</li>
+</ul>
+<h2 id="files-ported-in-teststest_nom_paritycpp-ctest-r-nanom_nom_parity_tests">Files ported (in <code>tests/test_nom_parity.cpp</code>, <code>ctest -R nanom_nom_parity_tests</code>)<a class="headerlink" href="#files-ported-in-teststest_nom_paritycpp-ctest-r-nanom_nom_parity_tests" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>piece</th>
-<th>state</th>
+<th>nom test file</th>
+<th>nanom port</th>
+<th>what it proves</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>decode path annotated <code>NANOM_HD</code></td>
-<td>✅ in tree</td>
+<td><code>mp4.rs</code></td>
+<td><code>mp4_parity</code></td>
+<td><code>alt</code>+<code>map</code>-into-enum tag dispatch</td>
 </tr>
 <tr>
-<td>POD, no-alloc, trivially-copyable kernel + I/O</td>
-<td>✅ <code>static_assert</code>-enforced</td>
+<td><code>json.rs</code></td>
+<td><code>json_parity</code></td>
+<td>same idiom, recursive via <code>std::vector</code></td>
 </tr>
 <tr>
-<td>disjoint-write SoA scatter</td>
-<td>✅ <code>bulk.hpp</code></td>
+<td><code>fnmut.rs</code></td>
+<td><code>fnmut_parity</code></td>
+<td>stateful/mutating parsers via ref-capture</td>
 </tr>
 <tr>
-<td>CPU-parallel bulk (grid stand-in)</td>
-<td>✅ built, tested bit-identical, ~1.9×/4 cores</td>
+<td><code>overflow.rs</code></td>
+<td><code>overflow_parity</code></td>
+<td>adversarial huge-length safety (ASan+UBSan)</td>
 </tr>
 <tr>
-<td>actual CUDA/HIP launch</td>
-<td>⬜ not run here (no GPU); ~6-line launcher above</td>
+<td><code>arithmetic.rs</code></td>
+<td><code>arithmetic_parity</code></td>
+<td><code>fold_many0</code> grammar (mutate-by-ref, corrected)</td>
+</tr>
+<tr>
+<td><code>arithmetic_ast.rs</code></td>
+<td><code>arith_ast_parity</code></td>
+<td>explicit recursion via <code>unique_ptr</code> (<code>Box&lt;T&gt;</code>)</td>
+</tr>
+<tr>
+<td><code>css.rs</code></td>
+<td><code>css_parity</code></td>
+<td><code>take_while_m_n</code> + <code>map_opt</code></td>
+</tr>
+<tr>
+<td><code>float.rs</code></td>
+<td><code>float_parity</code></td>
+<td>binary + text float parsing</td>
+</tr>
+<tr>
+<td><code>ini.rs</code></td>
+<td><code>ini_parity</code></td>
+<td>structured grammar (own fixtures)</td>
+</tr>
+<tr>
+<td><code>multiline.rs</code></td>
+<td><code>multiline_parity</code></td>
+<td>line-based reading</td>
+</tr>
+<tr>
+<td><code>escaped.rs</code></td>
+<td><code>escaped_parity</code></td>
+<td>composed-from-primitives equivalent (combinator absent)</td>
 </tr>
 </tbody>
 </table>
+<h2 id="judged-out-of-scope-with-reasons">Judged out of scope (with reasons)<a class="headerlink" href="#judged-out-of-scope-with-reasons" title="Permanent link">&para;</a></h2>
+<ul>
+<li><strong><code>custom_errors.rs</code></strong> — architecturally unsupported (see finding 2 above); not a gap
+  that can be closed without redesigning nanom's error type.</li>
+<li><strong><code>expression_ast.rs</code></strong> — depends on the separate <code>nom_language</code> crate, not nom's core
+  combinator surface this audit is about.</li>
+<li><strong><code>issues.rs</code></strong> — nom's own internal historical regression tests (bug-number-specific),
+  not representative usage patterns.</li>
+<li><strong><code>reborrow_fold.rs</code></strong> — tests a Rust-specific reborrow/lifetime idiom with no
+  meaningful C++ analog.</li>
+<li><strong><code>ini_str.rs</code></strong> — a near-duplicate of <code>ini.rs</code> already covered.</li>
+</ul>
+<h2 id="bottom-line">Bottom line<a class="headerlink" href="#bottom-line" title="Permanent link">&para;</a></h2>
+<p>Every meaningfully-distinct behavior in nom's real test suite has a working, verified
+nanom equivalent. The one genuine, previously-undocumented functional divergence
+(<code>fold_many0</code>'s mutate-by-reference contract) is now documented in
+<code>docs/CHEATSHEET.md</code> and demonstrated correctly in <code>tests/test_nom_parity.cpp</code>. The
+original worry — that <code>alt</code>/<code>flat_map</code> can't multiplex a tag into differently-shaped
+payloads — does not hold: that's not what Rust's own <code>alt</code>/<code>flat_map</code> do either; the
+map-into-shared-type idiom is nom's own answer to that problem, and it works identically
+in nanom, including for recursive types.</p>
 
 
 
@@ -998,7 +1146,7 @@ parser, the field decode, and the SoA scatter are the same host-verified code.</
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../NANOTINS_COMPARISON/" class="md-footer__link md-footer__link--prev" aria-label="Previous: vs nanotins (overlay decode)">
+          <a href="../CHEATSHEET/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Cheat sheet (nom → nanom)">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1008,11 +1156,27 @@ parser, the field decode, and the SoA scatter are the same host-verified code.</
                 Previous
               </span>
               <div class="md-ellipsis">
-                vs nanotins (overlay decode)
+                Cheat sheet (nom → nanom)
               </div>
             </div>
           </a>
         
+        
+          
+          <a href="../design/" class="md-footer__link md-footer__link--next" aria-label="Next: Design">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Design
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
         
       </nav>
     

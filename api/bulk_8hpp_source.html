@@ -144,202 +144,211 @@ $(document).ready(function(){initNavTree('bulk_8hpp_source.html',''); initResiza
 </div>
 <div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span><span class="keyword">static_assert</span>(std::is_trivially_copyable_v&lt;pkt_ref&gt;);</div>
 <div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span> </div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span><span class="keyword">namespace </span>detail {</div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span> </div>
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>NANOM_HD <span class="keyword">inline</span> <span class="keywordtype">void</span> byte_copy(std::byte* dst, <span class="keyword">const</span> <span class="keywordtype">void</span>* src, std::size_t n) {</div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span>  <span class="keyword">const</span> std::byte* s = <span class="keyword">reinterpret_cast&lt;</span><span class="keyword">const </span>std::byte*<span class="keyword">&gt;</span>(src);</div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span>  <span class="keywordflow">for</span> (std::size_t k = 0; k &lt; n; ++k) dst[k] = s[k];</div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span>}</div>
-<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span> </div>
-<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span><span class="keyword">template</span> &lt;<span class="keyword">class</span> F&gt;</div>
-<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span>NANOM_HD <span class="keywordtype">void</span> scatter_one(std::byte* <span class="keyword">const</span>* col_base, <span class="keyword">const</span> std::size_t* elem,</div>
-<div class="line"><a id="l00058" name="l00058"></a><span class="lineno">   58</span>                          std::size_t i, std::size_t&amp; c, <span class="keyword">const</span> F&amp; v) {</div>
-<div class="line"><a id="l00059" name="l00059"></a><span class="lineno">   59</span>  <span class="keywordflow">if</span> <span class="keyword">constexpr</span> (Described&lt;F&gt;) {</div>
-<div class="line"><a id="l00060" name="l00060"></a><span class="lineno">   60</span>    for_each_field&lt;F&gt;([&amp;](<span class="keyword">auto</span> f) { scatter_one(col_base, elem, i, c, v.*(<span class="keyword">decltype</span>(f)::mem_ptr)); });</div>
-<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span>  } <span class="keywordflow">else</span> <span class="keywordflow">if</span> <span class="keyword">constexpr</span> (is_std_array_v&lt;F&gt;) {</div>
-<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>    <span class="keyword">using </span>ED = <span class="keyword">typename</span> wire&lt;typename F::value_type&gt;::decoded;</div>
-<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>    std::byte* dst = col_base[c] + i * elem[c];</div>
-<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>    std::size_t off = 0;</div>
-<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>    <span class="keywordflow">for</span> (<span class="keyword">const</span> <span class="keyword">auto</span>&amp; x : v) { ED d = ED(x); byte_copy(dst + off, &amp;d, <span class="keyword">sizeof</span>(ED)); off += <span class="keyword">sizeof</span>(ED); }</div>
-<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>    ++c;</div>
-<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>  } <span class="keywordflow">else</span> {</div>
-<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>    <span class="keyword">using </span>D = <span class="keyword">typename</span> wire&lt;F&gt;::decoded;</div>
-<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>    D d = D(v);</div>
-<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>    byte_copy(col_base[c] + i * elem[c], &amp;d, <span class="keyword">sizeof</span>(D));</div>
+<div class="foldopen" id="foldopen00046" data-start="{" data-end="}">
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno"><a class="line" href="namespacenanom.html#a49e88fcd9a2c2c5d5e32eaf70845b8fd">   46</a></span><span class="keyword">constexpr</span> <span class="keywordtype">bool</span> <a class="code hl_function" href="namespacenanom.html#a49e88fcd9a2c2c5d5e32eaf70845b8fd">pkt_ref_valid</a>(<span class="keyword">const</span> <a class="code hl_struct" href="structnanom_1_1pkt__ref.html">pkt_ref</a>&amp; p) <span class="keyword">noexcept</span> {</div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span>  <span class="keywordflow">return</span> p.<a class="code hl_variable" href="structnanom_1_1pkt__ref.html#a57cb0809e535b341028a40957916f8d8">data</a> != <span class="keyword">nullptr</span> || p.len == 0;</div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span>}</div>
+</div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span> </div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span><span class="keyword">namespace </span>detail {</div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span> </div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span>NANOM_HD <span class="keyword">inline</span> <span class="keywordtype">void</span> byte_copy(std::byte* dst, <span class="keyword">const</span> <span class="keywordtype">void</span>* src, std::size_t n) {</div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span>  <span class="keyword">const</span> std::byte* s = <span class="keyword">reinterpret_cast&lt;</span><span class="keyword">const </span>std::byte*<span class="keyword">&gt;</span>(src);</div>
+<div class="line"><a id="l00055" name="l00055"></a><span class="lineno">   55</span>  <span class="keywordflow">for</span> (std::size_t k = 0; k &lt; n; ++k) dst[k] = s[k];</div>
+<div class="line"><a id="l00056" name="l00056"></a><span class="lineno">   56</span>}</div>
+<div class="line"><a id="l00057" name="l00057"></a><span class="lineno">   57</span> </div>
+<div class="line"><a id="l00061" name="l00061"></a><span class="lineno">   61</span><span class="keyword">template</span> &lt;<span class="keyword">class</span> F&gt;</div>
+<div class="line"><a id="l00062" name="l00062"></a><span class="lineno">   62</span>NANOM_HD <span class="keywordtype">void</span> scatter_one(std::byte* <span class="keyword">const</span>* col_base, <span class="keyword">const</span> std::size_t* elem,</div>
+<div class="line"><a id="l00063" name="l00063"></a><span class="lineno">   63</span>                          std::size_t i, std::size_t&amp; c, <span class="keyword">const</span> F&amp; v) {</div>
+<div class="line"><a id="l00064" name="l00064"></a><span class="lineno">   64</span>  <span class="keywordflow">if</span> <span class="keyword">constexpr</span> (Described&lt;F&gt;) {</div>
+<div class="line"><a id="l00065" name="l00065"></a><span class="lineno">   65</span>    for_each_field&lt;F&gt;([&amp;](<span class="keyword">auto</span> f) { scatter_one(col_base, elem, i, c, v.*(<span class="keyword">decltype</span>(f)::mem_ptr)); });</div>
+<div class="line"><a id="l00066" name="l00066"></a><span class="lineno">   66</span>  } <span class="keywordflow">else</span> <span class="keywordflow">if</span> <span class="keyword">constexpr</span> (is_std_array_v&lt;F&gt;) {</div>
+<div class="line"><a id="l00067" name="l00067"></a><span class="lineno">   67</span>    <span class="keyword">using </span>ED = <span class="keyword">typename</span> wire&lt;typename F::value_type&gt;::decoded;</div>
+<div class="line"><a id="l00068" name="l00068"></a><span class="lineno">   68</span>    std::byte* dst = col_base[c] + i * elem[c];</div>
+<div class="line"><a id="l00069" name="l00069"></a><span class="lineno">   69</span>    std::size_t off = 0;</div>
+<div class="line"><a id="l00070" name="l00070"></a><span class="lineno">   70</span>    <span class="keywordflow">for</span> (<span class="keyword">const</span> <span class="keyword">auto</span>&amp; x : v) { ED d = ED(x); byte_copy(dst + off, &amp;d, <span class="keyword">sizeof</span>(ED)); off += <span class="keyword">sizeof</span>(ED); }</div>
 <div class="line"><a id="l00071" name="l00071"></a><span class="lineno">   71</span>    ++c;</div>
-<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>  }</div>
-<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>}</div>
-<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span> </div>
-<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>}  <span class="comment">// namespace detail</span></div>
-<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span> </div>
-<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span><span class="keyword">template</span> &lt;Described Row&gt;</div>
-<div class="foldopen" id="foldopen00079" data-start="{" data-end="}">
-<div class="line"><a id="l00079" name="l00079"></a><span class="lineno"><a class="line" href="namespacenanom.html#a0945174dffb02aa93375803bfd0bb12c">   79</a></span>NANOM_HD <span class="keywordtype">void</span> <a class="code hl_function" href="namespacenanom.html#a0945174dffb02aa93375803bfd0bb12c">scatter_row</a>(std::byte* <span class="keyword">const</span>* col_base, <span class="keyword">const</span> std::size_t* elem,</div>
-<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>                          std::size_t i, <span class="keyword">const</span> Row&amp; r) {</div>
-<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span>  std::size_t c = 0;</div>
-<div class="line"><a id="l00082" name="l00082"></a><span class="lineno">   82</span>  detail::for_each_field&lt;Row&gt;([&amp;](<span class="keyword">auto</span> f) {</div>
-<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span>    detail::scatter_one(col_base, elem, i, c, r.*(<span class="keyword">decltype</span>(f)::mem_ptr));</div>
-<div class="line"><a id="l00084" name="l00084"></a><span class="lineno">   84</span>  });</div>
-<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>}</div>
+<div class="line"><a id="l00072" name="l00072"></a><span class="lineno">   72</span>  } <span class="keywordflow">else</span> {</div>
+<div class="line"><a id="l00073" name="l00073"></a><span class="lineno">   73</span>    <span class="keyword">using </span>D = <span class="keyword">typename</span> wire&lt;F&gt;::decoded;</div>
+<div class="line"><a id="l00074" name="l00074"></a><span class="lineno">   74</span>    D d = D(v);</div>
+<div class="line"><a id="l00075" name="l00075"></a><span class="lineno">   75</span>    byte_copy(col_base[c] + i * elem[c], &amp;d, <span class="keyword">sizeof</span>(D));</div>
+<div class="line"><a id="l00076" name="l00076"></a><span class="lineno">   76</span>    ++c;</div>
+<div class="line"><a id="l00077" name="l00077"></a><span class="lineno">   77</span>  }</div>
+<div class="line"><a id="l00078" name="l00078"></a><span class="lineno">   78</span>}</div>
+<div class="line"><a id="l00079" name="l00079"></a><span class="lineno">   79</span> </div>
+<div class="line"><a id="l00080" name="l00080"></a><span class="lineno">   80</span>}  <span class="comment">// namespace detail</span></div>
+<div class="line"><a id="l00081" name="l00081"></a><span class="lineno">   81</span> </div>
+<div class="line"><a id="l00083" name="l00083"></a><span class="lineno">   83</span><span class="keyword">template</span> &lt;Described Row&gt;</div>
+<div class="foldopen" id="foldopen00084" data-start="{" data-end="}">
+<div class="line"><a id="l00084" name="l00084"></a><span class="lineno"><a class="line" href="namespacenanom.html#a0945174dffb02aa93375803bfd0bb12c">   84</a></span>NANOM_HD <span class="keywordtype">void</span> <a class="code hl_function" href="namespacenanom.html#a0945174dffb02aa93375803bfd0bb12c">scatter_row</a>(std::byte* <span class="keyword">const</span>* col_base, <span class="keyword">const</span> std::size_t* elem,</div>
+<div class="line"><a id="l00085" name="l00085"></a><span class="lineno">   85</span>                          std::size_t i, <span class="keyword">const</span> Row&amp; r) {</div>
+<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span>  std::size_t c = 0;</div>
+<div class="line"><a id="l00087" name="l00087"></a><span class="lineno">   87</span>  detail::for_each_field&lt;Row&gt;([&amp;](<span class="keyword">auto</span> f) {</div>
+<div class="line"><a id="l00088" name="l00088"></a><span class="lineno">   88</span>    detail::scatter_one(col_base, elem, i, c, r.*(<span class="keyword">decltype</span>(f)::mem_ptr));</div>
+<div class="line"><a id="l00089" name="l00089"></a><span class="lineno">   89</span>  });</div>
+<div class="line"><a id="l00090" name="l00090"></a><span class="lineno">   90</span>}</div>
 </div>
-<div class="line"><a id="l00086" name="l00086"></a><span class="lineno">   86</span> </div>
-<div class="line"><a id="l00093" name="l00093"></a><span class="lineno">   93</span><span class="keyword">template</span> &lt;Described Row&gt;</div>
-<div class="foldopen" id="foldopen00094" data-start="{" data-end="};">
-<div class="line"><a id="l00094" name="l00094"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html">   94</a></span><span class="keyword">class </span><a class="code hl_class" href="classnanom_1_1bulk__table.html">bulk_table</a> {</div>
-<div class="line"><a id="l00095" name="l00095"></a><span class="lineno">   95</span>  <span class="keyword">static_assert</span>(std::is_trivially_copyable_v&lt;Row&gt;,</div>
-<div class="line"><a id="l00096" name="l00096"></a><span class="lineno">   96</span>                <span class="stringliteral">&quot;bulk_table Row must be trivially copyable (needed for device transfer)&quot;</span>);</div>
-<div class="line"><a id="l00097" name="l00097"></a><span class="lineno">   97</span> <span class="keyword">public</span>:</div>
-<div class="line"><a id="l00098" name="l00098"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a6c247ad028be2b997a71be6341c58b35">   98</a></span>  <span class="keyword">using </span><a class="code hl_typedef" href="classnanom_1_1bulk__table.html#a6c247ad028be2b997a71be6341c58b35">column_info</a> = <span class="keyword">typename</span> <a class="code hl_struct" href="structnanom_1_1soa_1_1column__info.html">soa&lt;Row&gt;::column_info</a>;</div>
-<div class="line"><a id="l00099" name="l00099"></a><span class="lineno">   99</span> </div>
-<div class="line"><a id="l00100" name="l00100"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a643d13a9f0686a1317aa00494059f7b8">  100</a></span>  <a class="code hl_function" href="classnanom_1_1bulk__table.html#a643d13a9f0686a1317aa00494059f7b8">bulk_table</a>() { columns_ = <a class="code hl_class" href="classnanom_1_1soa.html">soa&lt;Row&gt;</a>{}.<a class="code hl_function" href="classnanom_1_1soa.html#a7aa48cabe94cbff0a836ad373b483a18">columns</a>(); }</div>
-<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span> </div>
-<div class="line"><a id="l00102" name="l00102"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a7002258d4686b15f766829734b50c0b1">  102</a></span>  <span class="keyword">const</span> std::vector&lt;column_info&gt;&amp; <a class="code hl_function" href="classnanom_1_1bulk__table.html#a7002258d4686b15f766829734b50c0b1">columns</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> columns_; }</div>
-<div class="line"><a id="l00103" name="l00103"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a62b44da84b87cd2d33ecece50ec8b868">  103</a></span>  std::size_t <a class="code hl_function" href="classnanom_1_1bulk__table.html#a62b44da84b87cd2d33ecece50ec8b868">capacity</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> n_; }</div>
+<div class="line"><a id="l00091" name="l00091"></a><span class="lineno">   91</span> </div>
+<div class="line"><a id="l00098" name="l00098"></a><span class="lineno">   98</span><span class="keyword">template</span> &lt;Described Row&gt;</div>
+<div class="foldopen" id="foldopen00099" data-start="{" data-end="};">
+<div class="line"><a id="l00099" name="l00099"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html">   99</a></span><span class="keyword">class </span><a class="code hl_class" href="classnanom_1_1bulk__table.html">bulk_table</a> {</div>
+<div class="line"><a id="l00100" name="l00100"></a><span class="lineno">  100</span>  <span class="keyword">static_assert</span>(std::is_trivially_copyable_v&lt;Row&gt;,</div>
+<div class="line"><a id="l00101" name="l00101"></a><span class="lineno">  101</span>                <span class="stringliteral">&quot;bulk_table Row must be trivially copyable (needed for device transfer)&quot;</span>);</div>
+<div class="line"><a id="l00102" name="l00102"></a><span class="lineno">  102</span> <span class="keyword">public</span>:</div>
+<div class="line"><a id="l00103" name="l00103"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a6c247ad028be2b997a71be6341c58b35">  103</a></span>  <span class="keyword">using </span><a class="code hl_typedef" href="classnanom_1_1bulk__table.html#a6c247ad028be2b997a71be6341c58b35">column_info</a> = <span class="keyword">typename</span> <a class="code hl_struct" href="structnanom_1_1soa_1_1column__info.html">soa&lt;Row&gt;::column_info</a>;</div>
 <div class="line"><a id="l00104" name="l00104"></a><span class="lineno">  104</span> </div>
-<div class="foldopen" id="foldopen00106" data-start="{" data-end="}">
-<div class="line"><a id="l00106" name="l00106"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a4735c468d383b58922be18214f4de1ea">  106</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classnanom_1_1bulk__table.html#a4735c468d383b58922be18214f4de1ea">prepare</a>(std::size_t n) {</div>
-<div class="line"><a id="l00107" name="l00107"></a><span class="lineno">  107</span>    n_ = n;</div>
-<div class="line"><a id="l00108" name="l00108"></a><span class="lineno">  108</span>    storage_.assign(columns_.size(), {});</div>
-<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span>    base_.assign(columns_.size(), <span class="keyword">nullptr</span>);</div>
-<div class="line"><a id="l00110" name="l00110"></a><span class="lineno">  110</span>    elem_.assign(columns_.size(), 0);</div>
-<div class="line"><a id="l00111" name="l00111"></a><span class="lineno">  111</span>    <span class="keywordflow">for</span> (std::size_t c = 0; c &lt; columns_.size(); ++c) {</div>
-<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>      storage_[c].assign(n * columns_[c].elem_bytes, std::byte{0});</div>
-<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>      base_[c] = storage_[c].data();</div>
-<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>      elem_[c] = columns_[c].elem_bytes;</div>
-<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>    }</div>
-<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>    valid_.assign(n, 0);</div>
-<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>  }</div>
+<div class="line"><a id="l00105" name="l00105"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a643d13a9f0686a1317aa00494059f7b8">  105</a></span>  <a class="code hl_function" href="classnanom_1_1bulk__table.html#a643d13a9f0686a1317aa00494059f7b8">bulk_table</a>() { columns_ = <a class="code hl_class" href="classnanom_1_1soa.html">soa&lt;Row&gt;</a>{}.<a class="code hl_function" href="classnanom_1_1soa.html#a7aa48cabe94cbff0a836ad373b483a18">columns</a>(); }</div>
+<div class="line"><a id="l00106" name="l00106"></a><span class="lineno">  106</span> </div>
+<div class="line"><a id="l00107" name="l00107"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a7002258d4686b15f766829734b50c0b1">  107</a></span>  <span class="keyword">const</span> std::vector&lt;column_info&gt;&amp; <a class="code hl_function" href="classnanom_1_1bulk__table.html#a7002258d4686b15f766829734b50c0b1">columns</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> columns_; }</div>
+<div class="line"><a id="l00108" name="l00108"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a62b44da84b87cd2d33ecece50ec8b868">  108</a></span>  std::size_t <a class="code hl_function" href="classnanom_1_1bulk__table.html#a62b44da84b87cd2d33ecece50ec8b868">capacity</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> n_; }</div>
+<div class="line"><a id="l00109" name="l00109"></a><span class="lineno">  109</span> </div>
+<div class="foldopen" id="foldopen00111" data-start="{" data-end="}">
+<div class="line"><a id="l00111" name="l00111"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a4735c468d383b58922be18214f4de1ea">  111</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="classnanom_1_1bulk__table.html#a4735c468d383b58922be18214f4de1ea">prepare</a>(std::size_t n) {</div>
+<div class="line"><a id="l00112" name="l00112"></a><span class="lineno">  112</span>    n_ = n;</div>
+<div class="line"><a id="l00113" name="l00113"></a><span class="lineno">  113</span>    storage_.assign(columns_.size(), {});</div>
+<div class="line"><a id="l00114" name="l00114"></a><span class="lineno">  114</span>    base_.assign(columns_.size(), <span class="keyword">nullptr</span>);</div>
+<div class="line"><a id="l00115" name="l00115"></a><span class="lineno">  115</span>    elem_.assign(columns_.size(), 0);</div>
+<div class="line"><a id="l00116" name="l00116"></a><span class="lineno">  116</span>    <span class="keywordflow">for</span> (std::size_t c = 0; c &lt; columns_.size(); ++c) {</div>
+<div class="line"><a id="l00117" name="l00117"></a><span class="lineno">  117</span>      storage_[c].assign(n * columns_[c].elem_bytes, std::byte{0});</div>
+<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span>      base_[c] = storage_[c].data();</div>
+<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>      elem_[c] = columns_[c].elem_bytes;</div>
+<div class="line"><a id="l00120" name="l00120"></a><span class="lineno">  120</span>    }</div>
+<div class="line"><a id="l00121" name="l00121"></a><span class="lineno">  121</span>    valid_.assign(n, 0);</div>
+<div class="line"><a id="l00122" name="l00122"></a><span class="lineno">  122</span>  }</div>
 </div>
-<div class="line"><a id="l00118" name="l00118"></a><span class="lineno">  118</span> </div>
-<div class="line"><a id="l00119" name="l00119"></a><span class="lineno">  119</span>  <span class="comment">// --- the device-transferable sink (raw pointers a kernel writes through) ---</span></div>
-<div class="line"><a id="l00120" name="l00120"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a10c32dc0912eeaebda2be431f400c1d1">  120</a></span>  std::byte* <span class="keyword">const</span>*  <a class="code hl_function" href="classnanom_1_1bulk__table.html#a10c32dc0912eeaebda2be431f400c1d1">col_base</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> base_.data(); }</div>
-<div class="line"><a id="l00121" name="l00121"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a31cb80e0c42e202dd15e94bb5cd3cd94">  121</a></span>  <span class="keyword">const</span> std::size_t* <a class="code hl_function" href="classnanom_1_1bulk__table.html#a31cb80e0c42e202dd15e94bb5cd3cd94">col_elem</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> elem_.data(); }</div>
-<div class="line"><a id="l00122" name="l00122"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a4508a458d8ca4689e1cfaacdc7fcfc56">  122</a></span>  std::uint8_t*      <a class="code hl_function" href="classnanom_1_1bulk__table.html#a4508a458d8ca4689e1cfaacdc7fcfc56">valid</a>()          { <span class="keywordflow">return</span> valid_.data(); }</div>
-<div class="line"><a id="l00123" name="l00123"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a71e2f455b9034ba3d12e864c2b8269af">  123</a></span>  <span class="keyword">const</span> std::uint8_t* <a class="code hl_function" href="classnanom_1_1bulk__table.html#a71e2f455b9034ba3d12e864c2b8269af">valid</a>()<span class="keyword"> const   </span>{ <span class="keywordflow">return</span> valid_.data(); }</div>
-<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span> </div>
-<div class="foldopen" id="foldopen00126" data-start="{" data-end="}">
-<div class="line"><a id="l00126" name="l00126"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a831fc913cdbb41bb2c7dce2b0a93d5f2">  126</a></span>  std::size_t <a class="code hl_function" href="classnanom_1_1bulk__table.html#a831fc913cdbb41bb2c7dce2b0a93d5f2">rows</a>()<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00127" name="l00127"></a><span class="lineno">  127</span>    std::size_t k = 0;</div>
-<div class="line"><a id="l00128" name="l00128"></a><span class="lineno">  128</span>    <span class="keywordflow">for</span> (<span class="keyword">auto</span> v : valid_) k += v;</div>
-<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span>    <span class="keywordflow">return</span> k;</div>
-<div class="line"><a id="l00130" name="l00130"></a><span class="lineno">  130</span>  }</div>
+<div class="line"><a id="l00123" name="l00123"></a><span class="lineno">  123</span> </div>
+<div class="line"><a id="l00124" name="l00124"></a><span class="lineno">  124</span>  <span class="comment">// --- the device-transferable sink (raw pointers a kernel writes through) ---</span></div>
+<div class="line"><a id="l00125" name="l00125"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a10c32dc0912eeaebda2be431f400c1d1">  125</a></span>  std::byte* <span class="keyword">const</span>*  <a class="code hl_function" href="classnanom_1_1bulk__table.html#a10c32dc0912eeaebda2be431f400c1d1">col_base</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> base_.data(); }</div>
+<div class="line"><a id="l00126" name="l00126"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a31cb80e0c42e202dd15e94bb5cd3cd94">  126</a></span>  <span class="keyword">const</span> std::size_t* <a class="code hl_function" href="classnanom_1_1bulk__table.html#a31cb80e0c42e202dd15e94bb5cd3cd94">col_elem</a>()<span class="keyword"> const </span>{ <span class="keywordflow">return</span> elem_.data(); }</div>
+<div class="line"><a id="l00127" name="l00127"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a4508a458d8ca4689e1cfaacdc7fcfc56">  127</a></span>  std::uint8_t*      <a class="code hl_function" href="classnanom_1_1bulk__table.html#a4508a458d8ca4689e1cfaacdc7fcfc56">valid</a>()          { <span class="keywordflow">return</span> valid_.data(); }</div>
+<div class="line"><a id="l00128" name="l00128"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a71e2f455b9034ba3d12e864c2b8269af">  128</a></span>  <span class="keyword">const</span> std::uint8_t* <a class="code hl_function" href="classnanom_1_1bulk__table.html#a71e2f455b9034ba3d12e864c2b8269af">valid</a>()<span class="keyword"> const   </span>{ <span class="keywordflow">return</span> valid_.data(); }</div>
+<div class="line"><a id="l00129" name="l00129"></a><span class="lineno">  129</span> </div>
+<div class="foldopen" id="foldopen00131" data-start="{" data-end="}">
+<div class="line"><a id="l00131" name="l00131"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a831fc913cdbb41bb2c7dce2b0a93d5f2">  131</a></span>  std::size_t <a class="code hl_function" href="classnanom_1_1bulk__table.html#a831fc913cdbb41bb2c7dce2b0a93d5f2">rows</a>()<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span>    std::size_t k = 0;</div>
+<div class="line"><a id="l00133" name="l00133"></a><span class="lineno">  133</span>    <span class="keywordflow">for</span> (<span class="keyword">auto</span> v : valid_) k += v;</div>
+<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span>    <span class="keywordflow">return</span> k;</div>
+<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span>  }</div>
 </div>
-<div class="line"><a id="l00132" name="l00132"></a><span class="lineno">  132</span>  <span class="keyword">template</span> &lt;<span class="keyword">class</span> V&gt;</div>
-<div class="foldopen" id="foldopen00133" data-start="{" data-end="}">
-<div class="line"><a id="l00133" name="l00133"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a91e339b940f14bb61f532c2c52169d5c">  133</a></span>  std::span&lt;const V&gt; <a class="code hl_function" href="classnanom_1_1bulk__table.html#a91e339b940f14bb61f532c2c52169d5c">column</a>(std::string_view name)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00134" name="l00134"></a><span class="lineno">  134</span>    <span class="keywordflow">for</span> (std::size_t c = 0; c &lt; columns_.size(); ++c)</div>
-<div class="line"><a id="l00135" name="l00135"></a><span class="lineno">  135</span>      <span class="keywordflow">if</span> (columns_[c].name == name)</div>
-<div class="line"><a id="l00136" name="l00136"></a><span class="lineno">  136</span>        <span class="keywordflow">return</span> {<span class="keyword">reinterpret_cast&lt;</span><span class="keyword">const </span>V*<span class="keyword">&gt;</span>(storage_[c].data()), n_};</div>
-<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span>    <span class="keywordflow">return</span> {};</div>
-<div class="line"><a id="l00138" name="l00138"></a><span class="lineno">  138</span>  }</div>
+<div class="line"><a id="l00137" name="l00137"></a><span class="lineno">  137</span>  <span class="keyword">template</span> &lt;<span class="keyword">class</span> V&gt;</div>
+<div class="foldopen" id="foldopen00138" data-start="{" data-end="}">
+<div class="line"><a id="l00138" name="l00138"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a91e339b940f14bb61f532c2c52169d5c">  138</a></span>  std::span&lt;const V&gt; <a class="code hl_function" href="classnanom_1_1bulk__table.html#a91e339b940f14bb61f532c2c52169d5c">column</a>(std::string_view name)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00139" name="l00139"></a><span class="lineno">  139</span>    <span class="keywordflow">for</span> (std::size_t c = 0; c &lt; columns_.size(); ++c)</div>
+<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span>      <span class="keywordflow">if</span> (columns_[c].name == name)</div>
+<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span>        <span class="keywordflow">return</span> {<span class="keyword">reinterpret_cast&lt;</span><span class="keyword">const </span>V*<span class="keyword">&gt;</span>(storage_[c].data()), n_};</div>
+<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>    <span class="keywordflow">return</span> {};</div>
+<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>  }</div>
 </div>
-<div class="line"><a id="l00139" name="l00139"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a4ae90ee14709ccc2cdee39a2fa05db9e">  139</a></span>  <a class="code hl_typedef" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a> <a class="code hl_function" href="classnanom_1_1bulk__table.html#a4ae90ee14709ccc2cdee39a2fa05db9e">column_bytes</a>(std::size_t c)<span class="keyword"> const </span>{ <span class="keywordflow">return</span> {storage_[c].data(), storage_[c].size()}; }</div>
-<div class="line"><a id="l00140" name="l00140"></a><span class="lineno">  140</span> </div>
-<div class="line"><a id="l00141" name="l00141"></a><span class="lineno">  141</span> <span class="keyword">private</span>:</div>
-<div class="line"><a id="l00142" name="l00142"></a><span class="lineno">  142</span>  std::vector&lt;column_info&gt;            columns_;</div>
-<div class="line"><a id="l00143" name="l00143"></a><span class="lineno">  143</span>  std::vector&lt;std::vector&lt;std::byte&gt;&gt; storage_;</div>
-<div class="line"><a id="l00144" name="l00144"></a><span class="lineno">  144</span>  std::vector&lt;std::byte*&gt;             base_;</div>
-<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span>  std::vector&lt;std::size_t&gt;            elem_;</div>
-<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span>  std::vector&lt;std::uint8_t&gt;           valid_;</div>
-<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>  std::size_t                         n_ = 0;</div>
-<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>};</div>
+<div class="line"><a id="l00144" name="l00144"></a><span class="lineno"><a class="line" href="classnanom_1_1bulk__table.html#a4ae90ee14709ccc2cdee39a2fa05db9e">  144</a></span>  <a class="code hl_typedef" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a> <a class="code hl_function" href="classnanom_1_1bulk__table.html#a4ae90ee14709ccc2cdee39a2fa05db9e">column_bytes</a>(std::size_t c)<span class="keyword"> const </span>{ <span class="keywordflow">return</span> {storage_[c].data(), storage_[c].size()}; }</div>
+<div class="line"><a id="l00145" name="l00145"></a><span class="lineno">  145</span> </div>
+<div class="line"><a id="l00146" name="l00146"></a><span class="lineno">  146</span> <span class="keyword">private</span>:</div>
+<div class="line"><a id="l00147" name="l00147"></a><span class="lineno">  147</span>  std::vector&lt;column_info&gt;            columns_;</div>
+<div class="line"><a id="l00148" name="l00148"></a><span class="lineno">  148</span>  std::vector&lt;std::vector&lt;std::byte&gt;&gt; storage_;</div>
+<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span>  std::vector&lt;std::byte*&gt;             base_;</div>
+<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span>  std::vector&lt;std::size_t&gt;            elem_;</div>
+<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span>  std::vector&lt;std::uint8_t&gt;           valid_;</div>
+<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span>  std::size_t                         n_ = 0;</div>
+<div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span>};</div>
 </div>
-<div class="line"><a id="l00149" name="l00149"></a><span class="lineno">  149</span> </div>
-<div class="line"><a id="l00150" name="l00150"></a><span class="lineno">  150</span><span class="comment">// ---------------------------------------------------------------------------</span></div>
-<div class="line"><a id="l00151" name="l00151"></a><span class="lineno">  151</span><span class="comment">// executors — the &quot;grid&quot;. Each runs a functor over [0, n) once per index.</span></div>
-<div class="line"><a id="l00152" name="l00152"></a><span class="lineno">  152</span><span class="comment">// ---------------------------------------------------------------------------</span></div>
-<div class="line"><a id="l00153" name="l00153"></a><span class="lineno">  153</span> </div>
-<div class="foldopen" id="foldopen00155" data-start="{" data-end="};">
-<div class="line"><a id="l00155" name="l00155"></a><span class="lineno"><a class="line" href="structnanom_1_1seq__exec.html">  155</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structnanom_1_1seq__exec.html">seq_exec</a> {</div>
-<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span>  <span class="keyword">template</span> &lt;<span class="keyword">class</span> F&gt;</div>
-<div class="foldopen" id="foldopen00157" data-start="{" data-end="}">
-<div class="line"><a id="l00157" name="l00157"></a><span class="lineno"><a class="line" href="structnanom_1_1seq__exec.html#ae8bd32f27aa5760a6bf7fb769c82e134">  157</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="structnanom_1_1seq__exec.html#ae8bd32f27aa5760a6bf7fb769c82e134">run</a>(std::size_t n, F&amp;&amp; f)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span>    <span class="keywordflow">for</span> (std::size_t i = 0; i &lt; n; ++i) f(i);</div>
-<div class="line"><a id="l00159" name="l00159"></a><span class="lineno">  159</span>  }</div>
+<div class="line"><a id="l00154" name="l00154"></a><span class="lineno">  154</span> </div>
+<div class="line"><a id="l00155" name="l00155"></a><span class="lineno">  155</span><span class="comment">// ---------------------------------------------------------------------------</span></div>
+<div class="line"><a id="l00156" name="l00156"></a><span class="lineno">  156</span><span class="comment">// executors — the &quot;grid&quot;. Each runs a functor over [0, n) once per index.</span></div>
+<div class="line"><a id="l00157" name="l00157"></a><span class="lineno">  157</span><span class="comment">// ---------------------------------------------------------------------------</span></div>
+<div class="line"><a id="l00158" name="l00158"></a><span class="lineno">  158</span> </div>
+<div class="foldopen" id="foldopen00160" data-start="{" data-end="};">
+<div class="line"><a id="l00160" name="l00160"></a><span class="lineno"><a class="line" href="structnanom_1_1seq__exec.html">  160</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structnanom_1_1seq__exec.html">seq_exec</a> {</div>
+<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span>  <span class="keyword">template</span> &lt;<span class="keyword">class</span> F&gt;</div>
+<div class="foldopen" id="foldopen00162" data-start="{" data-end="}">
+<div class="line"><a id="l00162" name="l00162"></a><span class="lineno"><a class="line" href="structnanom_1_1seq__exec.html#ae8bd32f27aa5760a6bf7fb769c82e134">  162</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="structnanom_1_1seq__exec.html#ae8bd32f27aa5760a6bf7fb769c82e134">run</a>(std::size_t n, F&amp;&amp; f)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00163" name="l00163"></a><span class="lineno">  163</span>    <span class="keywordflow">for</span> (std::size_t i = 0; i &lt; n; ++i) f(i);</div>
+<div class="line"><a id="l00164" name="l00164"></a><span class="lineno">  164</span>  }</div>
 </div>
-<div class="line"><a id="l00160" name="l00160"></a><span class="lineno">  160</span>};</div>
+<div class="line"><a id="l00165" name="l00165"></a><span class="lineno">  165</span>};</div>
 </div>
-<div class="line"><a id="l00161" name="l00161"></a><span class="lineno">  161</span> </div>
-<div class="foldopen" id="foldopen00164" data-start="{" data-end="};">
-<div class="line"><a id="l00164" name="l00164"></a><span class="lineno"><a class="line" href="structnanom_1_1par__exec.html">  164</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structnanom_1_1par__exec.html">par_exec</a> {</div>
-<div class="line"><a id="l00165" name="l00165"></a><span class="lineno"><a class="line" href="structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813">  165</a></span>  <span class="keywordtype">unsigned</span> <a class="code hl_variable" href="structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813">threads</a> = 0;  </div>
-<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span>  <span class="keyword">template</span> &lt;<span class="keyword">class</span> F&gt;</div>
-<div class="foldopen" id="foldopen00167" data-start="{" data-end="}">
-<div class="line"><a id="l00167" name="l00167"></a><span class="lineno"><a class="line" href="structnanom_1_1par__exec.html#a56122c11c8634b5854d7ff812afb1a23">  167</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="structnanom_1_1par__exec.html#a56122c11c8634b5854d7ff812afb1a23">run</a>(std::size_t n, F&amp;&amp; f)<span class="keyword"> const </span>{</div>
-<div class="line"><a id="l00168" name="l00168"></a><span class="lineno">  168</span>    <span class="keywordtype">unsigned</span> t = <a class="code hl_variable" href="structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813">threads</a> ? <a class="code hl_variable" href="structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813">threads</a> : std::max(1u, std::thread::hardware_concurrency());</div>
-<div class="line"><a id="l00169" name="l00169"></a><span class="lineno">  169</span>    <span class="keywordflow">if</span> (t &lt;= 1 || n &lt; 4096) { <span class="keywordflow">for</span> (std::size_t i = 0; i &lt; n; ++i) f(i); <span class="keywordflow">return</span>; }</div>
-<div class="line"><a id="l00170" name="l00170"></a><span class="lineno">  170</span>    <span class="keyword">const</span> std::size_t chunk = (n + t - 1) / t;</div>
-<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span>    std::vector&lt;std::thread&gt; pool;</div>
-<div class="line"><a id="l00172" name="l00172"></a><span class="lineno">  172</span>    pool.reserve(t);</div>
-<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>    <span class="keywordflow">for</span> (<span class="keywordtype">unsigned</span> k = 0; k &lt; t; ++k) {</div>
-<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span>      <span class="keyword">const</span> std::size_t lo = std::size_t(k) * chunk, hi = std::min(n, lo + chunk);</div>
-<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span>      <span class="keywordflow">if</span> (lo &gt;= hi) <span class="keywordflow">break</span>;</div>
-<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span>      pool.emplace_back([&amp;f, lo, hi] { <span class="keywordflow">for</span> (std::size_t i = lo; i &lt; hi; ++i) f(i); });</div>
-<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span>    }</div>
-<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span>    <span class="keywordflow">for</span> (<span class="keyword">auto</span>&amp; th : pool) th.join();</div>
-<div class="line"><a id="l00179" name="l00179"></a><span class="lineno">  179</span>  }</div>
+<div class="line"><a id="l00166" name="l00166"></a><span class="lineno">  166</span> </div>
+<div class="foldopen" id="foldopen00169" data-start="{" data-end="};">
+<div class="line"><a id="l00169" name="l00169"></a><span class="lineno"><a class="line" href="structnanom_1_1par__exec.html">  169</a></span><span class="keyword">struct </span><a class="code hl_struct" href="structnanom_1_1par__exec.html">par_exec</a> {</div>
+<div class="line"><a id="l00170" name="l00170"></a><span class="lineno"><a class="line" href="structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813">  170</a></span>  <span class="keywordtype">unsigned</span> <a class="code hl_variable" href="structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813">threads</a> = 0;  </div>
+<div class="line"><a id="l00171" name="l00171"></a><span class="lineno">  171</span>  <span class="keyword">template</span> &lt;<span class="keyword">class</span> F&gt;</div>
+<div class="foldopen" id="foldopen00172" data-start="{" data-end="}">
+<div class="line"><a id="l00172" name="l00172"></a><span class="lineno"><a class="line" href="structnanom_1_1par__exec.html#a56122c11c8634b5854d7ff812afb1a23">  172</a></span>  <span class="keywordtype">void</span> <a class="code hl_function" href="structnanom_1_1par__exec.html#a56122c11c8634b5854d7ff812afb1a23">run</a>(std::size_t n, F&amp;&amp; f)<span class="keyword"> const </span>{</div>
+<div class="line"><a id="l00173" name="l00173"></a><span class="lineno">  173</span>    <span class="keywordtype">unsigned</span> t = <a class="code hl_variable" href="structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813">threads</a> ? <a class="code hl_variable" href="structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813">threads</a> : std::max(1u, std::thread::hardware_concurrency());</div>
+<div class="line"><a id="l00174" name="l00174"></a><span class="lineno">  174</span>    <span class="keywordflow">if</span> (t &lt;= 1 || n &lt; 4096) { <span class="keywordflow">for</span> (std::size_t i = 0; i &lt; n; ++i) f(i); <span class="keywordflow">return</span>; }</div>
+<div class="line"><a id="l00175" name="l00175"></a><span class="lineno">  175</span>    <span class="keyword">const</span> std::size_t chunk = (n + t - 1) / t;</div>
+<div class="line"><a id="l00176" name="l00176"></a><span class="lineno">  176</span>    std::vector&lt;std::thread&gt; pool;</div>
+<div class="line"><a id="l00177" name="l00177"></a><span class="lineno">  177</span>    pool.reserve(t);</div>
+<div class="line"><a id="l00178" name="l00178"></a><span class="lineno">  178</span>    <span class="keywordflow">for</span> (<span class="keywordtype">unsigned</span> k = 0; k &lt; t; ++k) {</div>
+<div class="line"><a id="l00179" name="l00179"></a><span class="lineno">  179</span>      <span class="keyword">const</span> std::size_t lo = std::size_t(k) * chunk, hi = std::min(n, lo + chunk);</div>
+<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span>      <span class="keywordflow">if</span> (lo &gt;= hi) <span class="keywordflow">break</span>;</div>
+<div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span>      pool.emplace_back([&amp;f, lo, hi] { <span class="keywordflow">for</span> (std::size_t i = lo; i &lt; hi; ++i) f(i); });</div>
+<div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span>    }</div>
+<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span>    <span class="keywordflow">for</span> (<span class="keyword">auto</span>&amp; th : pool) th.join();</div>
+<div class="line"><a id="l00184" name="l00184"></a><span class="lineno">  184</span>  }</div>
 </div>
-<div class="line"><a id="l00180" name="l00180"></a><span class="lineno">  180</span>};</div>
+<div class="line"><a id="l00185" name="l00185"></a><span class="lineno">  185</span>};</div>
 </div>
-<div class="line"><a id="l00181" name="l00181"></a><span class="lineno">  181</span> </div>
-<div class="line"><a id="l00182" name="l00182"></a><span class="lineno">  182</span><span class="comment">// ---------------------------------------------------------------------------</span></div>
-<div class="line"><a id="l00183" name="l00183"></a><span class="lineno">  183</span><span class="comment">// the driver: one row per packet, filled in parallel with disjoint writes.</span></div>
-<div class="line"><a id="l00184" name="l00184"></a><span class="lineno">  184</span><span class="comment">// `kernel(pkt, row) -&gt; bool` decodes packet -&gt; row; false = leave row default</span></div>
-<div class="line"><a id="l00185" name="l00185"></a><span class="lineno">  185</span><span class="comment">// and mark invalid. Returns the number of valid rows produced.</span></div>
-<div class="line"><a id="l00186" name="l00186"></a><span class="lineno">  186</span><span class="comment">// ---------------------------------------------------------------------------</span></div>
-<div class="line"><a id="l00187" name="l00187"></a><span class="lineno">  187</span><span class="keyword">template</span> &lt;Described Row, <span class="keyword">class</span> Kernel, <span class="keyword">class</span> Exec = par_exec&gt;</div>
-<div class="foldopen" id="foldopen00188" data-start="{" data-end="}">
-<div class="line"><a id="l00188" name="l00188"></a><span class="lineno"><a class="line" href="namespacenanom.html#a8875abba328950b56473ed4c7b550960">  188</a></span>std::size_t <a class="code hl_function" href="namespacenanom.html#a8875abba328950b56473ed4c7b550960">bulk_decode</a>(std::span&lt;const pkt_ref&gt; pkts, <a class="code hl_class" href="classnanom_1_1bulk__table.html">bulk_table&lt;Row&gt;</a>&amp; tbl,</div>
-<div class="line"><a id="l00189" name="l00189"></a><span class="lineno">  189</span>                        Kernel kernel, Exec exec = {}) {</div>
-<div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span>  tbl.<a class="code hl_function" href="classnanom_1_1bulk__table.html#a4735c468d383b58922be18214f4de1ea">prepare</a>(pkts.size());</div>
-<div class="line"><a id="l00191" name="l00191"></a><span class="lineno">  191</span>  std::byte* <span class="keyword">const</span>* base  = tbl.<a class="code hl_function" href="classnanom_1_1bulk__table.html#a10c32dc0912eeaebda2be431f400c1d1">col_base</a>();</div>
-<div class="line"><a id="l00192" name="l00192"></a><span class="lineno">  192</span>  <span class="keyword">const</span> std::size_t* elem = tbl.<a class="code hl_function" href="classnanom_1_1bulk__table.html#a31cb80e0c42e202dd15e94bb5cd3cd94">col_elem</a>();</div>
-<div class="line"><a id="l00193" name="l00193"></a><span class="lineno">  193</span>  std::uint8_t*     valid = tbl.<a class="code hl_function" href="classnanom_1_1bulk__table.html#a4508a458d8ca4689e1cfaacdc7fcfc56">valid</a>();</div>
-<div class="line"><a id="l00194" name="l00194"></a><span class="lineno">  194</span>  <span class="keyword">const</span> pkt_ref*    p      = pkts.data();</div>
-<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span>  exec.run(pkts.size(), [=](std::size_t i) {</div>
-<div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span>    Row r{};</div>
-<div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span>    <span class="keywordflow">if</span> (kernel(p[i], r)) {                <span class="comment">// pure, device-safe, no allocation</span></div>
-<div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span>      scatter_row&lt;Row&gt;(base, elem, i, r);</div>
-<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span>      valid[i] = 1;</div>
-<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span>    }</div>
-<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span>  });</div>
-<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span>  <span class="keywordflow">return</span> tbl.<a class="code hl_function" href="classnanom_1_1bulk__table.html#a831fc913cdbb41bb2c7dce2b0a93d5f2">rows</a>();</div>
-<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>}</div>
+<div class="line"><a id="l00186" name="l00186"></a><span class="lineno">  186</span> </div>
+<div class="line"><a id="l00187" name="l00187"></a><span class="lineno">  187</span><span class="comment">// ---------------------------------------------------------------------------</span></div>
+<div class="line"><a id="l00188" name="l00188"></a><span class="lineno">  188</span><span class="comment">// the driver: one row per packet, filled in parallel with disjoint writes.</span></div>
+<div class="line"><a id="l00189" name="l00189"></a><span class="lineno">  189</span><span class="comment">// `kernel(pkt, row) -&gt; bool` decodes packet -&gt; row; false = leave row default</span></div>
+<div class="line"><a id="l00190" name="l00190"></a><span class="lineno">  190</span><span class="comment">// and mark invalid. Returns the number of valid rows produced.</span></div>
+<div class="line"><a id="l00191" name="l00191"></a><span class="lineno">  191</span><span class="comment">// ---------------------------------------------------------------------------</span></div>
+<div class="line"><a id="l00192" name="l00192"></a><span class="lineno">  192</span><span class="keyword">template</span> &lt;Described Row, <span class="keyword">class</span> Kernel, <span class="keyword">class</span> Exec = par_exec&gt;</div>
+<div class="foldopen" id="foldopen00193" data-start="{" data-end="}">
+<div class="line"><a id="l00193" name="l00193"></a><span class="lineno"><a class="line" href="namespacenanom.html#a8875abba328950b56473ed4c7b550960">  193</a></span>std::size_t <a class="code hl_function" href="namespacenanom.html#a8875abba328950b56473ed4c7b550960">bulk_decode</a>(std::span&lt;const pkt_ref&gt; pkts, <a class="code hl_class" href="classnanom_1_1bulk__table.html">bulk_table&lt;Row&gt;</a>&amp; tbl,</div>
+<div class="line"><a id="l00194" name="l00194"></a><span class="lineno">  194</span>                        Kernel kernel, Exec exec = {}) {</div>
+<div class="line"><a id="l00195" name="l00195"></a><span class="lineno">  195</span>  <span class="keywordflow">for</span> (<span class="keyword">const</span> pkt_ref&amp; pk : pkts)</div>
+<div class="line"><a id="l00196" name="l00196"></a><span class="lineno">  196</span>    if (!<a class="code hl_function" href="namespacenanom.html#a49e88fcd9a2c2c5d5e32eaf70845b8fd">pkt_ref_valid</a>(pk)) return 0;</div>
+<div class="line"><a id="l00197" name="l00197"></a><span class="lineno">  197</span>  tbl.<a class="code hl_function" href="classnanom_1_1bulk__table.html#a4735c468d383b58922be18214f4de1ea">prepare</a>(pkts.size());</div>
+<div class="line"><a id="l00198" name="l00198"></a><span class="lineno">  198</span>  std::byte* <span class="keyword">const</span>* base  = tbl.<a class="code hl_function" href="classnanom_1_1bulk__table.html#a10c32dc0912eeaebda2be431f400c1d1">col_base</a>();</div>
+<div class="line"><a id="l00199" name="l00199"></a><span class="lineno">  199</span>  <span class="keyword">const</span> std::size_t* elem = tbl.<a class="code hl_function" href="classnanom_1_1bulk__table.html#a31cb80e0c42e202dd15e94bb5cd3cd94">col_elem</a>();</div>
+<div class="line"><a id="l00200" name="l00200"></a><span class="lineno">  200</span>  std::uint8_t*     valid = tbl.<a class="code hl_function" href="classnanom_1_1bulk__table.html#a4508a458d8ca4689e1cfaacdc7fcfc56">valid</a>();</div>
+<div class="line"><a id="l00201" name="l00201"></a><span class="lineno">  201</span>  <span class="keyword">const</span> pkt_ref*    p      = pkts.data();</div>
+<div class="line"><a id="l00202" name="l00202"></a><span class="lineno">  202</span>  exec.run(pkts.size(), [=](std::size_t i) {</div>
+<div class="line"><a id="l00203" name="l00203"></a><span class="lineno">  203</span>    Row r{};</div>
+<div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span>    <span class="keywordflow">if</span> (kernel(p[i], r)) {                <span class="comment">// pure, device-safe, no allocation</span></div>
+<div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span>      scatter_row&lt;Row&gt;(base, elem, i, r);</div>
+<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span>      valid[i] = 1;</div>
+<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span>    }</div>
+<div class="line"><a id="l00208" name="l00208"></a><span class="lineno">  208</span>  });</div>
+<div class="line"><a id="l00209" name="l00209"></a><span class="lineno">  209</span>  <span class="keywordflow">return</span> tbl.<a class="code hl_function" href="classnanom_1_1bulk__table.html#a831fc913cdbb41bb2c7dce2b0a93d5f2">rows</a>();</div>
+<div class="line"><a id="l00210" name="l00210"></a><span class="lineno">  210</span>}</div>
 </div>
-<div class="line"><a id="l00204" name="l00204"></a><span class="lineno">  204</span> </div>
-<div class="line"><a id="l00205" name="l00205"></a><span class="lineno">  205</span>}  <span class="comment">// namespace nanom</span></div>
+<div class="line"><a id="l00211" name="l00211"></a><span class="lineno">  211</span> </div>
+<div class="line"><a id="l00212" name="l00212"></a><span class="lineno">  212</span>}  <span class="comment">// namespace nanom</span></div>
 </div>
-<div class="line"><a id="l00206" name="l00206"></a><span class="lineno">  206</span> </div>
-<div class="line"><a id="l00207" name="l00207"></a><span class="lineno">  207</span><span class="preprocessor">#endif  </span><span class="comment">// NANOM_BULK_HPP_INCLUDED</span></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html"><div class="ttname"><a href="classnanom_1_1bulk__table.html">nanom::bulk_table</a></div><div class="ttdoc">Column-major, index-addressed table: one contiguous buffer per flattened leaf column,...</div><div class="ttdef"><b>Definition</b> bulk.hpp:94</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a10c32dc0912eeaebda2be431f400c1d1"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a10c32dc0912eeaebda2be431f400c1d1">nanom::bulk_table::col_base</a></div><div class="ttdeci">std::byte *const * col_base() const</div><div class="ttdef"><b>Definition</b> bulk.hpp:120</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a31cb80e0c42e202dd15e94bb5cd3cd94"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a31cb80e0c42e202dd15e94bb5cd3cd94">nanom::bulk_table::col_elem</a></div><div class="ttdeci">const std::size_t * col_elem() const</div><div class="ttdef"><b>Definition</b> bulk.hpp:121</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a4508a458d8ca4689e1cfaacdc7fcfc56"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a4508a458d8ca4689e1cfaacdc7fcfc56">nanom::bulk_table::valid</a></div><div class="ttdeci">std::uint8_t * valid()</div><div class="ttdef"><b>Definition</b> bulk.hpp:122</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a4735c468d383b58922be18214f4de1ea"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a4735c468d383b58922be18214f4de1ea">nanom::bulk_table::prepare</a></div><div class="ttdeci">void prepare(std::size_t n)</div><div class="ttdoc">Allocate column storage for exactly n rows (all zero, valid=0).</div><div class="ttdef"><b>Definition</b> bulk.hpp:106</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a4ae90ee14709ccc2cdee39a2fa05db9e"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a4ae90ee14709ccc2cdee39a2fa05db9e">nanom::bulk_table::column_bytes</a></div><div class="ttdeci">bytes column_bytes(std::size_t c) const</div><div class="ttdef"><b>Definition</b> bulk.hpp:139</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a62b44da84b87cd2d33ecece50ec8b868"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a62b44da84b87cd2d33ecece50ec8b868">nanom::bulk_table::capacity</a></div><div class="ttdeci">std::size_t capacity() const</div><div class="ttdef"><b>Definition</b> bulk.hpp:103</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a643d13a9f0686a1317aa00494059f7b8"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a643d13a9f0686a1317aa00494059f7b8">nanom::bulk_table::bulk_table</a></div><div class="ttdeci">bulk_table()</div><div class="ttdef"><b>Definition</b> bulk.hpp:100</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a6c247ad028be2b997a71be6341c58b35"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a6c247ad028be2b997a71be6341c58b35">nanom::bulk_table::column_info</a></div><div class="ttdeci">typename soa&lt; Row &gt;::column_info column_info</div><div class="ttdef"><b>Definition</b> bulk.hpp:98</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a7002258d4686b15f766829734b50c0b1"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a7002258d4686b15f766829734b50c0b1">nanom::bulk_table::columns</a></div><div class="ttdeci">const std::vector&lt; column_info &gt; &amp; columns() const</div><div class="ttdef"><b>Definition</b> bulk.hpp:102</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a71e2f455b9034ba3d12e864c2b8269af"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a71e2f455b9034ba3d12e864c2b8269af">nanom::bulk_table::valid</a></div><div class="ttdeci">const std::uint8_t * valid() const</div><div class="ttdef"><b>Definition</b> bulk.hpp:123</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a831fc913cdbb41bb2c7dce2b0a93d5f2"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a831fc913cdbb41bb2c7dce2b0a93d5f2">nanom::bulk_table::rows</a></div><div class="ttdeci">std::size_t rows() const</div><div class="ttdoc">Rows the kernel actually produced (valid==1).</div><div class="ttdef"><b>Definition</b> bulk.hpp:126</div></div>
-<div class="ttc" id="aclassnanom_1_1bulk__table_html_a91e339b940f14bb61f532c2c52169d5c"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a91e339b940f14bb61f532c2c52169d5c">nanom::bulk_table::column</a></div><div class="ttdeci">std::span&lt; const V &gt; column(std::string_view name) const</div><div class="ttdoc">Typed view of a column by name (V must match the column's decoded type).</div><div class="ttdef"><b>Definition</b> bulk.hpp:133</div></div>
+<div class="line"><a id="l00213" name="l00213"></a><span class="lineno">  213</span> </div>
+<div class="line"><a id="l00214" name="l00214"></a><span class="lineno">  214</span><span class="preprocessor">#endif  </span><span class="comment">// NANOM_BULK_HPP_INCLUDED</span></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html"><div class="ttname"><a href="classnanom_1_1bulk__table.html">nanom::bulk_table</a></div><div class="ttdoc">Column-major, index-addressed table: one contiguous buffer per flattened leaf column,...</div><div class="ttdef"><b>Definition</b> bulk.hpp:99</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a10c32dc0912eeaebda2be431f400c1d1"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a10c32dc0912eeaebda2be431f400c1d1">nanom::bulk_table::col_base</a></div><div class="ttdeci">std::byte *const * col_base() const</div><div class="ttdef"><b>Definition</b> bulk.hpp:125</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a31cb80e0c42e202dd15e94bb5cd3cd94"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a31cb80e0c42e202dd15e94bb5cd3cd94">nanom::bulk_table::col_elem</a></div><div class="ttdeci">const std::size_t * col_elem() const</div><div class="ttdef"><b>Definition</b> bulk.hpp:126</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a4508a458d8ca4689e1cfaacdc7fcfc56"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a4508a458d8ca4689e1cfaacdc7fcfc56">nanom::bulk_table::valid</a></div><div class="ttdeci">std::uint8_t * valid()</div><div class="ttdef"><b>Definition</b> bulk.hpp:127</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a4735c468d383b58922be18214f4de1ea"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a4735c468d383b58922be18214f4de1ea">nanom::bulk_table::prepare</a></div><div class="ttdeci">void prepare(std::size_t n)</div><div class="ttdoc">Allocate column storage for exactly n rows (all zero, valid=0).</div><div class="ttdef"><b>Definition</b> bulk.hpp:111</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a4ae90ee14709ccc2cdee39a2fa05db9e"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a4ae90ee14709ccc2cdee39a2fa05db9e">nanom::bulk_table::column_bytes</a></div><div class="ttdeci">bytes column_bytes(std::size_t c) const</div><div class="ttdef"><b>Definition</b> bulk.hpp:144</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a62b44da84b87cd2d33ecece50ec8b868"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a62b44da84b87cd2d33ecece50ec8b868">nanom::bulk_table::capacity</a></div><div class="ttdeci">std::size_t capacity() const</div><div class="ttdef"><b>Definition</b> bulk.hpp:108</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a643d13a9f0686a1317aa00494059f7b8"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a643d13a9f0686a1317aa00494059f7b8">nanom::bulk_table::bulk_table</a></div><div class="ttdeci">bulk_table()</div><div class="ttdef"><b>Definition</b> bulk.hpp:105</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a6c247ad028be2b997a71be6341c58b35"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a6c247ad028be2b997a71be6341c58b35">nanom::bulk_table::column_info</a></div><div class="ttdeci">typename soa&lt; Row &gt;::column_info column_info</div><div class="ttdef"><b>Definition</b> bulk.hpp:103</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a7002258d4686b15f766829734b50c0b1"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a7002258d4686b15f766829734b50c0b1">nanom::bulk_table::columns</a></div><div class="ttdeci">const std::vector&lt; column_info &gt; &amp; columns() const</div><div class="ttdef"><b>Definition</b> bulk.hpp:107</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a71e2f455b9034ba3d12e864c2b8269af"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a71e2f455b9034ba3d12e864c2b8269af">nanom::bulk_table::valid</a></div><div class="ttdeci">const std::uint8_t * valid() const</div><div class="ttdef"><b>Definition</b> bulk.hpp:128</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a831fc913cdbb41bb2c7dce2b0a93d5f2"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a831fc913cdbb41bb2c7dce2b0a93d5f2">nanom::bulk_table::rows</a></div><div class="ttdeci">std::size_t rows() const</div><div class="ttdoc">Rows the kernel actually produced (valid==1).</div><div class="ttdef"><b>Definition</b> bulk.hpp:131</div></div>
+<div class="ttc" id="aclassnanom_1_1bulk__table_html_a91e339b940f14bb61f532c2c52169d5c"><div class="ttname"><a href="classnanom_1_1bulk__table.html#a91e339b940f14bb61f532c2c52169d5c">nanom::bulk_table::column</a></div><div class="ttdeci">std::span&lt; const V &gt; column(std::string_view name) const</div><div class="ttdoc">Typed view of a column by name (V must match the column's decoded type).</div><div class="ttdef"><b>Definition</b> bulk.hpp:138</div></div>
 <div class="ttc" id="aclassnanom_1_1soa_html"><div class="ttname"><a href="classnanom_1_1soa.html">nanom::soa</a></div><div class="ttdoc">Column-oriented accumulator: push() decomposes each struct into flat, host-order leaf columns; full c...</div><div class="ttdef"><b>Definition</b> soa.hpp:22</div></div>
 <div class="ttc" id="aclassnanom_1_1soa_html_a7aa48cabe94cbff0a836ad373b483a18"><div class="ttname"><a href="classnanom_1_1soa.html#a7aa48cabe94cbff0a836ad373b483a18">nanom::soa::columns</a></div><div class="ttdeci">const std::vector&lt; column_info &gt; &amp; columns() const</div><div class="ttdef"><b>Definition</b> soa.hpp:46</div></div>
 <div class="ttc" id="anamespacenanom_html"><div class="ttname"><a href="namespacenanom.html">nanom</a></div><div class="ttdef"><b>Definition</b> bulk.hpp:34</div></div>
-<div class="ttc" id="anamespacenanom_html_a0945174dffb02aa93375803bfd0bb12c"><div class="ttname"><a href="namespacenanom.html#a0945174dffb02aa93375803bfd0bb12c">nanom::scatter_row</a></div><div class="ttdeci">void scatter_row(std::byte *const *col_base, const std::size_t *elem, std::size_t i, const Row &amp;r)</div><div class="ttdoc">Scatter a whole decoded row into the columns at index i. Device-safe.</div><div class="ttdef"><b>Definition</b> bulk.hpp:79</div></div>
+<div class="ttc" id="anamespacenanom_html_a0945174dffb02aa93375803bfd0bb12c"><div class="ttname"><a href="namespacenanom.html#a0945174dffb02aa93375803bfd0bb12c">nanom::scatter_row</a></div><div class="ttdeci">void scatter_row(std::byte *const *col_base, const std::size_t *elem, std::size_t i, const Row &amp;r)</div><div class="ttdoc">Scatter a whole decoded row into the columns at index i. Device-safe.</div><div class="ttdef"><b>Definition</b> bulk.hpp:84</div></div>
 <div class="ttc" id="anamespacenanom_html_a33fb7671e88c21f98371111307cce1e4"><div class="ttname"><a href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">nanom::bytes</a></div><div class="ttdeci">std::span&lt; const std::byte &gt; bytes</div><div class="ttdef"><b>Definition</b> nom.hpp:64</div></div>
-<div class="ttc" id="anamespacenanom_html_a8875abba328950b56473ed4c7b550960"><div class="ttname"><a href="namespacenanom.html#a8875abba328950b56473ed4c7b550960">nanom::bulk_decode</a></div><div class="ttdeci">std::size_t bulk_decode(std::span&lt; const pkt_ref &gt; pkts, bulk_table&lt; Row &gt; &amp;tbl, Kernel kernel, Exec exec={})</div><div class="ttdef"><b>Definition</b> bulk.hpp:188</div></div>
+<div class="ttc" id="anamespacenanom_html_a49e88fcd9a2c2c5d5e32eaf70845b8fd"><div class="ttname"><a href="namespacenanom.html#a49e88fcd9a2c2c5d5e32eaf70845b8fd">nanom::pkt_ref_valid</a></div><div class="ttdeci">constexpr bool pkt_ref_valid(const pkt_ref &amp;p) noexcept</div><div class="ttdoc">True when data is non-null or len is zero (empty packet descriptor).</div><div class="ttdef"><b>Definition</b> bulk.hpp:46</div></div>
+<div class="ttc" id="anamespacenanom_html_a8875abba328950b56473ed4c7b550960"><div class="ttname"><a href="namespacenanom.html#a8875abba328950b56473ed4c7b550960">nanom::bulk_decode</a></div><div class="ttdeci">std::size_t bulk_decode(std::span&lt; const pkt_ref &gt; pkts, bulk_table&lt; Row &gt; &amp;tbl, Kernel kernel, Exec exec={})</div><div class="ttdef"><b>Definition</b> bulk.hpp:193</div></div>
 <div class="ttc" id="asoa_8hpp_html"><div class="ttname"><a href="soa_8hpp.html">soa.hpp</a></div></div>
-<div class="ttc" id="astructnanom_1_1par__exec_html"><div class="ttname"><a href="structnanom_1_1par__exec.html">nanom::par_exec</a></div><div class="ttdoc">CPU thread-pool executor: partitions [0, n) into threads disjoint ranges.</div><div class="ttdef"><b>Definition</b> bulk.hpp:164</div></div>
-<div class="ttc" id="astructnanom_1_1par__exec_html_a56122c11c8634b5854d7ff812afb1a23"><div class="ttname"><a href="structnanom_1_1par__exec.html#a56122c11c8634b5854d7ff812afb1a23">nanom::par_exec::run</a></div><div class="ttdeci">void run(std::size_t n, F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> bulk.hpp:167</div></div>
-<div class="ttc" id="astructnanom_1_1par__exec_html_a5af0b437b5ef68f8884205cbc9a73813"><div class="ttname"><a href="structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813">nanom::par_exec::threads</a></div><div class="ttdeci">unsigned threads</div><div class="ttdoc">0 = hardware_concurrency</div><div class="ttdef"><b>Definition</b> bulk.hpp:165</div></div>
+<div class="ttc" id="astructnanom_1_1par__exec_html"><div class="ttname"><a href="structnanom_1_1par__exec.html">nanom::par_exec</a></div><div class="ttdoc">CPU thread-pool executor: partitions [0, n) into threads disjoint ranges.</div><div class="ttdef"><b>Definition</b> bulk.hpp:169</div></div>
+<div class="ttc" id="astructnanom_1_1par__exec_html_a56122c11c8634b5854d7ff812afb1a23"><div class="ttname"><a href="structnanom_1_1par__exec.html#a56122c11c8634b5854d7ff812afb1a23">nanom::par_exec::run</a></div><div class="ttdeci">void run(std::size_t n, F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> bulk.hpp:172</div></div>
+<div class="ttc" id="astructnanom_1_1par__exec_html_a5af0b437b5ef68f8884205cbc9a73813"><div class="ttname"><a href="structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813">nanom::par_exec::threads</a></div><div class="ttdeci">unsigned threads</div><div class="ttdoc">0 = hardware_concurrency</div><div class="ttdef"><b>Definition</b> bulk.hpp:170</div></div>
 <div class="ttc" id="astructnanom_1_1pkt__ref_html"><div class="ttname"><a href="structnanom_1_1pkt__ref.html">nanom::pkt_ref</a></div><div class="ttdoc">POD packet descriptor — trivially copyable, safe to memcpy to a device.</div><div class="ttdef"><b>Definition</b> bulk.hpp:38</div></div>
 <div class="ttc" id="astructnanom_1_1pkt__ref_html_a02feb455151f832db9b4031ad7035740"><div class="ttname"><a href="structnanom_1_1pkt__ref.html#a02feb455151f832db9b4031ad7035740">nanom::pkt_ref::link</a></div><div class="ttdeci">std::uint32_t link</div><div class="ttdoc">link type (1 = Ethernet), like pcap</div><div class="ttdef"><b>Definition</b> bulk.hpp:41</div></div>
 <div class="ttc" id="astructnanom_1_1pkt__ref_html_a57cb0809e535b341028a40957916f8d8"><div class="ttname"><a href="structnanom_1_1pkt__ref.html#a57cb0809e535b341028a40957916f8d8">nanom::pkt_ref::data</a></div><div class="ttdeci">const std::byte * data</div><div class="ttdef"><b>Definition</b> bulk.hpp:39</div></div>
 <div class="ttc" id="astructnanom_1_1pkt__ref_html_a66b6f207b2686a7112e9883e165fb0bb"><div class="ttname"><a href="structnanom_1_1pkt__ref.html#a66b6f207b2686a7112e9883e165fb0bb">nanom::pkt_ref::len</a></div><div class="ttdeci">std::uint32_t len</div><div class="ttdef"><b>Definition</b> bulk.hpp:40</div></div>
-<div class="ttc" id="astructnanom_1_1seq__exec_html"><div class="ttname"><a href="structnanom_1_1seq__exec.html">nanom::seq_exec</a></div><div class="ttdoc">Serial reference executor (also the shape a device kernel body takes).</div><div class="ttdef"><b>Definition</b> bulk.hpp:155</div></div>
-<div class="ttc" id="astructnanom_1_1seq__exec_html_ae8bd32f27aa5760a6bf7fb769c82e134"><div class="ttname"><a href="structnanom_1_1seq__exec.html#ae8bd32f27aa5760a6bf7fb769c82e134">nanom::seq_exec::run</a></div><div class="ttdeci">void run(std::size_t n, F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> bulk.hpp:157</div></div>
+<div class="ttc" id="astructnanom_1_1seq__exec_html"><div class="ttname"><a href="structnanom_1_1seq__exec.html">nanom::seq_exec</a></div><div class="ttdoc">Serial reference executor (also the shape a device kernel body takes).</div><div class="ttdef"><b>Definition</b> bulk.hpp:160</div></div>
+<div class="ttc" id="astructnanom_1_1seq__exec_html_ae8bd32f27aa5760a6bf7fb769c82e134"><div class="ttname"><a href="structnanom_1_1seq__exec.html#ae8bd32f27aa5760a6bf7fb769c82e134">nanom::seq_exec::run</a></div><div class="ttdeci">void run(std::size_t n, F &amp;&amp;f) const</div><div class="ttdef"><b>Definition</b> bulk.hpp:162</div></div>
 <div class="ttc" id="astructnanom_1_1soa_1_1column__info_html"><div class="ttname"><a href="structnanom_1_1soa_1_1column__info.html">nanom::soa::column_info</a></div><div class="ttdef"><b>Definition</b> soa.hpp:24</div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->

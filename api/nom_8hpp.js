@@ -142,6 +142,7 @@ var nom_8hpp =
     [ "le_u8", "nom_8hpp.html#adefe186aa2fc2b1c93424e2bb6e67162", null ],
     [ "line_ending", "nom_8hpp.html#aa012a60b4538dff10869f63fb43d4443", null ],
     [ "max_context", "nom_8hpp.html#ad2da395ef8906df6c3277c1732ff7eb7", null ],
+    [ "max_incomplete_needed", "nom_8hpp.html#a7125ded5e2186141bdbcdecfbc48556d", null ],
     [ "multispace0", "nom_8hpp.html#a7433fb66e3d97d9f36250bf06ff8d7e2", null ],
     [ "multispace1", "nom_8hpp.html#a020a24214721b22a79b57e8f615953a7", null ],
     [ "ne_u16", "nom_8hpp.html#a45c100c7af7079e36d24f6005cffc9e8", null ],

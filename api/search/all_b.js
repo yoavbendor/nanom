@@ -11,7 +11,8 @@ var searchData=
   ['map_5fparser_8',['map_parser',['../namespacenanom.html#ab4d8fceb38f3b2a1362467f5ed2177ef',1,'nanom']]],
   ['map_5fres_9',['map_res',['../namespacenanom.html#a9881a2f29b00361ca3bbef7f57812663',1,'nanom']]],
   ['max_5fcontext_10',['max_context',['../namespacenanom.html#ad2da395ef8906df6c3277c1732ff7eb7',1,'nanom']]],
-  ['msb0_11',['msb0',['../namespacenanom.html#aa6d0e66bd0d3ab9431dc56579fc7d9f1a99db8e5fd02c8b0b9b667b024077e00f',1,'nanom']]],
-  ['multispace0_12',['multispace0',['../namespacenanom.html#a7433fb66e3d97d9f36250bf06ff8d7e2',1,'nanom']]],
-  ['multispace1_13',['multispace1',['../namespacenanom.html#a020a24214721b22a79b57e8f615953a7',1,'nanom']]]
+  ['max_5fincomplete_5fneeded_11',['max_incomplete_needed',['../namespacenanom.html#a7125ded5e2186141bdbcdecfbc48556d',1,'nanom']]],
+  ['msb0_12',['msb0',['../namespacenanom.html#aa6d0e66bd0d3ab9431dc56579fc7d9f1a99db8e5fd02c8b0b9b667b024077e00f',1,'nanom']]],
+  ['multispace0_13',['multispace0',['../namespacenanom.html#a7433fb66e3d97d9f36250bf06ff8d7e2',1,'nanom']]],
+  ['multispace1_14',['multispace1',['../namespacenanom.html#a020a24214721b22a79b57e8f615953a7',1,'nanom']]]
 ];

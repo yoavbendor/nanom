@@ -247,6 +247,9 @@ enum class errk : std::uint8_t { err, fail, incomplete };
 /// path too. offsets are 32-bit for the same reason (a parse buffer over 4 GiB
 /// is out of scope; the whole point is zero-copy in-memory parsing).
 inline constexpr std::size_t max_context = 4;
+/// Upper bound on error::needed in streaming incomplete errors — avoids OOM when
+/// callers pre-allocate from a hostile length prefix. 0 still means unknown.
+inline constexpr std::uint32_t max_incomplete_needed = 64 * 1024;
 
 struct error {
   struct frame { const char* label; std::uint32_t offset; };
@@ -279,9 +282,11 @@ struct error {
       out += " (starting at offset " + std::to_string(ctx[i].offset) + ")";
     }
     // hex window: up to 8 bytes before and after the failure point
-    const std::size_t total = std::size_t(whole.last - whole.base);
-    const std::size_t off = offset;  // widen the 32-bit field for arithmetic
-    if (off <= total) {
+    const std::size_t total = whole.base ? std::size_t(whole.last - whole.base) : 0;
+    const std::size_t off = std::min<std::size_t>(offset, total);  // clamp bogus offsets
+    if (offset > total)
+      out += " (offset beyond input, hex window clamped)";
+    if (total > 0) {
       const std::size_t lo = off >= 8 ? off - 8 : 0;
       const std::size_t hi = std::min(off + 8, total);
       static constexpr char hexd[] = "0123456789abcdef";
@@ -330,7 +335,8 @@ inline unexpected<error> make_err(input at, const char* expected) {
 inline unexpected<error> make_incomplete(input at, std::size_t needed) {
   error e; e.kind = at.live ? errk::incomplete : errk::err;
   e.offset = std::uint32_t(at.offset() + at.size());
-  e.expected = "more input"; e.needed = std::uint32_t(needed);
+  e.expected = "more input";
+  e.needed = std::uint32_t(std::min(needed, std::size_t(max_incomplete_needed)));
   return unexp(e);
 }
 
