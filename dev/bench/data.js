@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783252236329,
+  "lastUpdate": 1783253052964,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -219,6 +219,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 7.2,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "df005e0cb2a90dcaba2d3bfba99563d4e36945c1",
+          "message": "Merge pull request #7 from yoavbendor/cursor/safety-tier-a-1ef9\n\nSafety Tier A: render clamp, needed cap, pkt_ref validation",
+          "timestamp": "2026-07-05T15:03:34+03:00",
+          "tree_id": "dff42f34774363c2d9e07168c7335e62871ceb07",
+          "url": "https://github.com/yoavbendor/nanom/commit/df005e0cb2a90dcaba2d3bfba99563d4e36945c1"
+        },
+        "date": 1783253052564,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 15.1,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 62.3,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 11.4,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 7.5,
             "unit": "ns/pkt"
           }
         ]
