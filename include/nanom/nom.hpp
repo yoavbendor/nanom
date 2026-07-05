@@ -9,6 +9,10 @@
 
 #include "prelude.hpp"
 
+#if NANOM_GENERATION
+#include "generation.hpp"
+#endif
+
 namespace nanom {
 
 // ---------------------------------------------------------------------------
@@ -74,6 +78,10 @@ struct input {
   /// (fetch more and retry) instead of a plain backtrackable error. Enable
   /// with nm::streaming(in). Default is complete/whole-buffer mode.
   bool live = false;
+#if NANOM_GENERATION
+  const wire_arena* arena = nullptr;
+  std::uint64_t     gen   = 0;
+#endif
 
   constexpr input() = default;
   constexpr input(bytes b)
@@ -90,7 +98,23 @@ struct input {
     return std::uint8_t(first[i]);
   }
   /// Cursor advanced by n bytes (precondition: n <= size()).
-  NANOM_HD constexpr input advance(std::size_t n) const { return {first + n, last, base, live}; }
+  NANOM_HD constexpr input advance(std::size_t n) const {
+    input o{first + n, last, base, live};
+#if NANOM_GENERATION
+    o.arena = arena;
+    o.gen   = gen;
+#endif
+    return o;
+  }
+  /// Subspan cursor sharing arena metadata (for length_value / recognize).
+  NANOM_HD constexpr input with_range(const std::byte* f, const std::byte* l) const {
+    input o{f, l, base, live};
+#if NANOM_GENERATION
+    o.arena = arena;
+    o.gen   = gen;
+#endif
+    return o;
+  }
   /// First n bytes as a zero-copy span (precondition: n <= size()).
   NANOM_HD constexpr bytes take_span(std::size_t n) const { return {first, n}; }
   /// Bounds-checked index; empty when i >= size().
@@ -107,6 +131,18 @@ struct input {
 
 /// Make an input from anything byte-like.
 constexpr input from(bytes b) { return input(b); }
+#if NANOM_GENERATION
+inline input from(bytes b, wire_arena& arena) {
+  arena.open(b.data(), b.size());
+  input in = from(b);
+  in.arena = &arena;
+  in.gen   = arena.generation;
+  return in;
+}
+inline input from(const void* data, std::size_t len, wire_arena& arena) {
+  return from(bytes(static_cast<const std::byte*>(data), len), arena);
+}
+#endif
 inline input from(std::string_view s) {
   return input(bytes(reinterpret_cast<const std::byte*>(s.data()), s.size()));
 }
@@ -930,7 +966,7 @@ constexpr auto length_value(N np, P p) {
     auto rd = length_data(np)(in);
     if (!rd) return unexp(rd.error());
     // sub-input keeps the same base so error offsets remain absolute
-    input sub{rd->value.data(), rd->value.data() + rd->value.size(), in.base};
+    input sub = in.with_range(rd->value.data(), rd->value.data() + rd->value.size());
     auto r = p(sub);
     if (!r) {
       error e = r.error();
@@ -992,7 +1028,7 @@ constexpr auto map_parser(P p, Q q) {
       else
         return r->value;
     }();
-    input sub{b.data(), b.data() + b.size(), in.base};
+    input sub = in.with_range(b.data(), b.data() + b.size());
     auto rq = q(sub);
     if (!rq) return unexp(rq.error());
     return done{std::move(rq->value), r->rest};

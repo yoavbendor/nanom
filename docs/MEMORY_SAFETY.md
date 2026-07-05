@@ -17,8 +17,34 @@ covers what the library **does** enforce and what remains **caller contract**.
 | Error render window | `error::render` | Offset clamped to buffer |
 | Bulk descriptors | `pkt_ref_valid`, `bulk_decode` | Rejects null data + nonzero len |
 | Null view (debug) | `view::get` / `raw` / `to_struct` | `NANOM_GUARD_VIEWS` asserts `p != nullptr` |
+| Generation tracking (opt-in) | `wire_arena`, `from(buf, arena)`, `view::get` | `NANOM_GENERATION=1`; see below |
 
-## Caller contract (documented, not runtime-tracked)
+## Opt-in generation tracking (`NANOM_GENERATION`)
+
+Off by default — **no extra fields, code, or checks** in Release when unset.
+
+```cpp
+std::vector<std::byte> buf = load();
+nm::wire_arena arena;
+nm::input in = nm::from(nm::bytes(buf.data(), buf.size()), arena);
+auto r = nm::overlay<my_hdr>()(in);
+auto v = r->value;
+buf.clear();
+arena.invalidate();           // or arena.open() after realloc
+// v.get<"field">() → generation_exception with stale_generation report
+```
+
+| API | Role |
+|-----|------|
+| `wire_arena` | Registers `[base, size)`; `invalidate()` bumps generation |
+| `from(span, arena)` | Attaches arena snapshot to `input` |
+| `generation_exception` | Thrown when `NANOM_GENERATION_THROW=1` |
+| `render_generation_fault` | Human-readable report (gen diff, offset, hex) |
+| `generation_handler` | Optional callback; return `ignore` only in tests |
+
+CMake: `-DNANOM_GENERATION=ON` or define on one target. Tests: `nanom_generation_tests`.
+
+## Caller contract (documented, not runtime-tracked without `NANOM_GENERATION`)
 
 These `constexpr` flags mark the contract surface:
 
@@ -39,12 +65,13 @@ These `constexpr` flags mark the contract surface:
 | Flag | Default | Effect |
 |------|---------|--------|
 | `NANOM_GUARD_VIEWS` | on in debug, off in `NDEBUG` | Assert null `view` access |
+| `NANOM_GENERATION` | **off** | `wire_arena` lifetime checks on `view::get` |
+| `NANOM_GENERATION_THROW` | off (abort+print) | Throw `generation_exception` instead of abort |
 
-Future work (not yet in Release): generation tokens tying `view`/`bytes` to buffer
-lifetime — see `bench/safety_overhead.md` Tier D.
+Future work: `attested_bytes` for guarded `bytes` subscript; auto-tracked containers.
 
 ## Tests
 
 - `tests/test_memory_safety.cpp` — regression suite (`NANOM_GUARD_VIEWS=1`)
-- `tests/test_memory_safety_ub.cpp` — optional ASan red-team (`NANOM_MEMORY_SAFETY_UB_DEMOS=ON`)
+- `tests/test_memory_safety_generation.cpp` — generation suite (`NANOM_GENERATION=1`)
 - `bench/safety_microbench.cpp` — performance baselines per guard

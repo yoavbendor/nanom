@@ -60,6 +60,14 @@
 # endif
 #endif
 
+// Opt-in wire generation tracking (see generation.hpp). Off by default — zero size/cost.
+#ifndef NANOM_GENERATION
+# define NANOM_GENERATION 0
+#endif
+#ifndef NANOM_GENERATION_THROW
+# define NANOM_GENERATION_THROW 0
+#endif
+
 // NANOM_HD marks the functions on the zero-copy decode path as callable from a
 // GPU kernel. On a normal host build it expands to nothing (zero cost, zero API
 // change); under a CUDA/HIP compiler it becomes __host__ __device__ so the exact

@@ -32,6 +32,7 @@ endif()
 option(NANOM_WERROR         "Treat warnings as errors"                  OFF)
 option(NANOM_BUILD_FUZZERS  "Build the libFuzzer targets (Clang only)"  OFF)
 option(NANOM_MEMORY_SAFETY_UB_DEMOS "Build UB red-team demos (ASan only)" OFF)
+option(NANOM_GENERATION "Opt-in wire-buffer generation lifetime tracking" OFF)
 set(NANOM_SANITIZER "" CACHE STRING "Sanitizer: '', 'address,undefined', or 'thread'")
 # C++26 P2996 reflection mode: the whole tree (tests, examples, parity ports) builds at C++26 with
 # the reflection provider active — the macro-free nanom. Needs a P2996 compiler (today: the
@@ -55,6 +56,9 @@ target_compile_options(nanom_flags INTERFACE
 if(NANOM_SANITIZER)
   target_compile_options(nanom_flags INTERFACE -fsanitize=${NANOM_SANITIZER} -fno-omit-frame-pointer -g)
   target_link_options(nanom_flags    INTERFACE -fsanitize=${NANOM_SANITIZER})
+endif()
+if(NANOM_GENERATION)
+  target_compile_definitions(nanom_flags INTERFACE NANOM_GENERATION=1)
 endif()
 if(NANOM_CXX26_REFLECTION)
   set(CMAKE_CXX_STANDARD 26)  # compile features declare a 23 minimum; this raises the whole tree
@@ -89,6 +93,11 @@ add_test(NAME nanom_tests COMMAND nanom_tests)
 nanom_exe(nanom_memory_safety_tests tests/test_memory_safety.cpp)
 target_compile_definitions(nanom_memory_safety_tests PRIVATE NANOM_GUARD_VIEWS=1)
 add_test(NAME nanom_memory_safety_tests COMMAND nanom_memory_safety_tests)
+
+nanom_exe(nanom_generation_tests tests/test_memory_safety_generation.cpp)
+target_compile_definitions(nanom_generation_tests PRIVATE NANOM_GENERATION=1 NANOM_GENERATION_THROW=1
+                                                           NANOM_GUARD_VIEWS=1)
+add_test(NAME nanom_generation_tests COMMAND nanom_generation_tests)
 
 if(NANOM_MEMORY_SAFETY_UB_DEMOS)
   nanom_exe(nanom_memory_safety_ub_demos tests/test_memory_safety_ub.cpp)
