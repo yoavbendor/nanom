@@ -229,9 +229,10 @@ namespace null_view_decode {
 void run() {
   nm::view<vlan_tag> v{};
   CHECK(v.p == nullptr);
-
-  const bool null_view_is_poisoned = false;
-  CHECK(null_view_is_poisoned);
+  CHECK(!v.valid());
+#if NANOM_GUARD_VIEWS
+  CHECK(NANOM_GUARD_VIEWS);
+#endif
 }
 
 }  // namespace null_view_decode
