@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783253052964,
+  "lastUpdate": 1783255268044,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -263,6 +263,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 7.5,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "66d6e24e49bf182d92ea981d1c2a29fbcea3d250",
+          "message": "Merge pull request #8 from yoavbendor/cursor/safety-tier-b-1ef9\n\nSafety Tier B: tag ownership, null from reject, checked input accessors",
+          "timestamp": "2026-07-05T15:40:41+03:00",
+          "tree_id": "1733921f4d2c32286e5d8d39cef7a92d755e5121",
+          "url": "https://github.com/yoavbendor/nanom/commit/66d6e24e49bf182d92ea981d1c2a29fbcea3d250"
+        },
+        "date": 1783255266802,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 14,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 64.3,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 12.2,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 7.9,
             "unit": "ns/pkt"
           }
         ]
