@@ -11,10 +11,14 @@ fnv1a checksum of ts_raw/caplen/origlen):
   * rust-pcap-parser   — bench/rust_nom `full` : the nom-based pcap-parser library, which ALSO parses +
                          allocates each packet's options (does strictly more) -> reported as context.
 
+nanom safety profiles (see docs/BENCH_RUST_NOM.md):
+  minimal — Release defaults: tiers A/B always on, NANOM_GENERATION=0, NANOM_GUARD_VIEWS=0
+  full    — NANOM_GENERATION=1 + wire_arena on the refill buffer (attested input/bytes metadata)
+
 It first ASSERTS all engines produced the identical aggregate (so the timings only appear once the
 parsers demonstrably agree), then prints a Markdown table + the exact toolchain/flags for the writeup.
 
-usage: compare_rust.py [--iters N] [--file PATH] [--build]
+usage: compare_rust.py [--iters N] [--file PATH] [--build] [--safety minimal|full|both]
 """
 import argparse
 import pathlib
@@ -25,21 +29,69 @@ import sys
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 RUST = ROOT / "bench" / "rust_nom"
 DEFAULT_FIX = ROOT / "examples" / "nanotins_parity" / "testdata" / "SRL_front_left_51_short.pcapng"
-NM_BIN = pathlib.Path("/tmp/nanom_streaming_bench")
 
 RESULT_RE = re.compile(r"RESULT (.+)")
+
+# nanom safety compile profiles for the streaming head-to-head bench
+SAFETY_PROFILES = {
+    "minimal": {
+        "defines": [
+            "-DNANOM_GENERATION=0",
+            "-DNANOM_GUARD_VIEWS=0",
+            '-DNANOM_SAFETY_PROFILE="minimal"',
+        ],
+        "desc": "Release defaults (tiers A/B on; no generation)",
+    },
+    "full": {
+        "defines": [
+            "-DNANOM_GENERATION=1",
+            "-DNANOM_GUARD_VIEWS=1",
+            '-DNANOM_SAFETY_PROFILE="full"',
+        ],
+        "desc": "NANOM_GENERATION=1 + wire_arena on refill buffer",
+    },
+}
 
 
 def sh(cmd, **kw):
     return subprocess.run(cmd, check=True, text=True, capture_output=True, **kw)
 
 
-def build(cxx="g++-13"):
-    NM_BIN.parent.mkdir(parents=True, exist_ok=True)
-    sh([cxx, "-std=c++23", "-O3", "-march=native",
-        "-I", str(ROOT / "include"), "-I", str(ROOT / "examples" / "nanotins_parity"),
-        str(ROOT / "bench" / "streaming_pcapng_bench.cpp"), "-o", str(NM_BIN)])
+def nm_bin(profile: str) -> pathlib.Path:
+    return pathlib.Path(f"/tmp/nanom_streaming_bench_{profile}")
+
+
+def build_nanom(profile: str, cxx: str = "g++-13") -> None:
+    cfg = SAFETY_PROFILES[profile]
+    out = nm_bin(profile)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    cmd = [
+        cxx,
+        "-std=c++23",
+        "-O3",
+        "-march=native",
+        "-DNDEBUG",
+        *cfg["defines"],
+        "-I",
+        str(ROOT / "include"),
+        "-I",
+        str(ROOT / "examples" / "nanotins_parity"),
+        str(ROOT / "bench" / "streaming_pcapng_bench.cpp"),
+        "-o",
+        str(out),
+    ]
+    sh(cmd)
+    print(f"built nanom [{profile}]: {' '.join(cmd)}", file=sys.stderr)
+
+
+def build_rust() -> None:
     sh(["cargo", "build", "--release"], cwd=RUST)
+
+
+def build(profiles: list[str], cxx: str = "g++-13") -> None:
+    for p in profiles:
+        build_nanom(p, cxx=cxx)
+    build_rust()
 
 
 def parse_result(line: str) -> dict:
@@ -49,7 +101,7 @@ def parse_result(line: str) -> dict:
     out = {}
     for kv in m.group(1).split():
         k, v = kv.split("=", 1)
-        out[k] = v
+        out[k] = v.strip('"')
     return out
 
 
@@ -66,63 +118,116 @@ def lock_versions() -> dict:
     return vers
 
 
+def verify_equal(results: dict, keys: tuple[str, ...]) -> dict:
+    ref = {k: results[next(iter(results))][k] for k in keys}
+    for eng, r in results.items():
+        got = {k: r[k] for k in keys}
+        if got != ref:
+            print(f"MISMATCH: {eng} parsed differently: {got} != {ref}", file=sys.stderr)
+            raise SystemExit(1)
+    return ref
+
+
+def print_table(fname: str, iters: int, vers: dict, rows: list[tuple[str, str, dict]]) -> None:
+    ref = rows[0][2]
+    print(
+        f"file: {fname} ({int(ref['file_bytes'])} bytes, {ref['packets']} packets), "
+        f"iters={iters}, best-of-5; nom {vers['nom']}, pcap-parser {vers['pcap-parser']}\n"
+    )
+    print("| parser | work | ns/packet | throughput | output |")
+    print("|---|---|---:|---:|---|")
+    for label, work, r in rows:
+        print(
+            f"| {label} | {work} | {float(r['ns_per_pkt']):.0f} | "
+            f"{float(r['mbps']) / 1024:.1f} GiB/s | identical |"
+        )
+
+
 def main(argv) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--iters", type=int, default=5000)
     ap.add_argument("--file", default=str(DEFAULT_FIX))
     ap.add_argument("--build", action="store_true", help="build the C++ + Rust binaries first")
+    ap.add_argument(
+        "--safety",
+        choices=("minimal", "full", "both"),
+        default="both",
+        help="nanom safety profile(s) to benchmark (default: both)",
+    )
+    ap.add_argument("--cxx", default="g++-13")
     a = ap.parse_args(argv[1:])
+
+    profiles = ["minimal", "full"] if a.safety == "both" else [a.safety]
     rust_bin = RUST / "target" / "release" / "rust_nom_bench"
 
-    if a.build or not NM_BIN.exists() or not rust_bin.exists():
-        build()
+    need_build = a.build or not rust_bin.exists()
+    for p in profiles:
+        if not nm_bin(p).exists():
+            need_build = True
+    if need_build:
+        build(profiles, cxx=a.cxx)
 
     fx = str(a.file)
     it = str(a.iters)
-    results = {
-        "nanom": run([str(NM_BIN), fx, it]),
+    keys = ("packets", "sum_caplen", "sum_origlen", "opts", "checksum")
+
+    nanom_results = {p: run([str(nm_bin(p)), fx, it]) for p in profiles}
+    rust_results = {
         "rust-nom-min": run([str(rust_bin), fx, it, "min"]),
         "rust-pcap-parser": run([str(rust_bin), fx, it, "full"]),
     }
 
-    # --- gate: every engine must have parsed the file identically (fixed fields AND every option) ---
-    keys = ("packets", "sum_caplen", "sum_origlen", "opts", "checksum")
-    ref = {k: results["nanom"][k] for k in keys}
-    for eng, r in results.items():
-        got = {k: r[k] for k in keys}
-        if got != ref:
-            print(f"MISMATCH: {eng} parsed differently: {got} != {ref}", file=sys.stderr)
-            return 1
-    print(f"verified: all parsers agree — packets={ref['packets']} opts={ref['opts']} "
-          f"sum_caplen={ref['sum_caplen']} checksum={ref['checksum']}\n")
+    # Gate: every nanom profile + rust must agree
+    all_results = {**{f"nanom-{p}": r for p, r in nanom_results.items()}, **rust_results}
+    ref = verify_equal(all_results, keys)
+    print(
+        f"verified: all parsers agree — packets={ref['packets']} opts={ref['opts']} "
+        f"sum_caplen={ref['sum_caplen']} checksum={ref['checksum']}\n",
+        file=sys.stderr,
+    )
 
     vers = lock_versions()
     fname = pathlib.Path(fx).name
-    nm, rnm = results["nanom"], results["rust-nom-min"]
-    ratio = float(rnm["ns_per_pkt"]) / float(nm["ns_per_pkt"])
 
-    print(f"file: {fname} ({int(ref_bytes(results))} bytes, {ref['packets']} packets), "
-          f"iters={a.iters}, best-of-5; nom {vers['nom']}, pcap-parser {vers['pcap-parser']}\n")
-    print("| parser | work | ns/packet | throughput | output |")
-    print("|---|---|---:|---:|---|")
-    rows = [
-        ("**nanom** (`nm::streaming`)", "EPB fields + all options", nm),
-        ("**Rust nom** (hand-written)", "EPB fields + all options (equal work)", rnm),
-        ("Rust `pcap-parser` lib", "same, + allocates options", results["rust-pcap-parser"]),
-    ]
-    for label, work, r in rows:
-        print(f"| {label} | {work} | {float(r['ns_per_pkt']):.0f} | "
-              f"{float(r['mbps'])/1024:.1f} GiB/s | identical |")
-    print(f"\nEqual-work head-to-head: **nanom {float(nm['ns_per_pkt']):.0f} ns/pkt vs "
-          f"Rust nom {float(rnm['ns_per_pkt']):.0f} ns/pkt** (~{ratio:.2f}x — parity). All three parse "
-          f"the full block including every option TLV ({ref['opts']} options over {ref['packets']} "
-          "packets); nanom and the hand-written scanner do it zero-copy, while pcap-parser also "
-          "allocates a Vec per packet. Best-of-5 on one machine (noisy); the point is the ratio.")
+    rows = []
+    for p in profiles:
+        desc = SAFETY_PROFILES[p]["desc"]
+        rows.append((f"**nanom** (`{p}`)", desc, nanom_results[p]))
+    rows.append(
+        (
+            "**Rust nom** (hand-written)",
+            "EPB fields + all options (equal work)",
+            rust_results["rust-nom-min"],
+        )
+    )
+    rows.append(
+        (
+            "Rust `pcap-parser` lib",
+            "same, + allocates options",
+            rust_results["rust-pcap-parser"],
+        )
+    )
+    print_table(fname, a.iters, vers, rows)
+
+    nm_min = nanom_results.get("minimal") or nanom_results[profiles[0]]
+    rnm = rust_results["rust-nom-min"]
+    ratio = float(rnm["ns_per_pkt"]) / float(nm_min["ns_per_pkt"])
+    print(
+        f"\nEqual-work head-to-head (minimal nanom): **nanom {float(nm_min['ns_per_pkt']):.0f} ns/pkt vs "
+        f"Rust nom {float(rnm['ns_per_pkt']):.0f} ns/pkt** (~{ratio:.2f}x — parity)."
+    )
+
+    if "full" in nanom_results and "minimal" in nanom_results:
+        nm_full = nanom_results["full"]
+        overhead = float(nm_full["ns_per_pkt"]) / float(nm_min["ns_per_pkt"])
+        delta = float(nm_full["ns_per_pkt"]) - float(nm_min["ns_per_pkt"])
+        sign = "+" if delta >= 0 else ""
+        print(
+            f"Full safety overhead vs minimal: **{float(nm_full['ns_per_pkt']):.0f} ns/pkt "
+            f"({sign}{delta:.0f} ns/pkt, ~{overhead:.2f}x)** — "
+            f"{SAFETY_PROFILES['full']['desc']}."
+        )
     return 0
-
-
-def ref_bytes(results) -> str:
-    return results["nanom"]["file_bytes"]
 
 
 if __name__ == "__main__":

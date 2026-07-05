@@ -40,14 +40,29 @@ iterations:
 
 | parser | work | ns/packet | throughput | output |
 |---|---|---:|---:|---|
-| **nanom** (`nm::streaming`) | EPB fields + all options | **~110** | ~13 GiB/s | identical |
-| **Rust nom** (hand-written) | EPB fields + all options (equal work) | ~119 | ~12 GiB/s | identical |
-| Rust `pcap-parser` lib | same, + allocates options | ~203 | ~7 GiB/s | identical |
+| **nanom** (`minimal`) | EPB fields + all options | **~84** | ~17 GiB/s | identical |
+| **nanom** (`full`) | same + generation tracking | ~82 | ~18 GiB/s | identical |
+| **Rust nom** (hand-written) | EPB fields + all options (equal work) | ~83 | ~18 GiB/s | identical |
+| Rust `pcap-parser` lib | same, + allocates options | ~138 | ~11 GiB/s | identical |
 
-**Equal-work head-to-head: nanom ~110 ns/pkt vs Rust nom ~119 ns/pkt — parity (~1.1×), a hair in
-nanom's favour.** Both parse the full block — fixed fields and every option TLV — zero-copy, with no
-per-packet allocation. Against the real `pcap-parser` library doing the identical parse, nanom is
-~1.85× faster, the difference being the library's per-packet `Vec` allocation.
+**Equal-work head-to-head: nanom ~84 ns/pkt vs Rust nom ~83 ns/pkt — parity (~1.0×).** Both parse
+the full block — fixed fields and every option TLV — zero-copy, with no per-packet allocation. Against
+the real `pcap-parser` library doing the identical parse, nanom is ~1.65× faster, the difference being
+the library's per-packet `Vec` allocation.
+
+### Safety profiles
+
+The harness builds nanom twice and verifies **identical output** before timing:
+
+| profile | compile flags | runtime |
+|---|---|---|
+| **minimal** | `-DNANOM_GENERATION=0 -DNANOM_GUARD_VIEWS=0` | Release defaults; tiers A/B always on |
+| **full** | `-DNANOM_GENERATION=1 -DNANOM_GUARD_VIEWS=1` | `wire_arena` on the 64 KiB refill buffer |
+
+On this `strct`-heavy streaming parse, full safety adds **input metadata propagation only** (no
+`view::get` or `attested_bytes` subscript on the hot path) — **no measurable overhead** vs minimal
+(~82 vs ~84 ns/pkt, within best-of-5 noise). Workloads using `overlay`/`view::get` or subscripting
+parsed `bytes` will pay generation checks; see `bench/safety_overhead.md`.
 
 ## Honesty notes
 
@@ -65,6 +80,7 @@ per-packet allocation. Against the real `pcap-parser` library doing the identica
 ## Reproduce
 
 ```sh
-python3 bench/compare_rust.py --build           # builds both, verifies equal output, prints the table
-python3 bench/compare_rust.py --iters 20000     # more iterations for a steadier number
+python3 bench/compare_rust.py --build --safety both --iters 20000
+# minimal only (backward-compatible default row in older writeups):
+python3 bench/compare_rust.py --build --safety minimal
 ```

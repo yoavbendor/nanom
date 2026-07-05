@@ -2,6 +2,22 @@
 
 `safety_microbench.cpp` / [`safety_overhead.md`](safety_overhead.md) — per-guard overhead models and the **safety hardening execution plan** (baselines, tiers A–E, bench gates). Run `nm_safety_microbench` before/after each tier.
 
+## nanom vs Rust nom (streaming pcapng)
+
+[`compare_rust.py`](compare_rust.py) builds nanom in **minimal** and **full** safety profiles, verifies
+identical output against stable Rust nom, then prints the head-to-head table:
+
+```sh
+python3 bench/compare_rust.py --build --safety both --iters 20000
+```
+
+| profile | flags | meaning |
+|---|---|---|
+| **minimal** | `NANOM_GENERATION=0`, `NANOM_GUARD_VIEWS=0` | Release defaults (tiers A/B on) |
+| **full** | `NANOM_GENERATION=1`, `NANOM_GUARD_VIEWS=1`, `wire_arena` | attested input/bytes metadata |
+
+See [`docs/BENCH_RUST_NOM.md`](../docs/BENCH_RUST_NOM.md) for methodology and latest numbers.
+
 `parse_bench.cpp` times **only the decode** — capture is read into memory once,
 the block scan is done once, and the timed loop is purely the per-packet
 L2/L3/L4 walk. No file I/O, no JSON, no output allocation in the loop. A FNV-1a
