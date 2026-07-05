@@ -194,8 +194,8 @@ cmake --build build-asan -j && ./build-asan/nm_self_fuzz
 | Tier | PRs | Tests fixed | Hot-path risk | Status |
 |------|-----|------------|---------------|--------|
 | **A** | A1–A3 | 3/19 | None | **Done** (`cursor/safety-tier-a-1ef9`) |
-| **B** | B1–B3 | +5 (8/19) | Low | Ready after A |
-| **C** | C1 | +1 (9/19) | None in Release | Ready after B |
+| **B** | B1–B3 | +5 (8/19) | Low | **Done** (`cursor/safety-tier-b-1ef9`) |
+| **C** | C1 | +1 (9/19) | None in Release | Ready |
 | **D** | D1–D2 | +4 (13/19) | High if always-on | Debug-only path |
 | **E** | E1–E2 | +6 (19/19) | None | Docs/helpers |
 
