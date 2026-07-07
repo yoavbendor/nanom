@@ -65,7 +65,11 @@ class expected {
 // 1. input / bytes — zero-copy views over the buffer being parsed
 // ---------------------------------------------------------------------------
 
+#if NANOM_GENERATION
+using bytes = attested_bytes;
+#else
 using bytes = std::span<const std::byte>;
+#endif
 
 /// A cursor into the buffer under parse. Copying is free; parsers never copy
 /// or allocate the underlying data. `base` is kept so errors can report
@@ -93,7 +97,19 @@ struct input {
   NANOM_HD constexpr std::size_t size()   const { return std::size_t(last - first); }
   NANOM_HD constexpr bool        empty()  const { return first == last; }
   NANOM_HD constexpr std::size_t offset() const { return std::size_t(first - base); }
-  constexpr bytes       span()   const { return {first, size()}; }
+#if NANOM_GENERATION
+  constexpr bytes span() const { return attested_span(size()); }
+  NANOM_HD constexpr bytes attested_span(std::size_t n) const { return attested_span(first, n); }
+  NANOM_HD constexpr bytes attested_span(const std::byte* p, std::size_t n) const {
+    return bytes{p, n, arena, gen};
+  }
+#else
+  constexpr bytes span() const { return {first, size()}; }
+  NANOM_HD constexpr bytes attested_span(std::size_t n) const { return {first, n}; }
+  NANOM_HD constexpr bytes attested_span(const std::byte* p, std::size_t n) const {
+    return {p, n};
+  }
+#endif
   NANOM_HD constexpr std::uint8_t operator[](std::size_t i) const {
     return std::uint8_t(first[i]);
   }
@@ -116,7 +132,7 @@ struct input {
     return o;
   }
   /// First n bytes as a zero-copy span (precondition: n <= size()).
-  NANOM_HD constexpr bytes take_span(std::size_t n) const { return {first, n}; }
+  NANOM_HD constexpr bytes take_span(std::size_t n) const { return attested_span(n); }
   /// Bounds-checked index; empty when i >= size().
   NANOM_HD constexpr std::optional<std::uint8_t> safe_at(std::size_t i) const {
     if (i >= size()) return std::nullopt;
@@ -134,13 +150,13 @@ constexpr input from(bytes b) { return input(b); }
 #if NANOM_GENERATION
 inline input from(bytes b, wire_arena& arena) {
   arena.open(b.data(), b.size());
-  input in = from(b);
+  input in = from(b.unchecked_span());
   in.arena = &arena;
   in.gen   = arena.generation;
   return in;
 }
 inline input from(const void* data, std::size_t len, wire_arena& arena) {
-  return from(bytes(static_cast<const std::byte*>(data), len), arena);
+  return from(bytes(std::span<const std::byte>(static_cast<const std::byte*>(data), len)), arena);
 }
 #endif
 inline input from(std::string_view s) {
@@ -1092,7 +1108,8 @@ constexpr auto recognize(P p) {
   return [p](input in) -> result<bytes> {
     auto r = p(in);
     if (!r) return unexp(r.error());
-    return done{bytes{in.first, std::size_t(r->rest.first - in.first)}, r->rest};
+    const std::size_t n = std::size_t(r->rest.first - in.first);
+    return done{in.attested_span(n), r->rest};
   };
 }
 /// consumed(p) — both the raw bytes and the value, as a pair.
@@ -1101,8 +1118,8 @@ constexpr auto consumed(P p) {
   return [p](input in) -> result<std::pair<bytes, parsed_t<P>>> {
     auto r = p(in);
     if (!r) return unexp(r.error());
-    return done{std::pair{bytes{in.first, std::size_t(r->rest.first - in.first)},
-                          std::move(r->value)}, r->rest};
+    const std::size_t n = std::size_t(r->rest.first - in.first);
+    return done{std::pair{in.attested_span(n), std::move(r->value)}, r->rest};
   };
 }
 /// value(v, p) — run p, discard its result, yield v.

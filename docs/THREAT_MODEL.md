@@ -49,6 +49,7 @@ Trust boundaries:
 | Null input pointer handling | `from(nullptr, n>0)` => empty input | on |
 | Defensive cursor helpers | `safe_at`, `checked_advance` | available |
 | Generation lifetime checks | `wire_arena`, `NANOM_GENERATION`, `check_wire_access` | on |
+| Attested span access | `attested_bytes::operator[]/at` on tracked parses | on |
 
 ## Caller contracts (required)
 

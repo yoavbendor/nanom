@@ -17,7 +17,7 @@ covers what the library **does** enforce and what remains **caller contract**.
 | Error render window | `error::render` | Offset clamped to buffer |
 | Bulk descriptors | `pkt_ref_valid`, `bulk_decode` | Rejects null data + nonzero len |
 | Null view (debug) | `view::get` / `raw` / `to_struct` | `NANOM_GUARD_VIEWS` asserts `p != nullptr` |
-| Generation tracking | `wire_arena`, `from(buf, arena)`, `view::get` | `NANOM_GENERATION=1`; enabled by default |
+| Generation tracking | `wire_arena`, `from(buf, arena)`, `view::get/raw`, `bytes` subscript | `NANOM_GENERATION=1`; enabled by default |
 
 ## Generation tracking (`NANOM_GENERATION`)
 
@@ -38,6 +38,7 @@ arena.invalidate();           // or arena.open() after realloc
 | API | Role |
 |-----|------|
 | `wire_arena` | Registers `[base, size)`; `invalidate()` bumps generation |
+| `attested_bytes` | Generation-attested `bytes` wrapper (`operator[]`, `at`) |
 | `from(span, arena)` | Attaches arena snapshot to `input` |
 | `generation_exception` | Thrown when `NANOM_GENERATION_THROW=1` |
 | `render_generation_fault` | Human-readable report (gen diff, offset, hex) |
@@ -69,7 +70,7 @@ These `constexpr` flags mark the contract surface:
 | `NANOM_GENERATION` | **on** | `wire_arena` lifetime checks on `view::get` |
 | `NANOM_GENERATION_THROW` | off (abort+print) | Throw `generation_exception` instead of abort |
 
-Future work: `attested_bytes` for guarded `bytes` subscript; auto-tracked containers.
+Future work: auto-tracked containers; stronger provenance/cross-arena diagnostics.
 
 ## Tests
 
