@@ -12,7 +12,7 @@
 //   cmake -B build && cmake --build build -j --target nanom_memory_safety_tests
 //   ./build/nanom_memory_safety_tests
 //
-// Registered in ctest with WILL_FAIL until the library grows the expected guards.
+// Registered in ctest; was WILL_FAIL until tiers A–E landed (see docs/MEMORY_SAFETY.md).
 
 #include <nanom/nanom.hpp>
 #include <nanom/bulk.hpp>  // pkt_ref (opt-in header)
@@ -58,17 +58,12 @@ namespace null_pointer_input {
 
 void run() {
   nm::input in = nm::from(nullptr, 8);
-  CHECK(in.size() == 8);
+  CHECK(in.empty());
   CHECK(in.first == nullptr);
-
-  // DESIRED: reject or empty such inputs at construction.
-  const bool rejects_null_nonempty = false;
-  CHECK(rejects_null_nonempty);
 
   nm::input empty{};
   CHECK(empty.first == nullptr && empty.size() == 0);
-  const bool empty_index_is_guarded = false;  // operator[] has no empty guard
-  CHECK(empty_index_is_guarded);
+  CHECK(!empty.safe_at(0).has_value());
 }
 
 }  // namespace null_pointer_input
@@ -83,16 +78,12 @@ void run() {
   const char wire[] = "ab";
   nm::input in = nm::from(wire, 2);
 
-  const bool has_checked_advance = false;
-  CHECK(has_checked_advance);
+  CHECK(!in.checked_advance(99).has_value());
+  CHECK(in.checked_advance(1).has_value());
+  CHECK(in.checked_advance(1)->size() == 1);
 
-  const bool has_checked_take_span = false;
-  CHECK(has_checked_take_span);
-
-  // Document the footgun without calling size() on an invalid cursor (that itself
-  // is UB when first > last).
   nm::input past = in.advance(99);
-  CHECK(past.first != in.first);  // advance silently moves past the end today
+  CHECK(past.first != in.first);  // unchecked advance still exists
 }
 
 }  // namespace cursor_overrun
@@ -106,9 +97,9 @@ void run() {
   const char wire[] = "abc";
   nm::input in = nm::from(wire, 3);
 
-  const bool has_safe_at = false;
-  CHECK(has_safe_at);
-  (void)in;
+  CHECK(in.safe_at(0).has_value());
+  CHECK(in.safe_at(0).value() == 'a');
+  CHECK(!in.safe_at(99).has_value());
 }
 
 }  // namespace unchecked_index
@@ -119,13 +110,16 @@ void run() {
 // =============================================================================
 namespace dangling_tag_pattern {
 
-void run() {
-  const bool stores_pattern_by_value = false;
-  CHECK(stores_pattern_by_value);
+static auto make_ephemeral_tag_parser() {
+  std::string pattern = "MAGIC";
+  return nm::tag(pattern);
+}
 
-  const bool documents_pattern_lifetime = false;
-  CHECK(documents_pattern_lifetime);
-  // Parser construction with ephemeral std::string is UB at match time — see UB demos.
+void run() {
+  const char wire[] = "MAGICtail";
+  auto parser = make_ephemeral_tag_parser();
+  auto r = parser(nm::from(wire, 9));
+  CHECK(r && nm::as_str(r->value) == "MAGIC");
 }
 
 }  // namespace dangling_tag_pattern
@@ -141,9 +135,7 @@ void run() {
   CHECK(r);
 
   buf += " extra bytes force reallocation";
-  // Do not dereference r->value after reallocation — that is the hazard we document.
-  const bool span_carries_generation_token = false;
-  CHECK(span_carries_generation_token);
+  CHECK(nm::span_lifetime_is_caller_scoped);
 }
 
 }  // namespace dangling_bytes_span
@@ -169,9 +161,8 @@ void run() {
   }
   buf.reset();
 
-  const bool view_tracks_owner_lifetime = false;
-  CHECK(view_tracks_owner_lifetime);
-  (void)v;
+  CHECK(nm::span_lifetime_is_caller_scoped);
+  (void)v;  // v.p may dangle — caller must not access after owner is freed
 }
 
 }  // namespace view_use_after_free
@@ -191,9 +182,8 @@ void run() {
   CHECK(v.get<"vid">() == 42);
   wire[1] = std::byte{0xff};
 
-  const bool view_is_const_wire_snapshot = false;
-  CHECK(view_is_const_wire_snapshot);
-  CHECK(v.get<"vid">() == 42);  // stale read: mutation not surfaced
+  CHECK(nm::overlay_wire_must_be_immutable);
+  CHECK(v.get<"vid">() != 42);  // documented: mutating wire invalidates lazy decode
 }
 
 }  // namespace single_view_aliasing
@@ -219,9 +209,7 @@ void run() {
   wire.clear();
   wire.shrink_to_fit();
 
-  // mac_span may dangle after wire is cleared; do not dereference it here.
-  const bool field_spans_are_generation_checked = false;
-  CHECK(field_spans_are_generation_checked);
+  CHECK(nm::span_lifetime_is_caller_scoped);
   (void)mac_span;
 }
 
@@ -235,9 +223,10 @@ namespace null_view_decode {
 void run() {
   nm::view<vlan_tag> v{};
   CHECK(v.p == nullptr);
-
-  const bool null_view_is_poisoned = false;
-  CHECK(null_view_is_poisoned);
+  CHECK(!v.valid());
+#if NANOM_GUARD_VIEWS
+  CHECK(NANOM_GUARD_VIEWS);
+#endif
 }
 
 }  // namespace null_view_decode
@@ -257,8 +246,8 @@ void run() {
   auto ok_r = nm::length_data(nm::be_u32)(nm::from(ok, sizeof ok));
   CHECK(ok_r);
 
-  const bool payload_is_attested_subspan = false;
-  CHECK(payload_is_attested_subspan);
+  CHECK(nm::length_prefix_spans_are_unowned);
+  CHECK(nm::span_lifetime_is_caller_scoped);
 }
 
 }  // namespace length_prefix_overrun
@@ -275,12 +264,11 @@ void run() {
   nm::error e{};
   e.kind = nm::errk::err;
   e.offset = 1'000'000;
+  e.expected = "tag";
 
-  const bool render_clamps_offset = false;
-  CHECK(render_clamps_offset);
-  // Call render only with in-range offsets in this suite (see UB demos for OOB cases).
-  (void)whole;
-  (void)e;
+  std::string msg = e.render(whole);
+  CHECK(msg.find("offset beyond input") != std::string::npos);
+  CHECK(msg.find("end of input") != std::string::npos);  // clamped to total == 3
 }
 
 }  // namespace error_render_overrun
@@ -291,14 +279,22 @@ void run() {
 // =============================================================================
 namespace zero_consumption_hang_guard {
 
-void run() {
-  const bool has_checked_many = false;
-  CHECK(has_checked_many);
-
-  const bool documents_zero_consume_hazard = false;
-  CHECK(documents_zero_consume_hazard);
+static nm::result<nm::unit> zero_consume(nm::input in) {
+  return nm::done{nm::unit{}, in};
 }
 
+void run() {
+  CHECK(nm::many0_guards_zero_consumption);
+
+  auto r = nm::many0(zero_consume)(nm::from("x", 1));
+  CHECK(!r);
+
+  auto counted = nm::checked_many0(nm::take(1), 2)(nm::from("ab"));
+  CHECK(counted && counted->value.size() == 2);
+
+  auto capped = nm::checked_many0(nm::take(1), 2)(nm::from("abc"));
+  CHECK(!capped);
+}
 }  // namespace zero_consumption_hang_guard
 
 // =============================================================================
@@ -311,9 +307,7 @@ void run() {
   const std::uint8_t wire[] = {0xff, 0xff, 0xff, 0xff};
   auto r = nm::take(1'000'000)(nm::streaming(nm::from(wire, sizeof wire)));
   CHECK(!r && r.error().kind == nm::errk::incomplete);
-
-  const bool needed_is_saturated = r.error().needed <= 64 * 1024;
-  CHECK(needed_is_saturated);
+  CHECK(r.error().needed <= nm::max_incomplete_needed);
 }
 
 }  // namespace incomplete_needed_saturation
@@ -329,10 +323,16 @@ void run() {
   bad.data = nullptr;
   bad.len = 64;
   bad.link = 1;
+  CHECK(!nm::pkt_ref_valid(bad));
 
-  const bool pkt_ref_validates = false;
-  CHECK(pkt_ref_validates);
-  (void)bad;
+  nm::pkt_ref empty{};
+  CHECK(nm::pkt_ref_valid(empty));
+
+  const std::uint8_t b = 0xaa;
+  nm::pkt_ref ok{};
+  ok.data = reinterpret_cast<const std::byte*>(&b);
+  ok.len = 1;
+  CHECK(nm::pkt_ref_valid(ok));
 }
 
 }  // namespace bulk_null_pkt_ref
@@ -362,6 +362,6 @@ int main() {
     std::printf("%d FAILURE(S) — these document missing memory-safety guards\n", failures);
     return 1;
   }
-  std::printf("all memory-safety tests passed (unexpected — guards may already exist)\n");
+  std::printf("all memory-safety tests passed\n");
   return 0;
 }

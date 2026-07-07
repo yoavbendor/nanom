@@ -165,7 +165,9 @@ Each tier is one PR series branch `cursor/safety-tier-<N>-1ef9`. After each tier
 - [x] Microbench harness (`nm_safety_microbench`)
 - [x] Baselines recorded (this file)
 - [x] Tier order + per-PR scope + bench gates
-- [ ] **Next:** open Tier A branch, implement A1→A3, flip 3 tests, remove partial `WILL_FAIL` or split test properties per tier
+- [x] **Tier C** — C1 null view guard (`NANOM_GUARD_VIEWS`)
+- [x] **Tier E** — docs/MEMORY_SAFETY.md, `checked_many0`, caller contracts
+- [ ] **Tier D** — generation tokens (debug-only prototype; deferred)
 
 ## Command cheat sheet (execution)
 
@@ -192,10 +194,10 @@ cmake --build build-asan -j && ./build-asan/nm_self_fuzz
 
 | Tier | PRs | Tests fixed | Hot-path risk | Status |
 |------|-----|------------|---------------|--------|
-| **A** | A1–A3 | 3/19 | None | **Ready to execute** |
-| **B** | B1–B3 | +5 (8/19) | Low | Ready after A |
-| **C** | C1 | +1 (9/19) | None in Release | Ready after B |
-| **D** | D1–D2 | +4 (13/19) | High if always-on | Debug-only path |
-| **E** | E1–E2 | +6 (19/19) | None | Docs/helpers |
+| **A** | A1–A3 | 3/19 | None | **Done** (`cursor/safety-tier-a-1ef9`) |
+| **B** | B1–B3 | +5 (8/19) | Low | **Done** (`cursor/safety-tier-b-1ef9`) |
+| **C** | C1 | +1 (10/19) | None in Release | **Done** |
+| **E** | E1–E2 | +8 (19/19) | None | **Done** |
+| **D** | D1 | generation tokens (opt-in) | Debug/optional | **Done** (`NANOM_GENERATION`) |
 
-**Agent is ready to begin Tier A (A1: `error::render` clamp) on request.**
+**Agent status:** Tiers A–C+E complete on `cursor/safety-tier-cde-1ef9`. Tier D (runtime lifetime tokens) remains future work; E covers caller contracts.

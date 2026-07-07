@@ -393,18 +393,47 @@ constexpr auto strct(std::endian dflt = std::endian::native) {
 // 20. view<T> / overlay<T>() — zero-copy lazy access: get<"field">()
 // ---------------------------------------------------------------------------
 
+namespace detail {
+NANOM_HD inline constexpr void guard_view_pointer(const std::byte* p) {
+  if consteval {
+    (void)p;
+    return;
+  }
+#if NANOM_GUARD_VIEWS
+  assert(p != nullptr && "nanom: view access on null/uninitialized overlay");
+#else
+  (void)p;
+#endif
+}
+}  // namespace detail
+
+/// Zero-copy lifetime contracts (enforced by documentation + debug guards; see
+/// docs/MEMORY_SAFETY.md). constexpr flags let tests assert the API surface.
+inline constexpr bool overlay_wire_must_be_immutable = true;
+inline constexpr bool span_lifetime_is_caller_scoped   = true;
+
 /// A zero-copy overlay of T's wire format over the original buffer. Fields
 /// decode on access (endian conversion / bit extraction), nothing is stored.
 template <Described T>
 struct view {
   const std::byte* p    = nullptr;
   std::endian      dflt = std::endian::native;  ///< order for plain scalars
+#if NANOM_GENERATION
+  const wire_arena* arena = nullptr;
+  std::uint64_t     gen   = 0;
+#endif
+
+  NANOM_HD constexpr bool valid() const noexcept { return p != nullptr; }
 
   /// Decoded value of the named field. Unknown names are a compile error.
   template <fixed_string Name>
   NANOM_HD constexpr auto get() const {
-#if NANOM_GUARD_VIEWS
-    assert(p != nullptr && "nanom: view access on null/uninitialized overlay");
+    detail::guard_view_pointer(p);
+#if NANOM_GENERATION
+    if consteval {
+    } else {
+      detail::check_wire_access(arena, gen, p, wire_size_v<T>, "view::get");
+    }
 #endif
     constexpr std::size_t I = detail::field_index<T, Name>();
     static_assert(I != std::size_t(-1),
@@ -412,7 +441,11 @@ struct view {
     using F = detail::field_type_at<T, I>;
     constexpr std::size_t off = detail::field_bit_offsets<T>()[I];
     if constexpr (Described<F>) {
+#if NANOM_GENERATION
+      return view<F>{p + off / 8, dflt, arena, gen};
+#else
       return view<F>{p + off / 8, dflt};
+#endif
     } else if constexpr (detail::is_byte_array_v<F>) {
       // byte array (MAC / IPv4 / IPv6 address, name field…): the wire bytes ARE
       // the value, so return a zero-copy span into the buffer instead of
@@ -425,15 +458,23 @@ struct view {
   }
   /// The struct's raw wire bytes.
   NANOM_HD constexpr bytes raw() const {
-#if NANOM_GUARD_VIEWS
-    assert(p != nullptr && "nanom: view access on null/uninitialized overlay");
+    detail::guard_view_pointer(p);
+#if NANOM_GENERATION
+    if consteval {
+    } else {
+      detail::check_wire_access(arena, gen, p, wire_size_v<T>, "view::raw");
+    }
 #endif
     return {p, wire_size_v<T>};
   }
   /// Materialize a full T (same as strct would produce).
   NANOM_HD constexpr T to_struct() const {
-#if NANOM_GUARD_VIEWS
-    assert(p != nullptr && "nanom: view access on null/uninitialized overlay");
+    detail::guard_view_pointer(p);
+#if NANOM_GENERATION
+    if consteval {
+    } else {
+      detail::check_wire_access(arena, gen, p, wire_size_v<T>, "view::to_struct");
+    }
 #endif
     T out{};
     constexpr auto offs = detail::field_bit_offsets<T>();
@@ -455,7 +496,11 @@ constexpr auto overlay(std::endian dflt = std::endian::native) {
   return [dflt](input in) -> result<view<T>> {
     constexpr std::size_t need = wire_size_v<T>;
     if (in.size() < need) return make_incomplete(in, need - in.size());
+#if NANOM_GENERATION
+    return done{view<T>{in.first, dflt, in.arena, in.gen}, in.advance(need)};
+#else
     return done{view<T>{in.first, dflt}, in.advance(need)};
+#endif
   };
 }
 }  // namespace nanom

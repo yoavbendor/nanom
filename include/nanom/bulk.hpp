@@ -42,6 +42,11 @@ struct pkt_ref {
 };
 static_assert(std::is_trivially_copyable_v<pkt_ref>);
 
+/// True when data is non-null or len is zero (empty packet descriptor).
+constexpr bool pkt_ref_valid(const pkt_ref& p) noexcept {
+  return p.data != nullptr || p.len == 0;
+}
+
 namespace detail {
 
 /// Device-safe byte copy (no libc memcpy dependency in device code).
@@ -187,6 +192,8 @@ struct par_exec {
 template <Described Row, class Kernel, class Exec = par_exec>
 std::size_t bulk_decode(std::span<const pkt_ref> pkts, bulk_table<Row>& tbl,
                         Kernel kernel, Exec exec = {}) {
+  for (const pkt_ref& pk : pkts)
+    if (!pkt_ref_valid(pk)) return 0;
   tbl.prepare(pkts.size());
   std::byte* const* base  = tbl.col_base();
   const std::size_t* elem = tbl.col_elem();

@@ -50,14 +50,17 @@
 #include <utility>
 #include <vector>
 
-// Safety defaults (override with -D...=0/1):
-// - NANOM_GUARD_VIEWS: assert on null view access (debug/runtime contract checks)
-//
-// The project defaults to the strongest practical currently-implemented runtime
-// protections while keeping straightforward opt-out for users with stricter
-// performance constraints.
+// Safety defaults (override with -D...=0/1).
+// Strong defaults are chosen for reviewer-facing and production hardening;
+// users can opt out per target when needed.
 #ifndef NANOM_GUARD_VIEWS
-#define NANOM_GUARD_VIEWS 1
+# define NANOM_GUARD_VIEWS 1
+#endif
+#ifndef NANOM_GENERATION
+# define NANOM_GENERATION 1
+#endif
+#ifndef NANOM_GENERATION_THROW
+# define NANOM_GENERATION_THROW 0
 #endif
 
 // NANOM_HD marks the functions on the zero-copy decode path as callable from a

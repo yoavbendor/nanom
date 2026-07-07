@@ -9,6 +9,10 @@
 
 #include "prelude.hpp"
 
+#if NANOM_GENERATION
+#include "generation.hpp"
+#endif
+
 namespace nanom {
 
 // ---------------------------------------------------------------------------
@@ -74,6 +78,10 @@ struct input {
   /// (fetch more and retry) instead of a plain backtrackable error. Enable
   /// with nm::streaming(in). Default is complete/whole-buffer mode.
   bool live = false;
+#if NANOM_GENERATION
+  const wire_arena* arena = nullptr;
+  std::uint64_t     gen   = 0;
+#endif
 
   constexpr input() = default;
   constexpr input(bytes b)
@@ -90,7 +98,23 @@ struct input {
     return std::uint8_t(first[i]);
   }
   /// Cursor advanced by n bytes (precondition: n <= size()).
-  NANOM_HD constexpr input advance(std::size_t n) const { return {first + n, last, base, live}; }
+  NANOM_HD constexpr input advance(std::size_t n) const {
+    input o{first + n, last, base, live};
+#if NANOM_GENERATION
+    o.arena = arena;
+    o.gen   = gen;
+#endif
+    return o;
+  }
+  /// Subspan cursor sharing arena metadata (for length_value / recognize).
+  NANOM_HD constexpr input with_range(const std::byte* f, const std::byte* l) const {
+    input o{f, l, base, live};
+#if NANOM_GENERATION
+    o.arena = arena;
+    o.gen   = gen;
+#endif
+    return o;
+  }
   /// First n bytes as a zero-copy span (precondition: n <= size()).
   NANOM_HD constexpr bytes take_span(std::size_t n) const { return {first, n}; }
   /// Bounds-checked index; empty when i >= size().
@@ -107,6 +131,18 @@ struct input {
 
 /// Make an input from anything byte-like.
 constexpr input from(bytes b) { return input(b); }
+#if NANOM_GENERATION
+inline input from(bytes b, wire_arena& arena) {
+  arena.open(b.data(), b.size());
+  input in = from(b);
+  in.arena = &arena;
+  in.gen   = arena.generation;
+  return in;
+}
+inline input from(const void* data, std::size_t len, wire_arena& arena) {
+  return from(bytes(static_cast<const std::byte*>(data), len), arena);
+}
+#endif
 inline input from(std::string_view s) {
   return input(bytes(reinterpret_cast<const std::byte*>(s.data()), s.size()));
 }
@@ -182,9 +218,11 @@ struct error {
       out += " (starting at offset " + std::to_string(ctx[i].offset) + ")";
     }
     // hex window: up to 8 bytes before and after the failure point
-    const std::size_t total = std::size_t(whole.last - whole.base);
-    const std::size_t off = offset;  // widen the 32-bit field for arithmetic
-    if (off <= total) {
+    const std::size_t total = whole.base ? std::size_t(whole.last - whole.base) : 0;
+    const std::size_t off = std::min<std::size_t>(offset, total);  // clamp bogus offsets
+    if (offset > total)
+      out += " (offset beyond input, hex window clamped)";
+    if (total > 0) {
       const std::size_t lo = off >= 8 ? off - 8 : 0;
       const std::size_t hi = std::min(off + 8, total);
       static constexpr char hexd[] = "0123456789abcdef";
@@ -261,16 +299,54 @@ using parsed_t = typename std::invoke_result_t<const P&, input>::value_type::typ
 // 5. primitive byte parsers (nom::bytes)
 // ---------------------------------------------------------------------------
 
-/// tag("GET") / tag(bytes) — match an exact byte sequence, yield it zero-copy.
-/// NOTE: stores the pattern by reference; use with string literals or
-/// outliving buffers (same rule as nom).
-constexpr auto tag(std::string_view pattern) {
-  return [pattern](input in) -> result<bytes> {
-    if (in.size() < pattern.size()) return make_incomplete(in, pattern.size() - in.size());
-    if (std::memcmp(in.first, pattern.data(), pattern.size()) != 0)
-      return make_err(in, "tag");
-    return done{in.take_span(pattern.size()), in.advance(pattern.size())};
+namespace detail {
+inline constexpr std::size_t tag_sbo_cap = 15;
+constexpr char lower(char c) { return (c >= 'A' && c <= 'Z') ? char(c + 32) : c; }
+
+/// Owns a tag pattern by value (SBO ≤15 B, else heap string) so parsers outlive
+/// ephemeral std::string sources.
+struct owned_pattern {
+  std::array<char, 16> small{};
+  std::string          large;
+  std::size_t          len = 0;
+
+  explicit owned_pattern(std::string_view p) : len(p.size()) {
+    if (len <= tag_sbo_cap) {
+      for (std::size_t i = 0; i < len; ++i) small[static_cast<std::size_t>(i)] = p[i];
+    } else {
+      large.assign(p);
+    }
+  }
+
+  const char* data() const noexcept {
+    return len <= tag_sbo_cap ? small.data() : large.data();
+  }
+};
+
+inline auto make_tag_parser(owned_pattern pat) {
+  return [pat = std::move(pat)](input in) -> result<bytes> {
+    const std::size_t n = pat.len;
+    if (in.size() < n) return make_incomplete(in, n - in.size());
+    if (std::memcmp(in.first, pat.data(), n) != 0) return make_err(in, "tag");
+    return done{in.take_span(n), in.advance(n)};
   };
+}
+
+inline auto make_tag_no_case_parser(owned_pattern pat) {
+  return [pat = std::move(pat)](input in) -> result<bytes> {
+    const std::size_t n = pat.len;
+    if (in.size() < n) return make_incomplete(in, n - in.size());
+    for (std::size_t i = 0; i < n; ++i)
+      if (lower(char(in[i])) != lower(pat.data()[i])) return make_err(in, "tag_no_case");
+    return done{in.take_span(n), in.advance(n)};
+  };
+}
+}  // namespace detail
+
+/// tag("GET") / tag(bytes) — match an exact byte sequence, yield it zero-copy.
+/// Stores the pattern by value (small-buffer optimized up to 15 bytes).
+inline auto tag(std::string_view pattern) {
+  return detail::make_tag_parser(detail::owned_pattern(pattern));
 }
 constexpr auto tag(bytes pattern) {
   return [pattern](input in) -> result<bytes> {
@@ -281,19 +357,9 @@ constexpr auto tag(bytes pattern) {
   };
 }
 
-namespace detail {
-constexpr char lower(char c) { return (c >= 'A' && c <= 'Z') ? char(c + 32) : c; }
-}
-
 /// tag_no_case("http") — ASCII case-insensitive tag.
-constexpr auto tag_no_case(std::string_view pattern) {
-  return [pattern](input in) -> result<bytes> {
-    if (in.size() < pattern.size()) return make_incomplete(in, pattern.size() - in.size());
-    for (std::size_t i = 0; i < pattern.size(); ++i)
-      if (detail::lower(char(in[i])) != detail::lower(pattern[i]))
-        return make_err(in, "tag_no_case");
-    return done{in.take_span(pattern.size()), in.advance(pattern.size())};
-  };
+inline auto tag_no_case(std::string_view pattern) {
+  return detail::make_tag_no_case_parser(detail::owned_pattern(pattern));
 }
 
 /// take(n) — exactly n bytes, zero-copy.
@@ -673,6 +739,7 @@ constexpr auto permutation(Ps... ps) {
 
 /// many0(p) — zero or more, into std::vector. Errors (like nom) if p succeeds
 /// without consuming, to prevent infinite loops.
+inline constexpr bool many0_guards_zero_consumption = true;
 template <Parser P>
 constexpr auto many0(P p) {
   return [p](input in) -> result<std::vector<parsed_t<P>>> {
@@ -688,6 +755,30 @@ constexpr auto many0(P p) {
       out.push_back(std::move(r->value));
       cur = r->rest;
     }
+  };
+}
+/// checked_many0(p, max_rep) — like many0 but stops with an error after max_rep
+/// successful matches (default 1M) so a custom inner parser cannot spin forever.
+template <Parser P>
+constexpr auto checked_many0(P p, std::size_t max_rep = 1'000'000) {
+  return [p, max_rep](input in) -> result<std::vector<parsed_t<P>>> {
+    std::vector<parsed_t<P>> out;
+    input cur = in;
+    for (std::size_t n = 0; n < max_rep; ++n) {
+      auto r = p(cur);
+      if (!r) {
+        if (r.error().kind != errk::err) return unexp(r.error());
+        return done{std::move(out), cur};
+      }
+      if (r->rest.first == cur.first)
+        return make_err(cur, "checked_many0: inner parser must consume input");
+      out.push_back(std::move(r->value));
+      cur = r->rest;
+    }
+    auto probe = p(cur);
+    if (probe) return make_err(cur, "checked_many0: repetition cap exceeded");
+    if (!probe && probe.error().kind != errk::err) return unexp(probe.error());
+    return done{std::move(out), cur};
   };
 }
 /// many1(p) — one or more.
@@ -857,6 +948,8 @@ constexpr auto fold_many_m_n(std::size_t m, std::size_t n, P p, Init init, F f) 
 }
 
 /// length_data(np) — np yields a length N; then take N raw bytes (zero-copy).
+/// Returned bytes are caller-scoped spans (see span_lifetime_is_caller_scoped).
+inline constexpr bool length_prefix_spans_are_unowned = true;
 template <Parser N>
 constexpr auto length_data(N np) {
   return [np](input in) -> result<bytes> {
@@ -873,7 +966,7 @@ constexpr auto length_value(N np, P p) {
     auto rd = length_data(np)(in);
     if (!rd) return unexp(rd.error());
     // sub-input keeps the same base so error offsets remain absolute
-    input sub{rd->value.data(), rd->value.data() + rd->value.size(), in.base};
+    input sub = in.with_range(rd->value.data(), rd->value.data() + rd->value.size());
     auto r = p(sub);
     if (!r) {
       error e = r.error();
@@ -935,7 +1028,7 @@ constexpr auto map_parser(P p, Q q) {
       else
         return r->value;
     }();
-    input sub{b.data(), b.data() + b.size(), in.base};
+    input sub = in.with_range(b.data(), b.data() + b.size());
     auto rq = q(sub);
     if (!rq) return unexp(rq.error());
     return done{std::move(rq->value), r->rest};
