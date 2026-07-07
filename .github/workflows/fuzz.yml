@@ -20,22 +20,30 @@ jobs:
       - name: install clang + runtimes
         run: sudo apt-get update && sudo apt-get install -y clang-18
 
-      - name: build the coverage-guided fuzzer
+      - name: build the coverage-guided fuzzers
         run: |
-          cmake -B build -DCMAKE_CXX_COMPILER=clang++-18 -DNANOM_BUILD_FUZZERS=ON
-          cmake --build build --target fuzz_scan_walk -j
+          cmake -B build -DCMAKE_CXX_COMPILER=clang++-18 -DNANOM_BUILD_FUZZERS=ON \
+            -DNANOM_GUARD_VIEWS=ON -DNANOM_GENERATION=ON
+          cmake --build build --target fuzz_scan_walk fuzz_streaming_pcapng -j
 
       - name: seed corpus from the pcap fixtures
         run: |
-          mkdir -p corpus
+          mkdir -p corpus corpus_streaming
           cp examples/nanotins_parity/testdata/*.pcap examples/nanotins_parity/testdata/*.pcapng corpus/ || true
+          cp examples/nanotins_parity/testdata/*.pcapng corpus_streaming/ || true
 
       # short on PRs/pushes, long on the nightly schedule
-      - name: run
+      - name: run scan_walk
         run: |
           if [ "${{ github.event_name }}" = "schedule" ]; then T=900; else T=120; fi
           ./build/fuzz_scan_walk -max_total_time=$T -rss_limit_mb=4096 \
             -print_final_stats=1 -artifact_prefix=crash- corpus/
+
+      - name: run streaming_pcapng
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then T=600; else T=90; fi
+          ./build/fuzz_streaming_pcapng -max_total_time=$T -rss_limit_mb=4096 \
+            -print_final_stats=1 -artifact_prefix=crash-streaming- corpus_streaming/
 
       - name: upload crashes (if any)
         if: failure()

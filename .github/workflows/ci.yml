@@ -66,6 +66,39 @@ jobs:
       - name: streaming bench + verified output + budget gate
         run: python3 bench/compare_rust.py --build --safety both --iters 10000 --max-overhead 1.20
 
+  # ---- streaming sanitizer: incremental/refill paths + libFuzzer streaming harness ----
+  streaming-sanitizer:
+    name: streaming sanitizer (ASan + streaming fuzz)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: install clang
+        run: sudo apt-get update && sudo apt-get install -y clang-18
+      - name: configure (safety-first + ASan)
+        run: cmake -B build -DCMAKE_CXX_COMPILER=clang++-18
+             -DCMAKE_BUILD_TYPE=RelWithDebInfo
+             -DNANOM_SANITIZER=address,undefined
+             -DNANOM_GUARD_VIEWS=ON -DNANOM_GENERATION=ON
+             -DNANOM_BUILD_FUZZERS=ON
+      - name: build
+        run: cmake --build build -j --target nanom_streaming_safety_tests fuzz_streaming_pcapng
+      - name: streaming safety tests
+        run: ctest --test-dir build -R nanom_streaming_safety_tests --output-on-failure
+        env:
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+          ASAN_OPTIONS: detect_leaks=1
+      - name: seed corpus
+        run: |
+          mkdir -p corpus_streaming
+          cp examples/nanotins_parity/testdata/*.pcapng corpus_streaming/ || true
+      - name: fuzz streaming pcapng (short run)
+        run: |
+          ./build/fuzz_streaming_pcapng -max_total_time=120 -rss_limit_mb=4096 \
+            -print_final_stats=1 -artifact_prefix=crash-streaming- corpus_streaming/
+        env:
+          UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
+          ASAN_OPTIONS: detect_leaks=1
+
   # ---- sanitizers (gcc runtimes are always present on the runner) -------
   sanitizers:
     name: sanitize (${{ matrix.san }})
