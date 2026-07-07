@@ -86,12 +86,14 @@ else()
 endif()
 if(NANOM_CXX26_REFLECTION)
   set(CMAKE_CXX_STANDARD 26)  # compile features declare a 23 minimum; this raises the whole tree
-  target_compile_options(nanom_flags INTERFACE ${NANOM_REFLECTION_FLAGS})
-  target_link_options(nanom_flags    INTERFACE ${NANOM_REFLECTION_FLAGS})
+  # Apply reflection flags to the shared warn base so EVERY flags target (default,
+  # strict, generation) inherits libc++ + the runtime rpath, not just nanom_flags.
+  target_compile_options(nanom_warn_flags INTERFACE ${NANOM_REFLECTION_FLAGS})
+  target_link_options(nanom_warn_flags    INTERFACE ${NANOM_REFLECTION_FLAGS})
   # Binaries must find the toolchain's own libc++ at runtime when it isn't the system one.
   get_filename_component(_nanom_p2996_bin "${CMAKE_CXX_COMPILER}" DIRECTORY)
   if(EXISTS "${_nanom_p2996_bin}/../lib/x86_64-unknown-linux-gnu/libc++.so")
-    target_link_options(nanom_flags INTERFACE
+    target_link_options(nanom_warn_flags INTERFACE
       "-Wl,-rpath,${_nanom_p2996_bin}/../lib/x86_64-unknown-linux-gnu")
   endif()
 endif()
