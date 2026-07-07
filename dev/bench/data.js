@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783425892982,
+  "lastUpdate": 1783426553177,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -615,6 +615,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 20.2,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "102eb99196f86aaaf748c253122f8099c5f68f6c",
+          "message": "Merge pull request #17 from yoavbendor/cursor/safety-stage5-streaming-fuzz-1ef9\n\nStage 5: streaming sanitizer tests and fuzz harness",
+          "timestamp": "2026-07-07T15:15:22+03:00",
+          "tree_id": "346c7f847400aa89542b29da21d77ae63e617516",
+          "url": "https://github.com/yoavbendor/nanom/commit/102eb99196f86aaaf748c253122f8099c5f68f6c"
+        },
+        "date": 1783426552585,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 28.6,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 100.4,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 39,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 19.8,
             "unit": "ns/pkt"
           }
         ]
