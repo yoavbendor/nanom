@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783430348481,
+  "lastUpdate": 1783436123562,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -747,6 +747,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 15.8,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "927c58076da7931843b2c8550bc6e6719a421e2c",
+          "message": "Merge pull request #20 from yoavbendor/cursor/safety-strict-profile-1ef9\n\nfeat: NANOM_STRICT \"safe routes only\" profile — compile-time safety, lean runtime",
+          "timestamp": "2026-07-07T17:54:42+03:00",
+          "tree_id": "577d4570db17a0729c2c246e486ba7e7c66e0f78",
+          "url": "https://github.com/yoavbendor/nanom/commit/927c58076da7931843b2c8550bc6e6719a421e2c"
+        },
+        "date": 1783436123050,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 32.2,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 109.3,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 39.9,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 21.5,
             "unit": "ns/pkt"
           }
         ]
