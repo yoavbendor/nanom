@@ -633,6 +633,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#safety-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety profiles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#result" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -840,6 +851,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#safety-profiles" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety profiles
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#result" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -940,6 +962,31 @@ the option TLVs the same way — not just the fixed fields.</p>
 both zero-copy. The <code>pcap-parser</code> row is what people actually use; the only difference from the
 hand-written scanner is that <code>opt_parse_options</code> allocates a <code>Vec&lt;PcapNGOption&gt;</code> per packet — so that
 row isolates the <strong>cost of allocation</strong>, not of extra parsing.</p>
+<h2 id="safety-profiles">Safety profiles<a class="headerlink" href="#safety-profiles" title="Permanent link">&para;</a></h2>
+<p><code>compare_rust.py</code> builds nanom twice for the equal-work streaming benchmark:</p>
+<table>
+<thead>
+<tr>
+<th>profile</th>
+<th>flags</th>
+<th>role</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>minimal</strong></td>
+<td><code>NANOM_GENERATION=0</code>, <code>NANOM_GUARD_VIEWS=0</code></td>
+<td>opt-out perf baseline</td>
+</tr>
+<tr>
+<td><strong>full</strong></td>
+<td><code>NANOM_GENERATION=1</code>, <code>NANOM_GUARD_VIEWS=1</code>, <code>wire_arena</code> on refill buffer</td>
+<td><strong>safety-first</strong> (matches CI/library defaults)</td>
+</tr>
+</tbody>
+</table>
+<p>Both profiles must produce <strong>identical</strong> aggregates before timings are reported. CI's <code>perf-budget</code>
+job fails if <code>full/minimal</code> ns/packet exceeds <strong>1.20×</strong> on the standard fixture.</p>
 <h2 id="result">Result<a class="headerlink" href="#result" title="Permanent link">&para;</a></h2>
 <p>Best-of-5, one machine (<code>g++-13 -O3 -march=native</code>; <code>cargo --release</code> LTO; nom 8.0.0,
 pcap-parser 0.17.0), 224-packet / 352 KiB capture (896 options total, incl. <code>opt_endofopt</code>), 20000
@@ -996,8 +1043,9 @@ per-packet allocation. Against the real <code>pcap-parser</code> library doing t
   aggregates ever diverge, <code>compare_rust.py</code> fails loudly and prints no timings.</li>
 </ul>
 <h2 id="reproduce">Reproduce<a class="headerlink" href="#reproduce" title="Permanent link">&para;</a></h2>
-<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>bench/compare_rust.py<span class="w"> </span>--build<span class="w">           </span><span class="c1"># builds both, verifies equal output, prints the table</span>
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python3<span class="w"> </span>bench/compare_rust.py<span class="w"> </span>--iters<span class="w"> </span><span class="m">20000</span><span class="w">     </span><span class="c1"># more iterations for a steadier number</span>
+<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>python3<span class="w"> </span>bench/compare_rust.py<span class="w"> </span>--build<span class="w"> </span>--safety<span class="w"> </span>both<span class="w">    </span><span class="c1"># both profiles + parity table</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>python3<span class="w"> </span>bench/compare_rust.py<span class="w"> </span>--iters<span class="w"> </span><span class="m">20000</span><span class="w">            </span><span class="c1"># steadier numbers</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>python3<span class="w"> </span>bench/compare_rust.py<span class="w"> </span>--build<span class="w"> </span>--safety<span class="w"> </span>both<span class="w"> </span>--max-overhead<span class="w"> </span><span class="m">1</span>.20<span class="w">  </span><span class="c1"># CI budget gate</span>
 </code></pre></div>
 
 

@@ -1207,6 +1207,9 @@ provides a concrete checklist for external memory-safety review.</p>
 <a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
 <a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># baseline perf sanity</span>
 <a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>python3<span class="w"> </span>bench/compare_rust.py<span class="w"> </span>--build<span class="w"> </span>--safety<span class="w"> </span>both<span class="w"> </span>--iters<span class="w"> </span><span class="m">20000</span>
+<a id="__codelineno-0-11" name="__codelineno-0-11" href="#__codelineno-0-11"></a>
+<a id="__codelineno-0-12" name="__codelineno-0-12" href="#__codelineno-0-12"></a><span class="c1"># CI perf budget gate (full safety vs minimal opt-out baseline)</span>
+<a id="__codelineno-0-13" name="__codelineno-0-13" href="#__codelineno-0-13"></a>python3<span class="w"> </span>bench/compare_rust.py<span class="w"> </span>--build<span class="w"> </span>--safety<span class="w"> </span>both<span class="w"> </span>--iters<span class="w"> </span><span class="m">10000</span><span class="w"> </span>--max-overhead<span class="w"> </span><span class="m">1</span>.20
 </code></pre></div>
 
 
