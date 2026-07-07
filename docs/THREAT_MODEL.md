@@ -3,6 +3,10 @@
 This page describes what nanom's safety features do and do not guarantee, and
 provides a concrete checklist for external memory-safety review.
 
+**Rust / nom reviewers:** see [Safety for Rust reviewers](RUST_SAFETY_REVIEW.md) for
+the three common objections (dangling views, overlay UB, TLV overflow) and how nanom
+addresses each.
+
 ## Scope and assumptions
 
 nanom is a zero-copy parser library. Its core data model (`input`, `bytes`,

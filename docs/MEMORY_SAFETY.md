@@ -4,6 +4,9 @@ nanom's parse path is **zero-copy**: `input`, `bytes`, and `view<T>` reference
 caller-owned buffers. Combinators bound-check before every consume; this document
 covers what the library **does** enforce and what remains **caller contract**.
 
+**Rust / nom reviewers:** start with [Safety for Rust reviewers](RUST_SAFETY_REVIEW.md)
+for a focused answer to lifetime, type-punning UB, and TLV overflow questions.
+
 ## Enforced by the library
 
 | Guard | Where | Notes |

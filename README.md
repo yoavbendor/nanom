@@ -12,23 +12,30 @@ and data-tooling extras layer cleanly on top.
 📖 **[Documentation site](https://yoavbendor.github.io/nanom/)** ·
 🗺️ **[nom → nanom cheat sheet](docs/CHEATSHEET.md)** ·
 📐 **[API reference](https://yoavbendor.github.io/nanom/api/)** ·
+🛡️ **[Safety for Rust reviewers](docs/RUST_SAFETY_REVIEW.md)** ·
 🛡️ **[Memory safety model](docs/MEMORY_SAFETY.md)** ·
 🎯 **[Threat model + reviewer checklist](docs/THREAT_MODEL.md)**
 
 ## Streaming + safety first
 
 nanom supports nom-style **incremental streaming** out of the box (`nm::streaming` + `errk::incomplete`)
-and now defaults to the strongest practical memory-safety posture:
+and defaults to the strongest practical memory-safety posture:
 
+- `NANOM_GENERATION=1` (default): `wire_arena` stale-buffer detection on `view` / `bytes` access
 - `NANOM_GUARD_VIEWS=1` (default): null/uninitialized `view` access guard
 - `from(nullptr, n>0)` safe handling (returns empty input)
 - `max_incomplete_needed` cap for streaming `incomplete.needed` (64 KiB)
-- bounds-checked cursor helpers: `input::safe_at()` / `input::checked_advance()`
+- bounds-checked consume on every combinator; `overlay` decodes via byte assembly + `bit_cast` (no struct pointer cast)
+- continuous libFuzzer in CI + ASan/UBSan matrix
+- bounds-checked cursor helpers: `input::safe_at()` / `input::checked_advance()` for hand-rolled paths
+
+**Rust nom audience:** see [Safety for Rust reviewers](docs/RUST_SAFETY_REVIEW.md) for lifetime, UB, and overflow defenses.
 
 Users can still tune behavior per target/build with compile definitions:
 
 ```sh
-# example
+# examples
+-DNANOM_GENERATION=0
 -DNANOM_GUARD_VIEWS=0
 ```
 
