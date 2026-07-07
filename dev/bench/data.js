@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783415366671,
+  "lastUpdate": 1783417253715,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -439,6 +439,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 13.9,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "28e31dc47b384277b92c9db91162be70b924e5ac",
+          "message": "Merge pull request #13 from yoavbendor/cursor/safety-stage1-threat-model-1ef9\n\nStage 1: Add threat model and reviewer checklist",
+          "timestamp": "2026-07-07T12:40:26+03:00",
+          "tree_id": "b9f4859d960f086270431aff6e193c1ba71e1f50",
+          "url": "https://github.com/yoavbendor/nanom/commit/28e31dc47b384277b92c9db91162be70b924e5ac"
+        },
+        "date": 1783417253083,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 15.2,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 98.7,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 24.7,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 13.8,
             "unit": "ns/pkt"
           }
         ]
