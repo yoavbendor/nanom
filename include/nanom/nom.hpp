@@ -145,10 +145,13 @@ struct input {
   }
 };
 
-/// Make an input from anything byte-like.
-constexpr input from(bytes b) { return input(b); }
+/// Make an input from anything byte-like. NANOM_LIFETIMEBOUND ties the returned
+/// cursor to the buffer's lifetime: binding it to a temporary is diagnosed at
+/// compile time on toolchains that support the attribute (Clang), which is the
+/// compile-time half of nanom's dangling-view defense (see docs/RUST_SAFETY_REVIEW.md).
+constexpr input from(bytes b NANOM_LIFETIMEBOUND) { return input(b); }
 #if NANOM_GENERATION
-inline input from(bytes b, wire_arena& arena) {
+inline input from(bytes b NANOM_LIFETIMEBOUND, wire_arena& arena) {
   arena.open(b.data(), b.size());
   input in = from(b.unchecked_span());
   in.arena = &arena;
@@ -159,28 +162,55 @@ inline input from(const void* data, std::size_t len, wire_arena& arena) {
   return from(bytes(std::span<const std::byte>(static_cast<const std::byte*>(data), len)), arena);
 }
 #endif
-inline input from(std::string_view s) {
+inline input from(std::string_view s NANOM_LIFETIMEBOUND) {
   return input(bytes(reinterpret_cast<const std::byte*>(s.data()), s.size()));
 }
+#if !NANOM_STRICT
+/// Raw pointer + length entry. Removed under NANOM_STRICT: the strict profile
+/// requires a sized span/array/string_view so provenance is never an unbounded
+/// (pointer, length) pair a caller can get wrong. Wrap in std::span at the call
+/// site to opt back in explicitly.
 inline input from(const void* data, std::size_t len) {
   if (!data && len > 0) return input{};
   return input(bytes(static_cast<const std::byte*>(data), len));
 }
+#endif
 template <class T, std::size_t N>
   requires(sizeof(T) == 1)
-constexpr input from(const std::array<T, N>& a) {
-  return from(a.data(), N);
+inline input from(const std::array<T, N>& a NANOM_LIFETIMEBOUND) {
+  return input(bytes(reinterpret_cast<const std::byte*>(a.data()), N));
 }
+#if NANOM_GENERATION
+/// std::span convenience (only distinct from from(bytes) when bytes is the
+/// attested wrapper; when generation is off, bytes IS std::span and from(bytes)
+/// already accepts it).
+constexpr input from(std::span<const std::byte> s NANOM_LIFETIMEBOUND) {
+  return input(bytes(s.data(), s.size()));
+}
+#endif
 
 /// Mark an input as a stream prefix: parsers that hit the end will report
 /// `incomplete` with the byte count still needed, so the caller can refill
 /// and retry (nom's streaming mode; default inputs behave like nom complete).
 constexpr input streaming(input in) { in.live = true; return in; }
 
-/// View a span of raw bytes as text (zero-copy).
-inline std::string_view as_str(bytes b) {
+/// View a span of raw bytes as text (zero-copy). NANOM_LIFETIMEBOUND ties the
+/// returned string_view to the byte buffer so binding it to a temporary is a
+/// compile-time diagnostic on supporting toolchains.
+inline std::string_view as_str(bytes b NANOM_LIFETIMEBOUND) {
   return {reinterpret_cast<const char*>(b.data()), b.size()};
 }
+
+#if NANOM_STRICT
+// Compile-time dangling-view guard: a temporary std::string converts to the
+// std::string_view from() takes, leaving the returned cursor pointing at freed
+// storage the moment the statement ends. Under the strict profile this is a
+// compile error instead of a runtime use-after-free (which strict no longer
+// tracks at runtime — that is the trade the profile makes). Bind the string to
+// a named variable first, then parse it.
+input from(std::string&&)       = delete;
+input from(const std::string&&) = delete;
+#endif
 
 // ---------------------------------------------------------------------------
 // 2. error — POD, allocation-free until render()

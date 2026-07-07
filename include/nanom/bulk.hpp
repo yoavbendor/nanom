@@ -24,6 +24,18 @@
 #ifndef NANOM_BULK_HPP_INCLUDED
 #define NANOM_BULK_HPP_INCLUDED
 
+#include "prelude.hpp"  // for NANOM_STRICT (the strict profile bans this header)
+
+// The bulk/GPU data-parallel path decodes through raw device pointers and
+// index-addressed column scatter — deliberately OUTSIDE the bounds-checked
+// combinator model (that is what makes it device-launchable). The strict
+// "safe routes only" profile therefore refuses to compile it: pick either the
+// strict profile OR the bulk/GPU path, not both. Define NANOM_ALLOW_BULK_IN_STRICT
+// to override if you have audited the kernel yourself.
+#if NANOM_STRICT && !defined(NANOM_ALLOW_BULK_IN_STRICT)
+# error "nanom: <nanom/bulk.hpp> (GPU/bulk raw-pointer scatter) is disabled under NANOM_STRICT. Use the bounds-checked combinator/soa path, or define NANOM_ALLOW_BULK_IN_STRICT to override."
+#endif
+
 #include "soa.hpp"  // its real dependency: soa<T> column layout + the describe/wire/for_each_field seam
                     // (transitively pulls nom.hpp/reflect.hpp/schema.hpp). bulk stays a separate opt-in.
 

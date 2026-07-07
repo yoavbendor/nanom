@@ -9,11 +9,14 @@ nanom safety profiles (see docs/BENCH_RUST_NOM.md):
   minimal — opt-out baseline: NANOM_GENERATION=0, NANOM_GUARD_VIEWS=0
   full    — safety-first (CI default): NANOM_GENERATION=1, NANOM_GUARD_VIEWS=1,
             wire_arena on the refill buffer
+  strict  — "safe routes only": NANOM_STRICT=1 (compile-time restrictions buy
+            the lean runtime; same generation-off speed as minimal, but the
+            lifetime contract is enforced by the compiler, not a runtime branch)
 
 It first ASSERTS all engines produced the identical aggregate, then prints timings.
 
 usage: compare_rust.py [--iters N] [--file PATH] [--build]
-                       [--safety minimal|full|both] [--max-overhead RATIO]
+                       [--safety minimal|full|strict|both|all] [--max-overhead RATIO]
 """
 import argparse
 import pathlib
@@ -43,6 +46,13 @@ SAFETY_PROFILES = {
             '-DNANOM_SAFETY_PROFILE="full"',
         ],
         "desc": "safety-first: generation + view guards + wire_arena",
+    },
+    "strict": {
+        "defines": [
+            "-DNANOM_STRICT=1",
+            '-DNANOM_SAFETY_PROFILE="strict"',
+        ],
+        "desc": "safe routes only: compile-time enforced, lean runtime",
     },
 }
 
@@ -144,9 +154,9 @@ def main(argv) -> int:
     ap.add_argument("--build", action="store_true", help="build the C++ + Rust binaries first")
     ap.add_argument(
         "--safety",
-        choices=("minimal", "full", "both"),
+        choices=("minimal", "full", "strict", "both", "all"),
         default="both",
-        help="nanom safety profile(s) to benchmark (default: both)",
+        help="nanom safety profile(s): both = minimal+full; all = +strict (default: both)",
     )
     ap.add_argument(
         "--max-overhead",
@@ -158,11 +168,16 @@ def main(argv) -> int:
     ap.add_argument("--cxx", default="g++-13")
     a = ap.parse_args(argv[1:])
 
-    if a.max_overhead is not None and a.safety != "both":
-        print("--max-overhead requires --safety both", file=sys.stderr)
+    if a.max_overhead is not None and a.safety not in ("both", "all"):
+        print("--max-overhead requires --safety both or all", file=sys.stderr)
         return 2
 
-    profiles = ["minimal", "full"] if a.safety == "both" else [a.safety]
+    if a.safety == "both":
+        profiles = ["minimal", "full"]
+    elif a.safety == "all":
+        profiles = ["minimal", "full", "strict"]
+    else:
+        profiles = [a.safety]
     rust_bin = RUST / "target" / "release" / "rust_nom_bench"
 
     need_build = a.build or not rust_bin.exists()
@@ -243,7 +258,17 @@ def main(argv) -> int:
                 f"\nperf budget OK: full/minimal ratio {overhead:.3f} <= {a.max_overhead:.3f}",
                 file=sys.stderr,
             )
-    elif a.max_overhead is not None:
+    if "strict" in nanom_results:
+        nm_strict = nanom_results["strict"]
+        base = nm_min
+        ratio_s = float(nm_strict["ns_per_pkt"]) / float(base["ns_per_pkt"])
+        print(
+            f"Strict profile vs minimal: **{float(nm_strict['ns_per_pkt']):.0f} ns/pkt "
+            f"(~{ratio_s:.2f}x)** — compile-time-enforced safety at the unchecked profile's speed."
+        )
+    if a.max_overhead is not None and not (
+        "full" in nanom_results and "minimal" in nanom_results
+    ):
         print("--max-overhead requires both minimal and full profiles", file=sys.stderr)
         return 2
 

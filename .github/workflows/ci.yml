@@ -99,6 +99,37 @@ jobs:
           UBSAN_OPTIONS: halt_on_error=1:print_stacktrace=1
           ASAN_OPTIONS: detect_leaks=1
 
+  # ---- strict profile: compile-time "safe routes only" + lean runtime ----
+  #      Proves the strict compile-time restrictions hold (raw-pointer entry
+  #      removed, owning-temporary from() deleted, GPU/bulk banned) via the
+  #      WILL_FAIL negative compile tests, runs the strict runtime suite, and
+  #      benchmarks strict vs minimal/full to show safety at the unchecked speed.
+  strict-profile:
+    name: strict profile (compile-time safety, lean runtime)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: install compiler
+        run: sudo apt-get update && sudo apt-get install -y g++-13
+      - name: configure (default tree — registers strict + negative compile tests)
+        run: cmake -B build -DCMAKE_CXX_COMPILER=g++-13
+             -DCMAKE_BUILD_TYPE=Release -DNANOM_WERROR=ON
+      - name: build
+        run: cmake --build build -j
+      - name: strict runtime suite + negative compile tests
+        run: |
+          ctest --test-dir build --output-on-failure \
+            -R 'nanom_strict_profile_tests|nanom_strict_rejects_'
+      - name: strict profile compiles clang-clean with lifetimebound
+        run: |
+          sudo apt-get install -y clang-18
+          clang++-18 -std=c++23 -O2 -Wall -Wextra -Werror -DNANOM_STRICT=1 \
+            -I include -c tests/test_strict_profile.cpp -o /tmp/strict_clang.o
+      - name: rust toolchain
+        run: rustup toolchain install stable --profile minimal
+      - name: benchmark strict vs minimal vs full (verified-equal output)
+        run: python3 bench/compare_rust.py --build --safety all --iters 10000 --max-overhead 1.20
+
   # ---- sanitizers (gcc runtimes are always present on the runner) -------
   sanitizers:
     name: sanitize (${{ matrix.san }})

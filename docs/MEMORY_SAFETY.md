@@ -118,6 +118,20 @@ These `constexpr` flags mark the contract surface:
 | `NANOM_GUARD_VIEWS` | **on** | Assert null `view` access |
 | `NANOM_GENERATION` | **on** | `wire_arena` lifetime checks on `view::get` |
 | `NANOM_GENERATION_THROW` | off (abort+print) | Throw `generation_exception` instead of abort |
+| `NANOM_STRICT` | off | "Safe routes only" profile — compile-time restrictions replace the runtime nets (see below) |
+
+## Strict profile (`NANOM_STRICT`)
+
+For safety- **and** speed-obsessed users: narrow the API at compile time so the
+runtime can drop the checks those APIs made necessary. Strict deletes the raw
+`from(ptr, len)` entry, deletes `from(std::string&&)` (owning-temporary dangle),
+refuses `<nanom/bulk.hpp>` (GPU/bulk raw-pointer scatter), and adds
+`[[clang::lifetimebound]]` diagnostics — then defaults `NANOM_GENERATION=0` and
+`NANOM_GUARD_VIEWS=0` for a leaner, faster data model (`input` 48→32 B, `bytes`
+32→16 B). Combinator bounds checks stay on. All three profiles benchmark at
+parity (~82–84 ns/pkt) — **compile-time safety at the unchecked profile's speed**.
+
+Full details, proofs, and safe-route examples: [Compile-time safety](COMPILE_TIME_SAFETY.md).
 
 Future work: auto-tracked containers; stronger provenance/cross-arena diagnostics.
 
@@ -129,6 +143,8 @@ Future work: auto-tracked containers; stronger provenance/cross-arena diagnostic
 - `tests/test_memory_safety_gaps_generation.cpp` — **WILL_FAIL** attested_bytes / arena gaps
 - `tests/test_memory_safety_ub.cpp` — optional ASan red-team demos (`NANOM_MEMORY_SAFETY_UB_DEMOS=ON`)
 - `tests/test_streaming_safety.cpp` — streaming/incremental refill safety (`nanom_streaming_safety_tests`)
+- `tests/test_strict_profile.cpp` — strict profile contract + safe-route parsing (`nanom_strict_profile_tests`)
+- `tests/strict_neg/*.cpp` — **WILL_FAIL** negative compile tests proving strict rejects unsafe routes
 - `bench/safety_microbench.cpp` — performance baselines per guard
 
 CMake registers gap targets when `NANOM_MEMORY_SAFETY_GAP_TESTS=ON` (default). Remove
@@ -142,3 +158,7 @@ The `safety-first` CI job builds with `NANOM_GUARD_VIEWS=ON` and `NANOM_GENERATI
 The separate `perf-budget` job runs `bench/compare_rust.py --safety both --max-overhead 1.20`:
 full safety (generation + view guards + `wire_arena` on the streaming refill buffer) must stay
 within 20% of the opt-out minimal profile on the verified-equal streaming pcapng benchmark.
+
+The `strict-profile` job builds the strict profile, runs its runtime suite and the
+negative compile tests (`nanom_strict_rejects_*`), compiles it clang-clean to
+exercise `lifetimebound`, and benchmarks strict vs minimal vs full.

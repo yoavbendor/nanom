@@ -42,6 +42,14 @@ preempts the usual lifetime, UB, and overflow objections with what is enforced, 
 fuzzed, and what remains caller contract. Also see [memory-safety model](MEMORY_SAFETY.md)
 and [threat model + checklist](THREAT_MODEL.md).
 
+**Safety- and speed-obsessed?** The [strict profile](COMPILE_TIME_SAFETY.md)
+(`-DNANOM_STRICT=1`) narrows the API at compile time — no raw `from(ptr, len)`, no
+owning-temporary parses, no GPU/bulk raw-pointer scatter, `[[clang::lifetimebound]]`
+diagnostics — so the runtime can drop generation tracking and view guards for a leaner data
+model (`input` 48→32 B, `bytes` 32→16 B). Benchmarks at parity with the unchecked build:
+**compile-time-enforced memory safety at zero runtime cost**, proven by `WILL_FAIL` negative
+compile tests.
+
 ## As fast as Rust nom — proven, not asserted
 
 The headline question for a C++ nom-alike is *"is it actually as fast as Rust nom?"* nanom answers it
