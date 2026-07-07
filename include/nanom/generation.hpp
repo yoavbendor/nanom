@@ -183,6 +183,9 @@ struct attested_bytes {
 
   constexpr attested_bytes() = default;
   constexpr attested_bytes(std::span<const std::byte> s) noexcept : span_(s) {}
+  constexpr attested_bytes(std::span<const std::byte> s, const wire_arena* a,
+                           std::uint64_t g) noexcept
+      : span_(s), arena_(a), gen_(g) {}
   constexpr attested_bytes(const std::byte* p, std::size_t n) noexcept : span_(p, n) {}
   constexpr attested_bytes(const std::byte* p, std::size_t n, const wire_arena* a,
                            std::uint64_t g) noexcept
@@ -195,6 +198,15 @@ struct attested_bytes {
   [[nodiscard]] constexpr auto             end() const noexcept { return span_.end(); }
   [[nodiscard]] constexpr std::span<const std::byte> unchecked_span() const noexcept {
     return span_;
+  }
+
+  [[nodiscard]] constexpr attested_bytes subspan(std::size_t offset,
+                                                 std::size_t count) const noexcept {
+    return attested_bytes{span_.subspan(offset, count), arena_, gen_};
+  }
+
+  [[nodiscard]] constexpr attested_bytes subspan(std::size_t offset) const noexcept {
+    return attested_bytes{span_.subspan(offset), arena_, gen_};
   }
 
   NANOM_HD std::uint8_t operator[](std::size_t i) const {

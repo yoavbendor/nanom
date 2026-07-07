@@ -199,6 +199,20 @@ static void test_view_raw_and_byte_array_field_stale() {
   EXPECT_STALE(dst[0]);
 }
 
+static void test_subspan_stale() {
+  nm::wire_arena arena;
+  nm::bytes      slice{};
+  {
+    std::vector<std::byte> wire = {std::byte{0x01}, std::byte{0x02}, std::byte{0x03}, std::byte{0x04}};
+    auto in = nm::from(wire.data(), wire.size(), arena);
+    slice = in.span().subspan(1, 2);
+    CHECK(slice.size() == 2);
+    CHECK(slice[0] == 0x02);
+    arena.invalidate();
+  }
+  EXPECT_STALE(slice[1]);
+}
+
 static void test_untracked_bytes_unchanged() {
   const std::uint8_t raw[] = {0x01, 0x02, 0x03};
   auto r = nm::take(3)(nm::from(raw, sizeof raw));
@@ -249,6 +263,7 @@ int main() {
   test_recognize_consumed_rest_stale();
   test_length_data_stale();
   test_view_raw_and_byte_array_field_stale();
+  test_subspan_stale();
   test_untracked_bytes_unchanged();
   test_handler_ignore();
   if (failures) {
