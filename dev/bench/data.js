@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783436123562,
+  "lastUpdate": 1783437149743,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -791,6 +791,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 21.5,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e2d40933d11c13a58bf8851d9ff78128a9cfad19",
+          "message": "Merge pull request #21 from yoavbendor/cursor/fix-docs-deploy-strict-1ef9\n\ndocs: fix gh-pages deploy (mkdocs --strict abort on out-of-docs link)",
+          "timestamp": "2026-07-07T18:11:58+03:00",
+          "tree_id": "f6ae9045feb5ffc37a5d2e311eb21380e8d1200b",
+          "url": "https://github.com/yoavbendor/nanom/commit/e2d40933d11c13a58bf8851d9ff78128a9cfad19"
+        },
+        "date": 1783437148626,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 28.5,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 104.9,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 38.2,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 21.2,
             "unit": "ns/pkt"
           }
         ]
