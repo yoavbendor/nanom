@@ -756,6 +756,10 @@ constexpr auto permutation(Ps... ps) {
 /// many0(p) — zero or more, into std::vector. Errors (like nom) if p succeeds
 /// without consuming, to prevent infinite loops.
 inline constexpr bool many0_guards_zero_consumption = true;
+/// Set true when input::operator[] bounds-checks (today use safe_at).
+inline constexpr bool input_subscript_is_bounds_checked = false;
+/// Set true when input::advance rejects n > size() (today use checked_advance).
+inline constexpr bool input_advance_validates_bounds = false;
 template <Parser P>
 constexpr auto many0(P p) {
   return [p](input in) -> result<std::vector<parsed_t<P>>> {

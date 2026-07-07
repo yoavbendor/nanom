@@ -67,6 +67,15 @@ Violating these can produce UB when checks are disabled or bypassed by caller be
 
 Track these in failing/gap safety tests and fuzz targets as they are added.
 
+| Gap | Gap test |
+|-----|----------|
+| In-place wire mutation behind live view | `nanom_memory_safety_gap_tests`, `nanom_memory_safety_gap_generation_tests` |
+| Unchecked `input::operator[]` / `advance` | `nanom_memory_safety_gap_tests` |
+| Untracked span lifetime (no `wire_arena`) | `nanom_memory_safety_gap_tests` |
+| `attested_bytes::operator[]` OOB vs `at()` | `nanom_memory_safety_gap_generation_tests` |
+| `unchecked_span()` bypasses generation | `nanom_memory_safety_gap_generation_tests` |
+| `bytes::data()` / `as_str()` skip generation | `nanom_memory_safety_gap_generation_tests` |
+
 ## Reviewer checklist
 
 Use this checklist for PRs touching parse path, lifetime model, or docs claims.
@@ -84,6 +93,9 @@ Use this checklist for PRs touching parse path, lifetime model, or docs claims.
 - [ ] `nanom_tests` includes incremental streaming behavior (`test_streaming_incremental`).
 - [ ] Memory-safety suites pass for expected profile (`nanom_memory_safety_tests`,
       `nanom_generation_tests` where applicable).
+- [ ] Gap suite (`nanom_memory_safety_gap_tests`,
+      `nanom_memory_safety_gap_generation_tests`) remains `WILL_FAIL` until hazards are
+      hardened; flip only when all targeted checks pass.
 - [ ] Any accepted residual risk has a test or documented rationale.
 
 ### Performance checks

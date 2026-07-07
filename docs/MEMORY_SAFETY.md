@@ -74,7 +74,13 @@ Future work: auto-tracked containers; stronger provenance/cross-arena diagnostic
 
 ## Tests
 
-- `tests/test_memory_safety.cpp` — regression suite (`NANOM_GUARD_VIEWS=1`)
-- `tests/test_memory_safety_generation.cpp` — generation suite (`NANOM_GENERATION=1`)
+- `tests/test_memory_safety.cpp` — regression suite (`NANOM_GUARD_VIEWS=1`, must pass)
+- `tests/test_memory_safety_generation.cpp` — generation suite (`NANOM_GENERATION=1`, must pass)
+- `tests/test_memory_safety_gaps.cpp` — **WILL_FAIL** residual hazards without generation tracking
+- `tests/test_memory_safety_gaps_generation.cpp` — **WILL_FAIL** attested_bytes / arena gaps
+- `tests/test_memory_safety_ub.cpp` — optional ASan red-team demos (`NANOM_MEMORY_SAFETY_UB_DEMOS=ON`)
 - `tests/test_nanom.cpp` — incremental one-byte streaming behavior (`test_streaming_incremental`)
 - `bench/safety_microbench.cpp` — performance baselines per guard
+
+CMake registers gap targets when `NANOM_MEMORY_SAFETY_GAP_TESTS=ON` (default). Remove
+`WILL_FAIL` from a gap test only when every targeted `CHECK` in that file passes.
