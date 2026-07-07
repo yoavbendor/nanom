@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://yoavbendor.github.io/nanom/MEMORY_SAFETY/">
+        <link rel="canonical" href="https://yoavbendor.github.io/nanom/RUST_SAFETY_REVIEW/">
       
       
-        <link rel="prev" href="../RUST_SAFETY_REVIEW/">
+        <link rel="prev" href="..">
       
       
-        <link rel="next" href="../COMPILE_TIME_SAFETY/">
+        <link rel="next" href="../MEMORY_SAFETY/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Memory safety - nanom</title>
+        <title>Safety for Rust reviewers - nanom</title>
       
     
     
@@ -97,7 +97,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#nanom-memory-safety" class="md-skip">
+        <a href="#safety-for-rust-reviewers" class="md-skip">
           Skip to content
         </a>
       
@@ -133,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Memory safety
+              Safety for Rust reviewers
             
           </span>
         </div>
@@ -305,33 +305,6 @@
       
   
   
-  
-  
-    <li class="md-nav__item">
-      <a href="../RUST_SAFETY_REVIEW/" class="md-nav__link">
-        
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Safety for Rust reviewers
-  
-
-    
-  </span>
-  
-  
-
-      </a>
-    </li>
-  
-
-    
-      
-      
-  
-  
     
   
   
@@ -351,7 +324,7 @@
   <span class="md-ellipsis">
     
   
-    Memory safety
+    Safety for Rust reviewers
   
 
     
@@ -369,7 +342,7 @@
   <span class="md-ellipsis">
     
   
-    Memory safety
+    Safety for Rust reviewers
   
 
     
@@ -395,10 +368,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#enforced-by-the-library" class="md-nav__link">
+  <a href="#quick-comparison-to-nom" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Enforced by the library
+        Quick comparison to nom
       
     </span>
   </a>
@@ -406,22 +379,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#overlay-decode-strict-aliasing-and-unaligned-reads" class="md-nav__link">
+  <a href="#1-lifetime-and-dangling-views" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overlay decode — strict aliasing and unaligned reads
+        1. Lifetime and dangling views
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Overlay decode — strict aliasing and unaligned reads">
+    <nav class="md-nav" aria-label="1. Lifetime and dangling views">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#how-decode-works-decode_field-in-reflecthpp" class="md-nav__link">
+  <a href="#the-rust-objection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How decode works (decode_field in reflect.hpp)
+        The Rust objection
       
     </span>
   </a>
@@ -429,10 +402,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#what-nanom-does-not-do" class="md-nav__link">
+  <a href="#what-nanom-does" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What nanom does not do
+        What nanom does
       
     </span>
   </a>
@@ -440,10 +413,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#performance" class="md-nav__link">
+  <a href="#honest-limits" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Performance
+        Honest limits
       
     </span>
   </a>
@@ -456,10 +429,121 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#generation-tracking-nanom_generation" class="md-nav__link">
+  <a href="#2-type-punning-strict-aliasing-and-unaligned-reads" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Generation tracking (NANOM_GENERATION)
+        2. Type punning, strict aliasing, and unaligned reads
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Type punning, strict aliasing, and unaligned reads">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-rust-objection_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Rust objection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-nanom-does_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What nanom does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#honest-limits_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-integer-overflow-and-tlv-lengths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Integer overflow and TLV lengths
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Integer overflow and TLV lengths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-rust-objection_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Rust objection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-nanom-does_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What nanom does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fuzzing-and-sanitizers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fuzzing and sanitizers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#honest-limits_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-we-do-not-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What we do not claim
       
     </span>
   </a>
@@ -467,10 +551,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#caller-contract-documented-not-runtime-tracked-without-nanom_generation" class="md-nav__link">
+  <a href="#verify-it-yourself" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Caller contract (documented, not runtime-tracked without NANOM_GENERATION)
+        Verify it yourself
       
     </span>
   </a>
@@ -478,43 +562,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#debug-options" class="md-nav__link">
+  <a href="#related-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Debug options
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#strict-profile-nanom_strict" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Strict profile (NANOM_STRICT)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tests
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ci-safety-first-profile" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CI safety-first profile
+        Related pages
       
     </span>
   </a>
@@ -525,6 +576,33 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../MEMORY_SAFETY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -942,10 +1020,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#enforced-by-the-library" class="md-nav__link">
+  <a href="#quick-comparison-to-nom" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Enforced by the library
+        Quick comparison to nom
       
     </span>
   </a>
@@ -953,22 +1031,22 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#overlay-decode-strict-aliasing-and-unaligned-reads" class="md-nav__link">
+  <a href="#1-lifetime-and-dangling-views" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Overlay decode — strict aliasing and unaligned reads
+        1. Lifetime and dangling views
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="Overlay decode — strict aliasing and unaligned reads">
+    <nav class="md-nav" aria-label="1. Lifetime and dangling views">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#how-decode-works-decode_field-in-reflecthpp" class="md-nav__link">
+  <a href="#the-rust-objection" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How decode works (decode_field in reflect.hpp)
+        The Rust objection
       
     </span>
   </a>
@@ -976,10 +1054,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#what-nanom-does-not-do" class="md-nav__link">
+  <a href="#what-nanom-does" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What nanom does not do
+        What nanom does
       
     </span>
   </a>
@@ -987,10 +1065,10 @@
 </li>
         
           <li class="md-nav__item">
-  <a href="#performance" class="md-nav__link">
+  <a href="#honest-limits" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Performance
+        Honest limits
       
     </span>
   </a>
@@ -1003,10 +1081,121 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#generation-tracking-nanom_generation" class="md-nav__link">
+  <a href="#2-type-punning-strict-aliasing-and-unaligned-reads" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Generation tracking (NANOM_GENERATION)
+        2. Type punning, strict aliasing, and unaligned reads
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Type punning, strict aliasing, and unaligned reads">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-rust-objection_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Rust objection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-nanom-does_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What nanom does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#honest-limits_1" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-integer-overflow-and-tlv-lengths" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        3. Integer overflow and TLV lengths
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="3. Integer overflow and TLV lengths">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-rust-objection_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Rust objection
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-nanom-does_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What nanom does
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#fuzzing-and-sanitizers" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fuzzing and sanitizers
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#honest-limits_2" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Honest limits
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#what-we-do-not-claim" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What we do not claim
       
     </span>
   </a>
@@ -1014,10 +1203,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#caller-contract-documented-not-runtime-tracked-without-nanom_generation" class="md-nav__link">
+  <a href="#verify-it-yourself" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Caller contract (documented, not runtime-tracked without NANOM_GENERATION)
+        Verify it yourself
       
     </span>
   </a>
@@ -1025,43 +1214,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#debug-options" class="md-nav__link">
+  <a href="#related-pages" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Debug options
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#strict-profile-nanom_strict" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Strict profile (NANOM_STRICT)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tests
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#ci-safety-first-profile" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        CI safety-first profile
+        Related pages
       
     </span>
   </a>
@@ -1088,270 +1244,256 @@
   
 
 
-<h1 id="nanom-memory-safety">nanom memory safety<a class="headerlink" href="#nanom-memory-safety" title="Permanent link">&para;</a></h1>
-<p>nanom's parse path is <strong>zero-copy</strong>: <code>input</code>, <code>bytes</code>, and <code>view&lt;T&gt;</code> reference
-caller-owned buffers. Combinators bound-check before every consume; this document
-covers what the library <strong>does</strong> enforce and what remains <strong>caller contract</strong>.</p>
-<p><strong>Rust / nom reviewers:</strong> start with <a href="../RUST_SAFETY_REVIEW/">Safety for Rust reviewers</a>
-for a focused answer to lifetime, type-punning UB, and TLV overflow questions.</p>
-<h2 id="enforced-by-the-library">Enforced by the library<a class="headerlink" href="#enforced-by-the-library" title="Permanent link">&para;</a></h2>
+<h1 id="safety-for-rust-reviewers">Safety for Rust reviewers<a class="headerlink" href="#safety-for-rust-reviewers" title="Permanent link">&para;</a></h1>
+<p>This page answers the questions a <strong>nom / cargo-fuzz</strong> audience typically asks when
+evaluating a zero-copy C++ parser: dangling views, type-punning UB, and integer
+overflow on length-prefixed fields.</p>
+<p>nanom is <strong>not</strong> Rust: there is no borrow checker. The library instead combines
+<strong>runtime generation tracking</strong>, <strong>bounds-checked combinators</strong>, <strong>continuous
+fuzzing</strong>, and <strong>honest gap tests</strong> that document what remains caller contract.</p>
+<p>For the full enforcement matrix see <a href="../MEMORY_SAFETY/">Memory safety</a>. For review
+checklists and CI commands see <a href="../THREAT_MODEL/">Threat model</a>.</p>
+<hr />
+<h2 id="quick-comparison-to-nom">Quick comparison to nom<a class="headerlink" href="#quick-comparison-to-nom" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Guard</th>
-<th>Where</th>
-<th>Notes</th>
+<th>Concern</th>
+<th>Rust nom</th>
+<th>nanom</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td>Consume bounds</td>
-<td><code>take</code>, <code>tag</code>, <code>be_u*</code>, <code>overlay</code>, <code>strct</code></td>
-<td><code>in.size()</code> checked before read</td>
+<td>Zero-copy output</td>
+<td><code>&amp;'a [u8]</code> tied to input lifetime</td>
+<td><code>bytes</code> / <code>view&lt;T&gt;</code> over caller buffer</td>
 </tr>
 <tr>
-<td>Zero-consumption</td>
-<td><code>many0</code>, <code>checked_many0</code></td>
-<td>Inner parser must advance cursor</td>
+<td>Lifetime enforcement</td>
+<td>compile-time borrow checker</td>
+<td><code>wire_arena</code> generation checks (default-on) + documented contract</td>
 </tr>
 <tr>
-<td>Null <code>from</code></td>
-<td><code>from(nullptr, n&gt;0)</code></td>
-<td>Returns empty input</td>
+<td>Out-of-bounds reads</td>
+<td>safe indexing / slice bounds</td>
+<td>combinators gate on <code>in.size()</code> before every consume</td>
 </tr>
 <tr>
-<td>Checked accessors</td>
-<td><code>safe_at</code>, <code>checked_advance</code></td>
-<td>Opt-in; <code>advance</code>/<code>operator[]</code> stay fast</td>
+<td>Hostile length prefixes</td>
+<td><code>Incomplete</code> / caller policy</td>
+<td><code>incomplete</code> + <code>max_incomplete_needed</code> (64 KiB cap)</td>
 </tr>
 <tr>
-<td>Tag pattern lifetime</td>
-<td><code>tag()</code> / <code>tag_no_case()</code></td>
-<td>Pattern stored by value (SBO ≤15 B)</td>
-</tr>
-<tr>
-<td>Streaming <code>needed</code> cap</td>
-<td><code>make_incomplete</code></td>
-<td><code>max_incomplete_needed</code> (64 KiB)</td>
-</tr>
-<tr>
-<td>Error render window</td>
-<td><code>error::render</code></td>
-<td>Offset clamped to buffer</td>
-</tr>
-<tr>
-<td>Bulk descriptors</td>
-<td><code>pkt_ref_valid</code>, <code>bulk_decode</code></td>
-<td>Rejects null data + nonzero len</td>
-</tr>
-<tr>
-<td>Null view (debug)</td>
-<td><code>view::get</code> / <code>raw</code> / <code>to_struct</code></td>
-<td><code>NANOM_GUARD_VIEWS</code> asserts <code>p != nullptr</code></td>
-</tr>
-<tr>
-<td>Generation tracking</td>
-<td><code>wire_arena</code>, <code>from(buf, arena)</code>, <code>view::get/raw</code>, <code>bytes</code> subscript</td>
-<td><code>NANOM_GENERATION=1</code>; enabled by default</td>
-</tr>
-<tr>
-<td>Safe wire decode</td>
-<td><code>overlay</code>, <code>strct</code>, <code>view::get</code></td>
-<td>byte assembly + <code>std::bit_cast</code>; no <code>reinterpret_cast&lt;T*&gt;</code> (see below)</td>
+<td>Regression testing</td>
+<td><code>cargo-fuzz</code>, unit tests</td>
+<td>libFuzzer in CI + sanitizer matrix + enforced safety suites</td>
 </tr>
 </tbody>
 </table>
-<h2 id="overlay-decode-strict-aliasing-and-unaligned-reads">Overlay decode — strict aliasing and unaligned reads<a class="headerlink" href="#overlay-decode-strict-aliasing-and-unaligned-reads" title="Permanent link">&para;</a></h2>
-<p><strong>Does <code>overlay&lt;T&gt;()</code> just <code>reinterpret_cast</code> the byte buffer?</strong></p>
-<p><strong>No.</strong> A <code>view&lt;T&gt;</code> stores a <code>const std::byte* p</code> to the start of the struct's wire
-image. Fields are <strong>decoded on access</strong> into local values — nanom never treats the
-buffer as a live <code>T</code> object and never casts wire bytes to <code>T*</code>.</p>
-<p>This is the same safety model as Rust's <code>zerocopy</code> / <code>bytemuck</code>: read bytes, assemble
-a value, return it. Zero-copy means the <strong>view handle</strong> points at your buffer; field
-<strong>values</strong> are produced by explicit decode, not aliasing.</p>
-<h3 id="how-decode-works-decode_field-in-reflecthpp">How decode works (<code>decode_field</code> in <code>reflect.hpp</code>)<a class="headerlink" href="#how-decode-works-decode_field-in-reflecthpp" title="Permanent link">&para;</a></h3>
-<table>
-<thead>
-<tr>
-<th>Field kind</th>
-<th>Mechanism</th>
-<th>UB avoided</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Plain integrals / floats</td>
-<td>Load wire bytes into a local integer <code>U</code> with a byte loop, then <code>std::bit_cast&lt;F&gt;(U)</code></td>
-<td>No type-punning through a pointer; no unaligned scalar load</td>
-</tr>
-<tr>
-<td><code>be&lt;&gt;</code> / <code>le&lt;&gt;</code></td>
-<td>Same byte assembly into host order</td>
-<td>Same</td>
-</tr>
-<tr>
-<td><code>ubits&lt;&gt;</code> / <code>ibits&lt;&gt;</code></td>
-<td>Shift+mask over the covering bytes (or <code>read_bits</code> for odd layouts)</td>
-<td>Unaligned bit fields: no cast to a wider type at an arbitrary offset</td>
-</tr>
-<tr>
-<td>Nested structs</td>
-<td>Recurse field-by-field</td>
-<td>Same decode path as <code>strct&lt;T&gt;()</code></td>
-</tr>
-<tr>
-<td><code>std::array</code> of 1-byte elements</td>
-<td>Zero-copy <code>span</code> into the buffer (element pointer, not struct pointer)</td>
-<td>Caller lifetime contract</td>
-</tr>
-</tbody>
-</table>
-<p><code>overlay&lt;T&gt;()</code> and <code>strct&lt;T&gt;()</code> share this decode engine. <code>strct</code> materializes a full
-<code>T</code> on the stack; <code>overlay</code> keeps the lazy <code>view&lt;T&gt;</code> and calls <code>decode_field</code> inside
-<code>get&lt;"field"&gt;()</code>.</p>
-<p>Compile-time layout checks (<code>layout_ok&lt;T&gt;()</code>) require non-bit fields to start on byte
-boundaries and the total wire size to be a whole number of bytes.</p>
-<h3 id="what-nanom-does-not-do">What nanom does <strong>not</strong> do<a class="headerlink" href="#what-nanom-does-not-do" title="Permanent link">&para;</a></h3>
-<ul>
-<li><code>reinterpret_cast&lt;T*&gt;(wire)</code> or <code>std::start_lifetime_as&lt;T&gt;(wire)</code> — the wire buffer
-  is not presented as a <code>T</code> object.</li>
-<li>Unaligned wide loads through a misaligned <code>T*</code> or <code>uint32_t*</code> on the wire.</li>
-<li>Silent strict-aliasing violations from reading the same bytes as two incompatible types.</li>
-</ul>
-<h3 id="performance">Performance<a class="headerlink" href="#performance" title="Permanent link">&para;</a></h3>
-<p>The byte-assembly loops are <code>constexpr</code> and compile to the same machine code as a
-hand-tuned overlay on hot paths (often one load + <code>bswap</code> for 2/4/8-byte fields).
-Documenting the decode model does not change the implementation or its speed.</p>
-<p>Implementation reference: <a href="https://github.com/yoavbendor/nanom/blob/main/include/nanom/reflect.hpp"><code>include/nanom/reflect.hpp</code></a>
-(<code>decode_field</code>, <code>view&lt;T&gt;::get</code>, <code>overlay&lt;T&gt;()</code>).</p>
-<h2 id="generation-tracking-nanom_generation">Generation tracking (<code>NANOM_GENERATION</code>)<a class="headerlink" href="#generation-tracking-nanom_generation" title="Permanent link">&para;</a></h2>
-<p>Enabled by default. For strict perf/compat modes, users can opt out with
-<code>-DNANOM_GENERATION=0</code>.</p>
+<hr />
+<h2 id="1-lifetime-and-dangling-views">1. Lifetime and dangling views<a class="headerlink" href="#1-lifetime-and-dangling-views" title="Permanent link">&para;</a></h2>
+<h3 id="the-rust-objection">The Rust objection<a class="headerlink" href="#the-rust-objection" title="Permanent link">&para;</a></h3>
+<p>nom returns <code>IResult&lt;&amp;'a [u8], T&lt;'a&gt;&gt;</code>. The compiler prevents holding a parsed
+view after the backing buffer is freed. In C++, a <code>view&lt;T&gt;</code> or <code>bytes</code> span can
+outlive its buffer unless something catches the misuse.</p>
+<h3 id="what-nanom-does">What nanom does<a class="headerlink" href="#what-nanom-does" title="Permanent link">&para;</a></h3>
+<p><strong>Default-on generation tracking</strong> (<code>NANOM_GENERATION=1</code>) registers the wire
+buffer in a <code>wire_arena</code>. Parsed <code>input</code>, <code>bytes</code>, and <code>view&lt;T&gt;</code> carry a
+generation snapshot. On <code>view::get</code>, <code>view::raw</code>, <code>bytes::operator[]</code>, and
+<code>bytes::at</code>, nanom verifies the arena generation is unchanged and the access lies
+inside the registered range.</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">&gt;</span><span class="w"> </span><span class="n">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">load</span><span class="p">();</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">nm</span><span class="o">::</span><span class="n">wire_arena</span><span class="w"> </span><span class="n">arena</span><span class="p">;</span>
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">nm</span><span class="o">::</span><span class="n">input</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">nm</span><span class="o">::</span><span class="n">bytes</span><span class="p">(</span><span class="n">buf</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="n">buf</span><span class="p">.</span><span class="n">size</span><span class="p">()),</span><span class="w"> </span><span class="n">arena</span><span class="p">);</span>
-<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">auto</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">overlay</span><span class="o">&lt;</span><span class="n">my_hdr</span><span class="o">&gt;</span><span class="p">()(</span><span class="n">in</span><span class="p">);</span>
-<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a><span class="k">auto</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="o">-&gt;</span><span class="n">value</span><span class="p">;</span>
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="k">auto</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">overlay</span><span class="o">&lt;</span><span class="n">my_hdr</span><span class="o">&gt;</span><span class="p">()(</span><span class="n">nm</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">buf</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="n">buf</span><span class="p">.</span><span class="n">size</span><span class="p">(),</span><span class="w"> </span><span class="n">arena</span><span class="p">));</span>
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a><span class="k">auto</span><span class="w"> </span><span class="n">v</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">r</span><span class="o">-&gt;</span><span class="n">value</span><span class="p">;</span>
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
 <a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="n">buf</span><span class="p">.</span><span class="n">clear</span><span class="p">();</span>
-<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">arena</span><span class="p">.</span><span class="n">invalidate</span><span class="p">();</span><span class="w">           </span><span class="c1">// or arena.open() after realloc</span>
-<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a><span class="c1">// v.get&lt;&quot;field&quot;&gt;() → generation_exception with stale_generation report</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a><span class="n">arena</span><span class="p">.</span><span class="n">invalidate</span><span class="p">();</span><span class="w">   </span><span class="c1">// or arena.open() after realloc</span>
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1">// Stale access is caught at runtime (abort+report, or generation_exception if enabled):</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a><span class="c1">// v.get&lt;&quot;field&quot;&gt;();</span>
 </code></pre></div>
 <table>
 <thead>
 <tr>
-<th>API</th>
+<th>Mode</th>
+<th>Behavior</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>from(span, arena)</code></td>
+<td>Generation-attested parses; stale access faulted</td>
+</tr>
+<tr>
+<td><code>from(span)</code> alone</td>
+<td>Documented caller contract (<code>span_lifetime_is_caller_scoped</code>)</td>
+</tr>
+<tr>
+<td><code>NANOM_GENERATION=0</code></td>
+<td>Opt-out for embedded/legacy; contract-only</td>
+</tr>
+</tbody>
+</table>
+<p>CI runs the <strong>safety-first</strong> profile (<code>NANOM_GUARD_VIEWS=ON</code>, <code>NANOM_GENERATION=ON</code>)
+and enforced suites (<code>nanom_memory_safety_tests</code>, <code>nanom_generation_tests</code>,
+<code>nanom_streaming_safety_tests</code>). The <strong>full</strong> safety profile is also benchmarked
+against minimal opt-out on the streaming pcapng harness — overhead stays within
+20% (<code>perf-budget</code> CI job).</p>
+<h3 id="honest-limits">Honest limits<a class="headerlink" href="#honest-limits" title="Permanent link">&para;</a></h3>
+<p>This is <strong>runtime</strong> enforcement, not a borrow checker:</p>
+<ul>
+<li>Tracking requires <code>from(buf, arena)</code> — plain <code>from(buf)</code> is contract-only.</li>
+<li><code>bytes::data()</code>, <code>as_str()</code>, and <code>unchecked_span()</code> can bypass attestation (documented in gap tests).</li>
+<li>In-place wire mutation behind a live view is not auto-detected when generation is unchanged.</li>
+</ul>
+<p>See the <code>WILL_FAIL</code> gap suites (<code>nanom_memory_safety_gap_tests</code>,
+<code>nanom_memory_safety_gap_generation_tests</code>) for the residual hazard list.</p>
+<div class="admonition note">
+<p class="admonition-title">Future: Clang lifetime bounds</p>
+<p>Annotating <code>from()</code> and parse results with <code>[[clang::lifetimebound]]</code> is planned
+as a compile-time complement to generation tracking. Not implemented yet.</p>
+</div>
+<hr />
+<h2 id="2-type-punning-strict-aliasing-and-unaligned-reads">2. Type punning, strict aliasing, and unaligned reads<a class="headerlink" href="#2-type-punning-strict-aliasing-and-unaligned-reads" title="Permanent link">&para;</a></h2>
+<h3 id="the-rust-objection_1">The Rust objection<a class="headerlink" href="#the-rust-objection_1" title="Permanent link">&para;</a></h3>
+<p>Crates like <code>zerocopy</code> and <code>bytemuck</code> exist because casting <code>*const u8</code> to
+<code>*const MyStruct</code> is UB in Rust and C++ (strict aliasing, alignment traps on
+some ISAs). If <code>overlay&lt;T&gt;()</code> were a <code>reinterpret_cast</code>, reviewers would reject it.</p>
+<h3 id="what-nanom-does_1">What nanom does<a class="headerlink" href="#what-nanom-does_1" title="Permanent link">&para;</a></h3>
+<p><code>overlay&lt;T&gt;()</code> does <strong>not</strong> cast wire bytes to a <code>T*</code>. A <code>view&lt;T&gt;</code> holds a
+<code>const std::byte* p</code> and <strong>decodes on access</strong> (full detail in
+<a href="../MEMORY_SAFETY/#overlay-decode-strict-aliasing-and-unaligned-reads">Memory safety — overlay decode</a>):</p>
+<ul>
+<li>Integral and floating fields: byte assembly into a local integer, then
+  <code>std::bit_cast</code> to the field type.</li>
+<li><code>be&lt;&gt;</code> / <code>le&lt;&gt;</code> / <code>ubits&lt;&gt;</code> / <code>ibits&lt;&gt;</code>: wire-order extraction with shift/mask
+  over covering bytes (unaligned-safe; no struct pointer cast).</li>
+<li><code>strct&lt;T&gt;()</code>: same decode path, materializing a value instead of a lazy view.</li>
+</ul>
+<p><code>layout_ok&lt;T&gt;()</code> is a compile-time check: non-bit fields are byte-aligned and
+the wire size is a whole number of bytes.</p>
+<p><code>overlay</code> / <code>strct</code> parsers also bounds-check before exposing a view:</p>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">wire_size_v</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">make_incomplete</span><span class="p">(</span><span class="n">in</span><span class="p">,</span><span class="w"> </span><span class="n">need</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">in</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+</code></pre></div>
+<h3 id="honest-limits_1">Honest limits<a class="headerlink" href="#honest-limits_1" title="Permanent link">&para;</a></h3>
+<ul>
+<li>Byte-array fields (MAC addresses, etc.) return a <code>span</code> into the buffer — still
+  zero-copy, still caller-lifetime scoped.</li>
+<li>Callers must not mutate wire bytes behind an active <code>view&lt;T&gt;</code>
+  (<code>overlay_wire_must_be_immutable</code>).</li>
+</ul>
+<hr />
+<h2 id="3-integer-overflow-and-tlv-lengths">3. Integer overflow and TLV lengths<a class="headerlink" href="#3-integer-overflow-and-tlv-lengths" title="Permanent link">&para;</a></h2>
+<h3 id="the-rust-objection_2">The Rust objection<a class="headerlink" href="#the-rust-objection_2" title="Permanent link">&para;</a></h3>
+<p>Parsing <code>length</code> then <code>take(length)</code> is a classic overflow/OOB vector when
+<code>offset + length</code> wraps or exceeds the buffer.</p>
+<h3 id="what-nanom-does_2">What nanom does<a class="headerlink" href="#what-nanom-does_2" title="Permanent link">&para;</a></h3>
+<p>Every consume combinator checks <strong>remaining size</strong> before reading:</p>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// take(n): fails incomplete/err when n &gt; in.size()</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">in</span><span class="p">.</span><span class="n">size</span><span class="p">()</span><span class="w"> </span><span class="o">&lt;</span><span class="w"> </span><span class="n">n</span><span class="p">)</span><span class="w"> </span><span class="k">return</span><span class="w"> </span><span class="n">make_incomplete</span><span class="p">(</span><span class="n">in</span><span class="p">,</span><span class="w"> </span><span class="n">n</span><span class="w"> </span><span class="o">-</span><span class="w"> </span><span class="n">in</span><span class="p">.</span><span class="n">size</span><span class="p">());</span>
+</code></pre></div>
+<p>The same pattern applies to <code>tag</code>, numeric parsers, <code>overlay</code>, and <code>strct</code>.
+<code>length_data(np)</code> reads a length, then delegates to <code>take(n)</code> which re-checks.</p>
+<p>Additional guards:</p>
+<table>
+<thead>
+<tr>
+<th>Mechanism</th>
 <th>Role</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>wire_arena</code></td>
-<td>Registers <code>[base, size)</code>; <code>invalidate()</code> bumps generation</td>
+<td><code>max_incomplete_needed</code> (64 KiB)</td>
+<td>Caps hostile streaming <code>incomplete.needed</code></td>
 </tr>
 <tr>
-<td><code>attested_bytes</code></td>
-<td>Generation-attested <code>bytes</code> wrapper (<code>operator[]</code>, <code>at</code>)</td>
+<td><code>wire_arena::contains(p, len)</code></td>
+<td>Range check before attested access</td>
 </tr>
 <tr>
-<td><code>from(span, arena)</code></td>
-<td>Attaches arena snapshot to <code>input</code></td>
+<td><code>dec&lt;T&gt;()</code></td>
+<td>Overflow-checked decimal parse</td>
 </tr>
 <tr>
-<td><code>generation_exception</code></td>
-<td>Thrown when <code>NANOM_GENERATION_THROW=1</code></td>
-</tr>
-<tr>
-<td><code>render_generation_fault</code></td>
-<td>Human-readable report (gen diff, offset, hex)</td>
-</tr>
-<tr>
-<td><code>generation_handler</code></td>
-<td>Optional callback; return <code>ignore</code> only in tests</td>
+<td><code>checked_many0(p, cap)</code></td>
+<td>Iteration budget for hand-rolled loops</td>
 </tr>
 </tbody>
 </table>
-<p>CMake: <code>-DNANOM_GENERATION=ON|OFF</code> or define on one target. Tests: <code>nanom_generation_tests</code>.</p>
-<h2 id="caller-contract-documented-not-runtime-tracked-without-nanom_generation">Caller contract (documented, not runtime-tracked without <code>NANOM_GENERATION</code>)<a class="headerlink" href="#caller-contract-documented-not-runtime-tracked-without-nanom_generation" title="Permanent link">&para;</a></h2>
-<p>These <code>constexpr</code> flags mark the contract surface:</p>
-<ul>
-<li><code>overlay_wire_must_be_immutable</code> — do not mutate bytes behind an active <code>view&lt;T&gt;</code></li>
-<li><code>span_lifetime_is_caller_scoped</code> — <code>bytes</code> and field spans outlive their owner</li>
-<li><code>length_prefix_spans_are_unowned</code> — <code>length_data</code> payloads are plain spans</li>
-</ul>
-<p><strong>Rules:</strong></p>
-<ol>
-<li>Keep the buffer alive while any <code>input</code> cursor, <code>bytes</code> span, or <code>view&lt;T&gt;</code> into it exists.</li>
-<li>Treat parsed wire as <strong>read-only</strong> while using <code>overlay</code> / <code>view</code>.</li>
-<li>Use <code>checked_advance</code> / <code>safe_at</code> when building defensive parsers; keep <code>advance</code> on hot paths that already checked <code>size()</code>.</li>
-<li>Prefer <code>checked_many0(p, cap)</code> for hand-rolled repetition loops; <code>many0</code> already rejects zero-consumption but has no iteration cap.</li>
-<li>Build with <code>-fsanitize=address,undefined</code> and run <code>nanom_memory_safety_tests</code> / <code>nm_self_fuzz</code> in CI.</li>
-</ol>
-<h2 id="debug-options">Debug options<a class="headerlink" href="#debug-options" title="Permanent link">&para;</a></h2>
+<h3 id="fuzzing-and-sanitizers">Fuzzing and sanitizers<a class="headerlink" href="#fuzzing-and-sanitizers" title="Permanent link">&para;</a></h3>
+<p>Continuous coverage-guided fuzzing in CI:</p>
 <table>
 <thead>
 <tr>
-<th>Flag</th>
-<th>Default</th>
-<th>Effect</th>
+<th>Target</th>
+<th>Exercises</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><code>NANOM_GUARD_VIEWS</code></td>
-<td><strong>on</strong></td>
-<td>Assert null <code>view</code> access</td>
+<td><code>self_fuzz</code></td>
+<td>Arbitrary bytes through core combinators (ctest)</td>
 </tr>
 <tr>
-<td><code>NANOM_GENERATION</code></td>
-<td><strong>on</strong></td>
-<td><code>wire_arena</code> lifetime checks on <code>view::get</code></td>
+<td><code>fuzz_scan_walk</code></td>
+<td>pcap block scan + packet walk</td>
 </tr>
 <tr>
-<td><code>NANOM_GENERATION_THROW</code></td>
-<td>off (abort+print)</td>
-<td>Throw <code>generation_exception</code> instead of abort</td>
-</tr>
-<tr>
-<td><code>NANOM_STRICT</code></td>
-<td>off</td>
-<td>"Safe routes only" profile — compile-time restrictions replace the runtime nets (see below)</td>
+<td><code>fuzz_streaming_pcapng</code></td>
+<td>Streaming refill with variable cap (16..8192 B), <code>NANOM_GENERATION=1</code></td>
 </tr>
 </tbody>
 </table>
-<h2 id="strict-profile-nanom_strict">Strict profile (<code>NANOM_STRICT</code>)<a class="headerlink" href="#strict-profile-nanom_strict" title="Permanent link">&para;</a></h2>
-<p>For safety- <strong>and</strong> speed-obsessed users: narrow the API at compile time so the
-runtime can drop the checks those APIs made necessary. Strict deletes the raw
-<code>from(ptr, len)</code> entry, deletes <code>from(std::string&amp;&amp;)</code> (owning-temporary dangle),
-refuses <code>&lt;nanom/bulk.hpp&gt;</code> (GPU/bulk raw-pointer scatter), and adds
-<code>[[clang::lifetimebound]]</code> diagnostics — then defaults <code>NANOM_GENERATION=0</code> and
-<code>NANOM_GUARD_VIEWS=0</code> for a leaner, faster data model (<code>input</code> 48→32 B, <code>bytes</code>
-32→16 B). Combinator bounds checks stay on. All three profiles benchmark at
-parity (~82–84 ns/pkt) — <strong>compile-time safety at the unchecked profile's speed</strong>.</p>
-<p>Full details, proofs, and safe-route examples: <a href="../COMPILE_TIME_SAFETY/">Compile-time safety</a>.</p>
-<p>Future work: auto-tracked containers; stronger provenance/cross-arena diagnostics.</p>
-<h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
+<p>Plus ASan/UBSan matrix builds and the <code>streaming-sanitizer</code> job (ASan + streaming
+tests + 120 s fuzz run).</p>
+<p><code>overflow_parity</code> in <code>test_nom_parity.cpp</code> matches nom's adversarial
+<code>many0(length_data(be_u64))</code> behavior on truncated input.</p>
+<h3 id="honest-limits_2">Honest limits<a class="headerlink" href="#honest-limits_2" title="Permanent link">&para;</a></h3>
 <ul>
-<li><code>tests/test_memory_safety.cpp</code> — regression suite (<code>NANOM_GUARD_VIEWS=1</code>, must pass)</li>
-<li><code>tests/test_memory_safety_generation.cpp</code> — generation suite (<code>NANOM_GENERATION=1</code>, must pass)</li>
-<li><code>tests/test_memory_safety_gaps.cpp</code> — <strong>WILL_FAIL</strong> residual hazards without generation tracking</li>
-<li><code>tests/test_memory_safety_gaps_generation.cpp</code> — <strong>WILL_FAIL</strong> attested_bytes / arena gaps</li>
-<li><code>tests/test_memory_safety_ub.cpp</code> — optional ASan red-team demos (<code>NANOM_MEMORY_SAFETY_UB_DEMOS=ON</code>)</li>
-<li><code>tests/test_streaming_safety.cpp</code> — streaming/incremental refill safety (<code>nanom_streaming_safety_tests</code>)</li>
-<li><code>tests/test_strict_profile.cpp</code> — strict profile contract + safe-route parsing (<code>nanom_strict_profile_tests</code>)</li>
-<li><code>tests/strict_neg/*.cpp</code> — <strong>WILL_FAIL</strong> negative compile tests proving strict rejects unsafe routes</li>
-<li><code>bench/safety_microbench.cpp</code> — performance baselines per guard</li>
+<li>Hot-path <code>input::advance()</code> and <code>input::operator[]</code> are <strong>precondition-based</strong>
+  for speed; use <code>checked_advance()</code> / <code>safe_at()</code> in defensive code.</li>
+<li><code>attested_bytes::operator[]</code> does not fault OOB the way <code>at()</code> does (gap test).</li>
 </ul>
-<p>CMake registers gap targets when <code>NANOM_MEMORY_SAFETY_GAP_TESTS=ON</code> (default). Remove
-<code>WILL_FAIL</code> from a gap test only when every targeted <code>CHECK</code> in that file passes.</p>
-<h2 id="ci-safety-first-profile">CI safety-first profile<a class="headerlink" href="#ci-safety-first-profile" title="Permanent link">&para;</a></h2>
-<p>The <code>safety-first</code> CI job builds with <code>NANOM_GUARD_VIEWS=ON</code> and <code>NANOM_GENERATION=ON</code>
-(explicitly matching library defaults) and runs enforced safety regression tests.</p>
-<p>The separate <code>perf-budget</code> job runs <code>bench/compare_rust.py --safety both --max-overhead 1.20</code>:
-full safety (generation + view guards + <code>wire_arena</code> on the streaming refill buffer) must stay
-within 20% of the opt-out minimal profile on the verified-equal streaming pcapng benchmark.</p>
-<p>The <code>strict-profile</code> job builds the strict profile, runs its runtime suite and the
-negative compile tests (<code>nanom_strict_rejects_*</code>), compiles it clang-clean to
-exercise <code>lifetimebound</code>, and benchmarks strict vs minimal vs full.</p>
+<hr />
+<h2 id="what-we-do-not-claim">What we do not claim<a class="headerlink" href="#what-we-do-not-claim" title="Permanent link">&para;</a></h2>
+<p>nanom does <strong>not</strong> guarantee:</p>
+<ul>
+<li>Confidentiality, integrity beyond process memory safety, or side-channel resistance.</li>
+<li>Compile-time prevention of all dangling-view bugs (no borrow checker).</li>
+<li>Detection of in-place wire mutation without a generation transition.</li>
+<li>That every API surface is bounds-checked — some fast paths document preconditions.</li>
+</ul>
+<p>These limits are tracked in <a href="../THREAT_MODEL/#known-gaps-and-residual-risk">Threat model — known gaps</a>
+and enforced as <code>WILL_FAIL</code> tests until hardened.</p>
+<hr />
+<h2 id="verify-it-yourself">Verify it yourself<a class="headerlink" href="#verify-it-yourself" title="Permanent link">&para;</a></h2>
+<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="c1"># Core + safety regression</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a>cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span>-DCMAKE_CXX_COMPILER<span class="o">=</span>g++-13<span class="w"> </span>-DNANOM_WERROR<span class="o">=</span>ON
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"> </span>-j
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a>ctest<span class="w"> </span>--test-dir<span class="w"> </span>build<span class="w"> </span>-R<span class="w"> </span><span class="s1">&#39;nanom_memory_safety_tests|nanom_generation_tests|nanom_streaming_safety_tests&#39;</span><span class="w"> </span>--output-on-failure
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="c1"># Gap suite (intentionally failing — documents residual hazards)</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>ctest<span class="w"> </span>--test-dir<span class="w"> </span>build<span class="w"> </span>-R<span class="w"> </span><span class="s1">&#39;nanom_memory_safety_gap&#39;</span><span class="w"> </span>--output-on-failure
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="c1"># Perf: full safety vs minimal opt-out (must stay within 20% on streaming pcapng)</span>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>python3<span class="w"> </span>bench/compare_rust.py<span class="w"> </span>--build<span class="w"> </span>--safety<span class="w"> </span>both<span class="w"> </span>--iters<span class="w"> </span><span class="m">10000</span><span class="w"> </span>--max-overhead<span class="w"> </span><span class="m">1</span>.20
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="c1"># Local fuzz (needs clang + NANOM_BUILD_FUZZERS=ON)</span>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a>cmake<span class="w"> </span>-B<span class="w"> </span>build-fuzz<span class="w"> </span>-DCMAKE_CXX_COMPILER<span class="o">=</span>clang++-18<span class="w"> </span>-DNANOM_BUILD_FUZZERS<span class="o">=</span>ON
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a>cmake<span class="w"> </span>--build<span class="w"> </span>build-fuzz<span class="w"> </span>--target<span class="w"> </span>fuzz_streaming_pcapng
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a>./build-fuzz/fuzz_streaming_pcapng<span class="w"> </span>-max_total_time<span class="o">=</span><span class="m">60</span><span class="w"> </span>corpus_streaming/
+</code></pre></div>
+<hr />
+<h2 id="related-pages">Related pages<a class="headerlink" href="#related-pages" title="Permanent link">&para;</a></h2>
+<ul>
+<li><a href="../MEMORY_SAFETY/">Memory safety model</a> — enforced guards, generation API, caller contract</li>
+<li><a href="../THREAT_MODEL/">Threat model + reviewer checklist</a> — scope, gaps, PR checklist</li>
+<li><a href="https://github.com/yoavbendor/nanom/blob/main/fuzz/README.md">Fuzz harnesses</a> — target descriptions and build commands</li>
+<li><a href="../BENCH_RUST_NOM/">vs Rust nom (streaming pcapng)</a> — equal-work benchmark methodology</li>
+</ul>
 
 
 
@@ -1387,7 +1529,7 @@ exercise <code>lifetimebound</code>, and benchmarks strict vs minimal vs full.</
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../RUST_SAFETY_REVIEW/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Safety for Rust reviewers">
+          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1397,20 +1539,20 @@ exercise <code>lifetimebound</code>, and benchmarks strict vs minimal vs full.</
                 Previous
               </span>
               <div class="md-ellipsis">
-                Safety for Rust reviewers
+                Home
               </div>
             </div>
           </a>
         
         
           
-          <a href="../COMPILE_TIME_SAFETY/" class="md-footer__link md-footer__link--next" aria-label="Next: Compile-time safety (strict profile)">
+          <a href="../MEMORY_SAFETY/" class="md-footer__link md-footer__link--next" aria-label="Next: Memory safety">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Compile-time safety (strict profile)
+                Memory safety
               </div>
             </div>
             <div class="md-footer__button md-icon">

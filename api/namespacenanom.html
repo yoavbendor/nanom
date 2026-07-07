@@ -242,23 +242,24 @@ Functions</h2></td></tr>
 <tr class="memitem:a8875abba328950b56473ed4c7b550960" id="r_a8875abba328950b56473ed4c7b550960"><td class="memTemplParams" colspan="2">template&lt;Described Row, class Kernel , class Exec  = par_exec&gt; </td></tr>
 <tr class="memitem:a8875abba328950b56473ed4c7b550960"><td class="memTemplItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a8875abba328950b56473ed4c7b550960">bulk_decode</a> (std::span&lt; const <a class="el" href="structnanom_1_1pkt__ref.html">pkt_ref</a> &gt; pkts, <a class="el" href="classnanom_1_1bulk__table.html">bulk_table</a>&lt; Row &gt; &amp;tbl, Kernel kernel, Exec exec={})</td></tr>
 <tr class="separator:a8875abba328950b56473ed4c7b550960"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aade729b3df77339dd862a982d23a132a" id="r_aade729b3df77339dd862a982d23a132a"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aade729b3df77339dd862a982d23a132a">from</a> (<a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a> b)</td></tr>
-<tr class="memdesc:aade729b3df77339dd862a982d23a132a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Make an input from anything byte-like.  <br /></td></tr>
-<tr class="separator:aade729b3df77339dd862a982d23a132a"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aab50eabb27e1890490ff7648bd70c6cb" id="r_aab50eabb27e1890490ff7648bd70c6cb"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aab50eabb27e1890490ff7648bd70c6cb">from</a> (std::string_view s)</td></tr>
-<tr class="separator:aab50eabb27e1890490ff7648bd70c6cb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6f10fa3e9cecc6db153a82f11da4c4b7" id="r_a6f10fa3e9cecc6db153a82f11da4c4b7"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a6f10fa3e9cecc6db153a82f11da4c4b7">from</a> (<a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a> b <a class="el" href="prelude_8hpp.html#a26597fd54a24c7481cdd69ad838ed925">NANOM_LIFETIMEBOUND</a>)</td></tr>
+<tr class="memdesc:a6f10fa3e9cecc6db153a82f11da4c4b7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Make an input from anything byte-like.  <br /></td></tr>
+<tr class="separator:a6f10fa3e9cecc6db153a82f11da4c4b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2ea5127471c97a142c6e068678dcad66" id="r_a2ea5127471c97a142c6e068678dcad66"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a2ea5127471c97a142c6e068678dcad66">from</a> (std::string_view s <a class="el" href="prelude_8hpp.html#a26597fd54a24c7481cdd69ad838ed925">NANOM_LIFETIMEBOUND</a>)</td></tr>
+<tr class="separator:a2ea5127471c97a142c6e068678dcad66"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a49e16e11b85f08e72391b62952c25550" id="r_a49e16e11b85f08e72391b62952c25550"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a49e16e11b85f08e72391b62952c25550">from</a> (const void *data, std::size_t len)</td></tr>
+<tr class="memdesc:a49e16e11b85f08e72391b62952c25550"><td class="mdescLeft">&#160;</td><td class="mdescRight">Raw pointer + length entry.  <br /></td></tr>
 <tr class="separator:a49e16e11b85f08e72391b62952c25550"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4a9f578ca7b2fd16f124bc0ba7d105fb" id="r_a4a9f578ca7b2fd16f124bc0ba7d105fb"><td class="memTemplParams" colspan="2">template&lt;class T , std::size_t N&gt; <br />
+<tr class="memitem:a3fdc8fb9ad807594c82c8d06ff6eca75" id="r_a3fdc8fb9ad807594c82c8d06ff6eca75"><td class="memTemplParams" colspan="2">template&lt;class T , std::size_t N&gt; <br />
 requires (sizeof(T) == 1)</td></tr>
-<tr class="memitem:a4a9f578ca7b2fd16f124bc0ba7d105fb"><td class="memTemplItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a4a9f578ca7b2fd16f124bc0ba7d105fb">from</a> (const std::array&lt; T, N &gt; &amp;a)</td></tr>
-<tr class="separator:a4a9f578ca7b2fd16f124bc0ba7d105fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3fdc8fb9ad807594c82c8d06ff6eca75"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a3fdc8fb9ad807594c82c8d06ff6eca75">from</a> (const std::array&lt; T, N &gt; &amp;a <a class="el" href="prelude_8hpp.html#a26597fd54a24c7481cdd69ad838ed925">NANOM_LIFETIMEBOUND</a>)</td></tr>
+<tr class="separator:a3fdc8fb9ad807594c82c8d06ff6eca75"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac0c6f76d8bf93df7e308825ed6dfbd77" id="r_ac0c6f76d8bf93df7e308825ed6dfbd77"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#ac0c6f76d8bf93df7e308825ed6dfbd77">streaming</a> (<a class="el" href="structnanom_1_1input.html">input</a> in)</td></tr>
 <tr class="memdesc:ac0c6f76d8bf93df7e308825ed6dfbd77"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mark an input as a stream prefix: parsers that hit the end will report <code>incomplete</code> with the byte count still needed, so the caller can refill and retry (nom's streaming mode; default inputs behave like nom complete).  <br /></td></tr>
 <tr class="separator:ac0c6f76d8bf93df7e308825ed6dfbd77"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a2a23ff58bde7adaa42232afd51de7b26" id="r_a2a23ff58bde7adaa42232afd51de7b26"><td class="memItemLeft" align="right" valign="top">std::string_view&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a2a23ff58bde7adaa42232afd51de7b26">as_str</a> (<a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a> b)</td></tr>
-<tr class="memdesc:a2a23ff58bde7adaa42232afd51de7b26"><td class="mdescLeft">&#160;</td><td class="mdescRight">View a span of raw bytes as text (zero-copy).  <br /></td></tr>
-<tr class="separator:a2a23ff58bde7adaa42232afd51de7b26"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a737be5dc10ad953cf9c9a61d2aff1e75" id="r_a737be5dc10ad953cf9c9a61d2aff1e75"><td class="memItemLeft" align="right" valign="top">std::string_view&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a737be5dc10ad953cf9c9a61d2aff1e75">as_str</a> (<a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a> b <a class="el" href="prelude_8hpp.html#a26597fd54a24c7481cdd69ad838ed925">NANOM_LIFETIMEBOUND</a>)</td></tr>
+<tr class="memdesc:a737be5dc10ad953cf9c9a61d2aff1e75"><td class="mdescLeft">&#160;</td><td class="mdescRight">View a span of raw bytes as text (zero-copy).  <br /></td></tr>
+<tr class="separator:a737be5dc10ad953cf9c9a61d2aff1e75"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a240215857a8180d01e7a8461dc51da46" id="r_a240215857a8180d01e7a8461dc51da46"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1unexpected.html">unexpected</a>&lt; <a class="el" href="structnanom_1_1error.html">error</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">unexp</a> (<a class="el" href="structnanom_1_1error.html">error</a> e)</td></tr>
 <tr class="memdesc:a240215857a8180d01e7a8461dc51da46"><td class="mdescLeft">&#160;</td><td class="mdescRight">Wrap an error for propagation between differently-typed results.  <br /></td></tr>
 <tr class="separator:a240215857a8180d01e7a8461dc51da46"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -1015,8 +1016,8 @@ template&lt;Parser P, Parser... Ps&gt; </div>
 
 </div>
 </div>
-<a id="a2a23ff58bde7adaa42232afd51de7b26" name="a2a23ff58bde7adaa42232afd51de7b26"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2a23ff58bde7adaa42232afd51de7b26">&#9670;&#160;</a></span>as_str()</h2>
+<a id="a737be5dc10ad953cf9c9a61d2aff1e75" name="a737be5dc10ad953cf9c9a61d2aff1e75"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a737be5dc10ad953cf9c9a61d2aff1e75">&#9670;&#160;</a></span>as_str()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1027,8 +1028,8 @@ template&lt;Parser P, Parser... Ps&gt; </div>
         <tr>
           <td class="memname">std::string_view nanom::as_str </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a>&#160;</td>
-          <td class="paramname"><em>b</em></td><td>)</td>
+          <td class="paramtype"><a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a> b&#160;</td>
+          <td class="paramname"><em>NANOM_LIFETIMEBOUND</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -1040,6 +1041,7 @@ template&lt;Parser P, Parser... Ps&gt; </div>
 </div><div class="memdoc">
 
 <p>View a span of raw bytes as text (zero-copy). </p>
+<p>NANOM_LIFETIMEBOUND ties the returned string_view to the byte buffer so binding it to a temporary is a compile-time diagnostic on supporting toolchains. </p>
 
 </div>
 </div>
@@ -1893,8 +1895,8 @@ template&lt;Parser P, class Init , class F &gt; </div>
 
 </div>
 </div>
-<a id="aade729b3df77339dd862a982d23a132a" name="aade729b3df77339dd862a982d23a132a"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aade729b3df77339dd862a982d23a132a">&#9670;&#160;</a></span>from() <span class="overload">[1/4]</span></h2>
+<a id="a6f10fa3e9cecc6db153a82f11da4c4b7" name="a6f10fa3e9cecc6db153a82f11da4c4b7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6f10fa3e9cecc6db153a82f11da4c4b7">&#9670;&#160;</a></span>from() <span class="overload">[1/4]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1905,8 +1907,8 @@ template&lt;Parser P, class Init , class F &gt; </div>
         <tr>
           <td class="memname">constexpr <a class="el" href="structnanom_1_1input.html">input</a> nanom::from </td>
           <td>(</td>
-          <td class="paramtype"><a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a>&#160;</td>
-          <td class="paramname"><em>b</em></td><td>)</td>
+          <td class="paramtype"><a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a> b&#160;</td>
+          <td class="paramname"><em>NANOM_LIFETIMEBOUND</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -1918,11 +1920,12 @@ template&lt;Parser P, class Init , class F &gt; </div>
 </div><div class="memdoc">
 
 <p>Make an input from anything byte-like. </p>
+<p>NANOM_LIFETIMEBOUND ties the returned cursor to the buffer's lifetime: binding it to a temporary is diagnosed at compile time on toolchains that support the attribute (Clang), which is the compile-time half of nanom's dangling-view defense (see docs/RUST_SAFETY_REVIEW.md). </p>
 
 </div>
 </div>
-<a id="a4a9f578ca7b2fd16f124bc0ba7d105fb" name="a4a9f578ca7b2fd16f124bc0ba7d105fb"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a4a9f578ca7b2fd16f124bc0ba7d105fb">&#9670;&#160;</a></span>from() <span class="overload">[2/4]</span></h2>
+<a id="a3fdc8fb9ad807594c82c8d06ff6eca75" name="a3fdc8fb9ad807594c82c8d06ff6eca75"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3fdc8fb9ad807594c82c8d06ff6eca75">&#9670;&#160;</a></span>from() <span class="overload">[2/4]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1934,16 +1937,16 @@ requires (sizeof(T) == 1)</div>
   <td class="mlabels-left">
       <table class="memname">
         <tr>
-          <td class="memname">constexpr <a class="el" href="structnanom_1_1input.html">input</a> nanom::from </td>
+          <td class="memname"><a class="el" href="structnanom_1_1input.html">input</a> nanom::from </td>
           <td>(</td>
-          <td class="paramtype">const std::array&lt; T, N &gt; &amp;&#160;</td>
-          <td class="paramname"><em>a</em></td><td>)</td>
+          <td class="paramtype">const std::array&lt; T, N &gt; &amp;a&#160;</td>
+          <td class="paramname"><em>NANOM_LIFETIMEBOUND</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
   </td>
   <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
   </tr>
 </table>
 </div><div class="memdoc">
@@ -1984,10 +1987,13 @@ requires (sizeof(T) == 1)</div>
 </table>
 </div><div class="memdoc">
 
+<p>Raw pointer + length entry. </p>
+<p>Removed under NANOM_STRICT: the strict profile requires a sized span/array/string_view so provenance is never an unbounded (pointer, length) pair a caller can get wrong. Wrap in std::span at the call site to opt back in explicitly. </p>
+
 </div>
 </div>
-<a id="aab50eabb27e1890490ff7648bd70c6cb" name="aab50eabb27e1890490ff7648bd70c6cb"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aab50eabb27e1890490ff7648bd70c6cb">&#9670;&#160;</a></span>from() <span class="overload">[4/4]</span></h2>
+<a id="a2ea5127471c97a142c6e068678dcad66" name="a2ea5127471c97a142c6e068678dcad66"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2ea5127471c97a142c6e068678dcad66">&#9670;&#160;</a></span>from() <span class="overload">[4/4]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1998,8 +2004,8 @@ requires (sizeof(T) == 1)</div>
         <tr>
           <td class="memname"><a class="el" href="structnanom_1_1input.html">input</a> nanom::from </td>
           <td>(</td>
-          <td class="paramtype">std::string_view&#160;</td>
-          <td class="paramname"><em>s</em></td><td>)</td>
+          <td class="paramtype">std::string_view s&#160;</td>
+          <td class="paramname"><em>NANOM_LIFETIMEBOUND</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -4008,7 +4014,7 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{char(in[0]), in.advance(1)};</div>
 <div class="line">}</div>
 <div class="ttc" id="anamespacenanom_html_a91c7985d0464f531b30c781da779abe9"><div class="ttname"><a href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">nanom::done</a></div><div class="ttdeci">done(T, input) -&gt; done&lt; T &gt;</div></div>
-<div class="ttc" id="anamespacenanom_html_a9641ef1c751b997f3fd186f0b5ad34e8"><div class="ttname"><a href="namespacenanom.html#a9641ef1c751b997f3fd186f0b5ad34e8">nanom::make_incomplete</a></div><div class="ttdeci">unexpected&lt; error &gt; make_incomplete(input at, std::size_t needed)</div><div class="ttdoc">Ran out of input: incomplete on streaming inputs (caller refills and retries), a plain backtrackable ...</div><div class="ttdef"><b>Definition</b> nom.hpp:287</div></div>
+<div class="ttc" id="anamespacenanom_html_a9641ef1c751b997f3fd186f0b5ad34e8"><div class="ttname"><a href="namespacenanom.html#a9641ef1c751b997f3fd186f0b5ad34e8">nanom::make_incomplete</a></div><div class="ttdeci">unexpected&lt; error &gt; make_incomplete(input at, std::size_t needed)</div><div class="ttdoc">Ran out of input: incomplete on streaming inputs (caller refills and retries), a plain backtrackable ...</div><div class="ttdef"><b>Definition</b> nom.hpp:317</div></div>
 </div><!-- fragment -->
 <p>anychar — any single char. </p>
 
@@ -4038,7 +4044,7 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  <span class="keywordflow">if</span> (!r) <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">unexp</a>(r.error());</div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{std::bit_cast&lt;float&gt;(r-&gt;value), r-&gt;rest};</div>
 <div class="line">}</div>
-<div class="ttc" id="anamespacenanom_html_a240215857a8180d01e7a8461dc51da46"><div class="ttname"><a href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">nanom::unexp</a></div><div class="ttdeci">unexpected&lt; error &gt; unexp(error e)</div><div class="ttdoc">Wrap an error for propagation between differently-typed results.</div><div class="ttdef"><b>Definition</b> nom.hpp:259</div></div>
+<div class="ttc" id="anamespacenanom_html_a240215857a8180d01e7a8461dc51da46"><div class="ttname"><a href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">nanom::unexp</a></div><div class="ttdeci">unexpected&lt; error &gt; unexp(error e)</div><div class="ttdoc">Wrap an error for propagation between differently-typed results.</div><div class="ttdef"><b>Definition</b> nom.hpp:289</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -4311,10 +4317,10 @@ template&lt;Parser P, class Pred &gt; </div>
 <b>Initial value:</b><div class="fragment"><div class="line">= [](input in) -&gt; result&lt;std::string_view&gt; {</div>
 <div class="line">  <span class="keyword">auto</span> r = <a class="code hl_function" href="namespacenanom.html#a232088c3d5af378c4da8979fbc89aebc">tag</a>(<span class="stringliteral">&quot;\r\n&quot;</span>)(in);</div>
 <div class="line">  <span class="keywordflow">if</span> (!r) <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">unexp</a>(r.error());</div>
-<div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{<a class="code hl_function" href="namespacenanom.html#a2a23ff58bde7adaa42232afd51de7b26">as_str</a>(r-&gt;value), r-&gt;rest};</div>
+<div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{<a class="code hl_function" href="namespacenanom.html#a737be5dc10ad953cf9c9a61d2aff1e75">as_str</a>(r-&gt;value), r-&gt;rest};</div>
 <div class="line">}</div>
-<div class="ttc" id="anamespacenanom_html_a232088c3d5af378c4da8979fbc89aebc"><div class="ttname"><a href="namespacenanom.html#a232088c3d5af378c4da8979fbc89aebc">nanom::tag</a></div><div class="ttdeci">auto tag(std::string_view pattern)</div><div class="ttdoc">tag(&quot;GET&quot;) / tag(bytes) — match an exact byte sequence, yield it zero-copy.</div><div class="ttdef"><b>Definition</b> nom.hpp:364</div></div>
-<div class="ttc" id="anamespacenanom_html_a2a23ff58bde7adaa42232afd51de7b26"><div class="ttname"><a href="namespacenanom.html#a2a23ff58bde7adaa42232afd51de7b26">nanom::as_str</a></div><div class="ttdeci">std::string_view as_str(bytes b)</div><div class="ttdoc">View a span of raw bytes as text (zero-copy).</div><div class="ttdef"><b>Definition</b> nom.hpp:181</div></div>
+<div class="ttc" id="anamespacenanom_html_a232088c3d5af378c4da8979fbc89aebc"><div class="ttname"><a href="namespacenanom.html#a232088c3d5af378c4da8979fbc89aebc">nanom::tag</a></div><div class="ttdeci">auto tag(std::string_view pattern)</div><div class="ttdoc">tag(&quot;GET&quot;) / tag(bytes) — match an exact byte sequence, yield it zero-copy.</div><div class="ttdef"><b>Definition</b> nom.hpp:394</div></div>
+<div class="ttc" id="anamespacenanom_html_a737be5dc10ad953cf9c9a61d2aff1e75"><div class="ttname"><a href="namespacenanom.html#a737be5dc10ad953cf9c9a61d2aff1e75">nanom::as_str</a></div><div class="ttdeci">std::string_view as_str(bytes b NANOM_LIFETIMEBOUND)</div><div class="ttdoc">View a span of raw bytes as text (zero-copy).</div><div class="ttdef"><b>Definition</b> nom.hpp:200</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -4419,7 +4425,7 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  <span class="keywordflow">if</span> (!in.empty()) <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a2226dbc1b8e47adc0f180242f80587e6">make_err</a>(in, <span class="stringliteral">&quot;end of input&quot;</span>);</div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{unit{}, in};</div>
 <div class="line">}</div>
-<div class="ttc" id="anamespacenanom_html_a2226dbc1b8e47adc0f180242f80587e6"><div class="ttname"><a href="namespacenanom.html#a2226dbc1b8e47adc0f180242f80587e6">nanom::make_err</a></div><div class="ttdeci">unexpected&lt; error &gt; make_err(input at, const char *expected)</div><div class="ttdoc">Build a recoverable error at the current position.</div><div class="ttdef"><b>Definition</b> nom.hpp:280</div></div>
+<div class="ttc" id="anamespacenanom_html_a2226dbc1b8e47adc0f180242f80587e6"><div class="ttname"><a href="namespacenanom.html#a2226dbc1b8e47adc0f180242f80587e6">nanom::make_err</a></div><div class="ttdeci">unexpected&lt; error &gt; make_err(input at, const char *expected)</div><div class="ttdoc">Build a recoverable error at the current position.</div><div class="ttdef"><b>Definition</b> nom.hpp:310</div></div>
 </div><!-- fragment -->
 <p>eof — succeeds (with unit) only if all input is consumed. </p>
 
@@ -4449,7 +4455,7 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  <span class="keywordflow">if</span> (!r) <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">unexp</a>(r.error());</div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{float(r-&gt;value), r-&gt;rest};</div>
 <div class="line">}</div>
-<div class="ttc" id="anamespacenanom_html_af94ead8ae2b3f3ed9c70d76e5fed1eaf"><div class="ttname"><a href="namespacenanom.html#af94ead8ae2b3f3ed9c70d76e5fed1eaf">nanom::double_</a></div><div class="ttdeci">constexpr auto double_</div><div class="ttdoc">float_ / double_ — text floating point (&quot;3.14&quot;, &quot;-1e9&quot;). (nom: float/double)</div><div class="ttdef"><b>Definition</b> nom.hpp:1451</div></div>
+<div class="ttc" id="anamespacenanom_html_af94ead8ae2b3f3ed9c70d76e5fed1eaf"><div class="ttname"><a href="namespacenanom.html#af94ead8ae2b3f3ed9c70d76e5fed1eaf">nanom::double_</a></div><div class="ttdeci">constexpr auto double_</div><div class="ttdoc">float_ / double_ — text floating point (&quot;3.14&quot;, &quot;-1e9&quot;). (nom: float/double)</div><div class="ttdef"><b>Definition</b> nom.hpp:1481</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -4890,11 +4896,11 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  <span class="keywordflow">if</span> (<span class="keywordtype">char</span>(in[0]) == <span class="charliteral">&#39;\n&#39;</span>) <span class="keywordflow">return</span> done{std::string_view(<span class="stringliteral">&quot;\n&quot;</span>), in.advance(1)};</div>
 <div class="line">  <span class="keywordflow">if</span> (<span class="keywordtype">char</span>(in[0]) == <span class="charliteral">&#39;\r&#39;</span>) {</div>
 <div class="line">    <span class="keywordflow">if</span> (in.size() &lt; 2) <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a9641ef1c751b997f3fd186f0b5ad34e8">make_incomplete</a>(in, 1);</div>
-<div class="line">    <span class="keywordflow">if</span> (<span class="keywordtype">char</span>(in[1]) == <span class="charliteral">&#39;\n&#39;</span>) <span class="keywordflow">return</span> <a class="code hl_struct" href="structnanom_1_1done.html">done</a>{<a class="code hl_function" href="namespacenanom.html#a2a23ff58bde7adaa42232afd51de7b26">as_str</a>(in.take_span(2)), in.advance(2)};</div>
+<div class="line">    <span class="keywordflow">if</span> (<span class="keywordtype">char</span>(in[1]) == <span class="charliteral">&#39;\n&#39;</span>) <span class="keywordflow">return</span> <a class="code hl_struct" href="structnanom_1_1done.html">done</a>{<a class="code hl_function" href="namespacenanom.html#a737be5dc10ad953cf9c9a61d2aff1e75">as_str</a>(in.take_span(2)), in.advance(2)};</div>
 <div class="line">  }</div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a2226dbc1b8e47adc0f180242f80587e6">make_err</a>(in, <span class="stringliteral">&quot;line ending&quot;</span>);</div>
 <div class="line">}</div>
-<div class="ttc" id="astructnanom_1_1done_html"><div class="ttname"><a href="structnanom_1_1done.html">nanom::done</a></div><div class="ttdoc">Successful parse: the produced value plus the un-consumed rest.</div><div class="ttdef"><b>Definition</b> nom.hpp:267</div></div>
+<div class="ttc" id="astructnanom_1_1done_html"><div class="ttname"><a href="structnanom_1_1done.html">nanom::done</a></div><div class="ttdoc">Successful parse: the produced value plus the un-consumed rest.</div><div class="ttdef"><b>Definition</b> nom.hpp:297</div></div>
 </div><!-- fragment -->
 <p>"\n" or "\r\n" </p>
 
@@ -5129,7 +5135,7 @@ template&lt;Parser P, class Pred &gt; </div>
 <b>Initial value:</b><div class="fragment"><div class="line">= [](input in) {</div>
 <div class="line">  <span class="keyword">auto</span> r = detail::take_pred(in, [](std::uint8_t b) { <span class="keywordflow">return</span> b != <span class="charliteral">&#39;\r&#39;</span> &amp;&amp; b != <span class="charliteral">&#39;\n&#39;</span>; },</div>
 <div class="line">                             0, detail::nmax, <span class="stringliteral">&quot;&quot;</span>);</div>
-<div class="line">  <span class="keywordflow">return</span> <a class="code hl_class" href="classnanom_1_1expected.html">result&lt;std::string_view&gt;</a>{<a class="code hl_struct" href="structnanom_1_1done.html">done</a>{<a class="code hl_function" href="namespacenanom.html#a2a23ff58bde7adaa42232afd51de7b26">as_str</a>(r-&gt;value), r-&gt;rest}};</div>
+<div class="line">  <span class="keywordflow">return</span> <a class="code hl_class" href="classnanom_1_1expected.html">result&lt;std::string_view&gt;</a>{<a class="code hl_struct" href="structnanom_1_1done.html">done</a>{<a class="code hl_function" href="namespacenanom.html#a737be5dc10ad953cf9c9a61d2aff1e75">as_str</a>(r-&gt;value), r-&gt;rest}};</div>
 <div class="line">}</div>
 <div class="ttc" id="aclassnanom_1_1expected_html"><div class="ttname"><a href="classnanom_1_1expected.html">nanom::expected</a></div><div class="ttdoc">Just enough of std::expected for nanom's needs.</div><div class="ttdef"><b>Definition</b> nom.hpp:39</div></div>
 </div><!-- fragment -->

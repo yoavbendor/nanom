@@ -308,6 +308,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../RUST_SAFETY_REVIEW/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Safety for Rust reviewers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../MEMORY_SAFETY/" class="md-nav__link">
         
   
@@ -316,6 +343,33 @@
     
   
     Memory safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../COMPILE_TIME_SAFETY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compile-time safety (strict profile)
   
 
     
@@ -612,10 +666,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
             
   
   
@@ -633,8 +687,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -930,7 +984,8 @@ pure rust-nom parallel), with none of the reflection/schema/soa extras.</p>
 <li><code>NANOM_GENERATION_THROW=0</code> (set to <code>1</code> to throw <code>generation_exception</code> instead of abort+report)</li>
 </ul>
 <p>Override per target/build with compile definitions (<code>-DNANOM_GENERATION=0</code>, etc.). See
-<a href="../MEMORY_SAFETY/">MEMORY_SAFETY.md</a> for contracts and review guidance.</p>
+<a href="../MEMORY_SAFETY/">MEMORY_SAFETY.md</a> for contracts and review guidance, or
+<a href="../RUST_SAFETY_REVIEW/">Safety for Rust reviewers</a> for a nom-audience walkthrough.</p>
 <h2 id="your-first-parser">Your first parser<a class="headerlink" href="#your-first-parser" title="Permanent link">&para;</a></h2>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nanom/nanom.hpp&gt;</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;array&gt;</span>

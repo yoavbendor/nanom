@@ -14,5 +14,5 @@ var searchData=
   ['fold_5fmany_5fm_5fn_11',['fold_many_m_n',['../namespacenanom.html#adad0993c51cb1435585cb9347b44a526',1,'nanom']]],
   ['for_5feach_5fchunk_12',['for_each_chunk',['../classnanom_1_1soa.html#abcd9c4cdc06164d211e6bcaafbb48591',1,'nanom::soa']]],
   ['frame_13',['frame',['../structnanom_1_1error_1_1frame.html',1,'nanom::error']]],
-  ['from_14',['from',['../namespacenanom.html#aade729b3df77339dd862a982d23a132a',1,'nanom::from(bytes b)'],['../namespacenanom.html#aab50eabb27e1890490ff7648bd70c6cb',1,'nanom::from(std::string_view s)'],['../namespacenanom.html#a49e16e11b85f08e72391b62952c25550',1,'nanom::from(const void *data, std::size_t len)'],['../namespacenanom.html#a4a9f578ca7b2fd16f124bc0ba7d105fb',1,'nanom::from(const std::array&lt; T, N &gt; &amp;a)']]]
+  ['from_14',['from',['../namespacenanom.html#a6f10fa3e9cecc6db153a82f11da4c4b7',1,'nanom::from(bytes b NANOM_LIFETIMEBOUND)'],['../namespacenanom.html#a2ea5127471c97a142c6e068678dcad66',1,'nanom::from(std::string_view s NANOM_LIFETIMEBOUND)'],['../namespacenanom.html#a49e16e11b85f08e72391b62952c25550',1,'nanom::from(const void *data, std::size_t len)'],['../namespacenanom.html#a3fdc8fb9ad807594c82c8d06ff6eca75',1,'nanom::from(const std::array&lt; T, N &gt; &amp;a NANOM_LIFETIMEBOUND)']]]
 ];

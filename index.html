@@ -14,7 +14,7 @@
       
       
       
-        <link rel="next" href="MEMORY_SAFETY/">
+        <link rel="next" href="RUST_SAFETY_REVIEW/">
       
       
         
@@ -397,6 +397,33 @@
   
   
     <li class="md-nav__item">
+      <a href="RUST_SAFETY_REVIEW/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Safety for Rust reviewers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="MEMORY_SAFETY/" class="md-nav__link">
         
   
@@ -405,6 +432,33 @@
     
   
     Memory safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="COMPILE_TIME_SAFETY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compile-time safety (strict profile)
   
 
     
@@ -599,10 +653,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
             
   
   
@@ -620,8 +674,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -876,7 +930,8 @@ automatic schemas (Apache Arrow / Avro / JSON / CSV), and columnar Struct-of-Arr
 nom-parallel parser is one self-contained header (<code>nom.hpp</code>); reflection and the data-tooling extras
 layer cleanly on top.</p>
 <p><a class="md-button md-button--primary" href="getting-started/">Get started</a>
-<a class="md-button md-button--primary" href="MEMORY_SAFETY/">Memory safety</a>
+<a class="md-button md-button--primary" href="RUST_SAFETY_REVIEW/">Safety for Rust reviewers</a>
+<a class="md-button" href="MEMORY_SAFETY/">Memory safety</a>
 <a class="md-button" href="THREAT_MODEL/">Threat model</a>
 <a class="md-button" href="CHEATSHEET/">Cheat sheet</a>
 <a class="md-button" href="https://yoavbendor.github.io/nanom/api/">API reference</a>
@@ -884,16 +939,27 @@ layer cleanly on top.</p>
 <h2 id="streaming-safety-posture">Streaming + safety posture<a class="headerlink" href="#streaming-safety-posture" title="Permanent link">&para;</a></h2>
 <p>nanom follows nom's streaming contract directly: parse on <code>nm::streaming(input)</code>, and on short prefixes
 you get <code>errk::incomplete</code> with <code>needed</code> so callers can refill and retry.</p>
-<p>Safety defaults are now strong by default and configurable:</p>
+<p>Safety defaults are strong by default and configurable:</p>
 <ul>
+<li><code>NANOM_GENERATION=1</code> — <code>wire_arena</code> runtime stale-buffer detection on <code>view</code> / <code>bytes</code> access</li>
 <li><code>NANOM_GUARD_VIEWS=1</code> — guard null/uninitialized <code>view</code> access</li>
 <li>safe null input handling (<code>from(nullptr, n&gt;0)</code> =&gt; empty input)</li>
 <li>bounded streaming <code>needed</code> (<code>max_incomplete_needed = 64 KiB</code>)</li>
-<li>checked cursor helpers (<code>safe_at</code>, <code>checked_advance</code>) for defensive code paths</li>
+<li>bounds-checked consume on every combinator (<code>take</code>, <code>overlay</code>, <code>strct</code>, …); <strong><code>overlay</code> does not <code>reinterpret_cast</code> wire to <code>T*</code></strong> — byte assembly + <code>std::bit_cast</code> (<a href="MEMORY_SAFETY/#overlay-decode-strict-aliasing-and-unaligned-reads">details</a>)</li>
+<li>checked cursor helpers (<code>safe_at</code>, <code>checked_advance</code>) for defensive hand-rolled paths</li>
+<li>continuous libFuzzer in CI (<code>fuzz_scan_walk</code>, <code>fuzz_streaming_pcapng</code>) + ASan/UBSan matrix</li>
 </ul>
-<p>Reviewers: see the dedicated <a href="MEMORY_SAFETY/">memory-safety model and contracts</a> and the
-<a href="THREAT_MODEL/">threat model + checklist</a>, plus generation and streaming behavior tests in
-<code>tests/test_nanom.cpp</code> / <code>tests/test_memory_safety.cpp</code>.</p>
+<p><strong>Coming from Rust nom?</strong> Read <a href="RUST_SAFETY_REVIEW/">Safety for Rust reviewers</a> — it
+preempts the usual lifetime, UB, and overflow objections with what is enforced, what is
+fuzzed, and what remains caller contract. Also see <a href="MEMORY_SAFETY/">memory-safety model</a>
+and <a href="THREAT_MODEL/">threat model + checklist</a>.</p>
+<p><strong>Safety- and speed-obsessed?</strong> The <a href="COMPILE_TIME_SAFETY/">strict profile</a>
+(<code>-DNANOM_STRICT=1</code>) narrows the API at compile time — no raw <code>from(ptr, len)</code>, no
+owning-temporary parses, no GPU/bulk raw-pointer scatter, <code>[[clang::lifetimebound]]</code>
+diagnostics — so the runtime can drop generation tracking and view guards for a leaner data
+model (<code>input</code> 48→32 B, <code>bytes</code> 32→16 B). Benchmarks at parity with the unchecked build:
+<strong>compile-time-enforced memory safety at zero runtime cost</strong>, proven by <code>WILL_FAIL</code> negative
+compile tests.</p>
 <h2 id="as-fast-as-rust-nom-proven-not-asserted">As fast as Rust nom — proven, not asserted<a class="headerlink" href="#as-fast-as-rust-nom-proven-not-asserted" title="Permanent link">&para;</a></h2>
 <p>The headline question for a C++ nom-alike is <em>"is it actually as fast as Rust nom?"</em> nanom answers it
 falsifiably: the <strong>same streaming pcapng parse in both languages, on the same file, with output proven
@@ -1030,13 +1096,13 @@ profile stays within best-of-5 noise on this workload. Reproduce with
         
         
           
-          <a href="MEMORY_SAFETY/" class="md-footer__link md-footer__link--next" aria-label="Next: Memory safety">
+          <a href="RUST_SAFETY_REVIEW/" class="md-footer__link md-footer__link--next" aria-label="Next: Safety for Rust reviewers">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Memory safety
+                Safety for Rust reviewers
               </div>
             </div>
             <div class="md-footer__button md-icon">

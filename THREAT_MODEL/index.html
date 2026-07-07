@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://yoavbendor.github.io/nanom/THREAT_MODEL/">
       
       
-        <link rel="prev" href="../MEMORY_SAFETY/">
+        <link rel="prev" href="../COMPILE_TIME_SAFETY/">
       
       
         <link rel="next" href="../getting-started/">
@@ -308,6 +308,33 @@
   
   
     <li class="md-nav__item">
+      <a href="../RUST_SAFETY_REVIEW/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Safety for Rust reviewers
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../MEMORY_SAFETY/" class="md-nav__link">
         
   
@@ -316,6 +343,33 @@
     
   
     Memory safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../COMPILE_TIME_SAFETY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Compile-time safety (strict profile)
   
 
     
@@ -684,10 +738,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_11" >
         
           
-          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
+          <label class="md-nav__link" for="__nav_11" id="__nav_11_label" tabindex="">
             
   
   
@@ -705,8 +759,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_9">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_11_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_11">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -1037,6 +1091,9 @@
 <h1 id="nanom-threat-model-and-reviewer-checklist">nanom threat model and reviewer checklist<a class="headerlink" href="#nanom-threat-model-and-reviewer-checklist" title="Permanent link">&para;</a></h1>
 <p>This page describes what nanom's safety features do and do not guarantee, and
 provides a concrete checklist for external memory-safety review.</p>
+<p><strong>Rust / nom reviewers:</strong> see <a href="../RUST_SAFETY_REVIEW/">Safety for Rust reviewers</a> for
+the three common objections (dangling views, overlay UB, TLV overflow) and how nanom
+addresses each.</p>
 <h2 id="scope-and-assumptions">Scope and assumptions<a class="headerlink" href="#scope-and-assumptions" title="Permanent link">&para;</a></h2>
 <p>nanom is a zero-copy parser library. Its core data model (<code>input</code>, <code>bytes</code>,
 <code>view&lt;T&gt;</code>) references caller-owned memory. Safety depends on a mix of:</p>
@@ -1246,7 +1303,7 @@ provides a concrete checklist for external memory-safety review.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../MEMORY_SAFETY/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Memory safety">
+          <a href="../COMPILE_TIME_SAFETY/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Compile-time safety (strict profile)">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1256,7 +1313,7 @@ provides a concrete checklist for external memory-safety review.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Memory safety
+                Compile-time safety (strict profile)
               </div>
             </div>
           </a>

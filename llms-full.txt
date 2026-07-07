@@ -21,23 +21,52 @@ and data-tooling extras layer cleanly on top.
 📖 **[Documentation site](https://yoavbendor.github.io/nanom/)** ·
 🗺️ **[nom → nanom cheat sheet](docs/CHEATSHEET.md)** ·
 📐 **[API reference](https://yoavbendor.github.io/nanom/api/)** ·
+🛡️ **[Safety for Rust reviewers](docs/RUST_SAFETY_REVIEW.md)** ·
 🛡️ **[Memory safety model](docs/MEMORY_SAFETY.md)** ·
 🎯 **[Threat model + reviewer checklist](docs/THREAT_MODEL.md)**
 
 ## Streaming + safety first
 
 nanom supports nom-style **incremental streaming** out of the box (`nm::streaming` + `errk::incomplete`)
-and now defaults to the strongest practical memory-safety posture:
+and defaults to the strongest practical memory-safety posture:
 
+- `NANOM_GENERATION=1` (default): `wire_arena` stale-buffer detection on `view` / `bytes` access
 - `NANOM_GUARD_VIEWS=1` (default): null/uninitialized `view` access guard
 - `from(nullptr, n>0)` safe handling (returns empty input)
 - `max_incomplete_needed` cap for streaming `incomplete.needed` (64 KiB)
-- bounds-checked cursor helpers: `input::safe_at()` / `input::checked_advance()`
+- bounds-checked consume on every combinator; **`overlay` does not `reinterpret_cast` wire to `T*`** — it decodes via byte assembly + `std::bit_cast` ([details](docs/MEMORY_SAFETY.md#overlay-decode-strict-aliasing-and-unaligned-reads))
+- continuous libFuzzer in CI + ASan/UBSan matrix
+- bounds-checked cursor helpers: `input::safe_at()` / `input::checked_advance()` for hand-rolled paths
+
+**Rust nom audience:** see [Safety for Rust reviewers](docs/RUST_SAFETY_REVIEW.md) for lifetime, UB, and overflow defenses.
+
+### Strict profile — compile-time safety at the unchecked speed
+
+For safety- **and** performance-obsessed users, `-DNANOM_STRICT=1` narrows the API at
+compile time so the runtime can drop the checks those APIs made necessary. It removes the
+raw `from(ptr, len)` entry, **deletes** `from(std::string&&)` (owning-temporary dangle is a
+compile error), refuses `<nanom/bulk.hpp>` (GPU/bulk raw-pointer scatter), and adds
+`[[clang::lifetimebound]]` diagnostics — then runs with generation tracking and view guards
+**off** for a leaner data model (`input` 48→32 B, `bytes` 32→16 B).
+
+Proven, not asserted (verified byte-identical output, best-of-5):
+
+| profile | ns/packet | throughput |
+|---|---:|---:|
+| minimal (unchecked) | 84 | 17.5 GiB/s |
+| full (safety-first) | 82 | 17.8 GiB/s |
+| **strict** (compile-time enforced) | **83** | 17.5 GiB/s |
+
+All three at parity → **compile-time-enforced memory safety with zero runtime cost**. The
+restrictions are proven by `WILL_FAIL` negative compile tests. See
+[Compile-time safety](docs/COMPILE_TIME_SAFETY.md).
 
 Users can still tune behavior per target/build with compile definitions:
 
 ```sh
-# example
+# examples
+-DNANOM_STRICT=1        # safe routes only, lean runtime
+-DNANOM_GENERATION=0
 -DNANOM_GUARD_VIEWS=0
 ```
 
@@ -862,17 +891,74 @@ python3 bench/compare_rust.py --build --safety both --max-overhead 1.20  # CI bu
 #define NANOM_HAS_REFLECTION 0
 #endif
 
+// ---------------------------------------------------------------------------
+// Safety profile
+// ---------------------------------------------------------------------------
+// NANOM_STRICT is the "safe routes only" profile for safety- AND speed-obsessed
+// users. The idea is a *sweetened pill*: you accept compile-time restrictions,
+// and in return nanom compiles OUT the runtime safety machinery those
+// restrictions make unnecessary — so strict runs at the speed of the unchecked
+// `minimal` profile while the compiler (not a runtime branch) enforces the
+// lifetime contract.
+//
+// When NANOM_STRICT=1:
+//   * runtime generation tracking and view guards are turned OFF by default
+//     (lean input/bytes, no per-access generation branch) — see below.
+//   * `[[clang::lifetimebound]]` is enforced on the zero-copy entry points, so
+//     binding a view/span to a temporary buffer is a COMPILE error (the exact
+//     dangling-view bug that generation tracking otherwise catches at runtime).
+//   * the raw pointer+length `from()` escape hatch is removed (callers pass a
+//     sized span/array/string_view instead — no unbounded provenance).
+//   * the GPU/bulk data-parallel path (raw device-pointer scatter, outside the
+//     bounds-checked combinator model) is unavailable: including <nanom/bulk.hpp>
+//     under NANOM_STRICT is a hard error.
+//   * combinator bounds checks are KEPT (defense against hostile input is not a
+//     caller-discipline question) and the library stays continuously fuzzed.
+//
+// Everything is still individually overridable, e.g. -DNANOM_STRICT=1 with an
+// explicit -DNANOM_GENERATION=1 to keep runtime tracking on top of the strict
+// compile-time restrictions (paranoid belt-and-suspenders build).
+#ifndef NANOM_STRICT
+# define NANOM_STRICT 0
+#endif
+
 // Safety defaults (override with -D...=0/1).
 // Strong defaults are chosen for reviewer-facing and production hardening;
-// users can opt out per target when needed.
+// users can opt out per target when needed. Under NANOM_STRICT the runtime
+// nets default OFF because the compile-time restrictions replace them.
 #ifndef NANOM_GUARD_VIEWS
-# define NANOM_GUARD_VIEWS 1
+# if NANOM_STRICT
+#  define NANOM_GUARD_VIEWS 0
+# else
+#  define NANOM_GUARD_VIEWS 1
+# endif
 #endif
 #ifndef NANOM_GENERATION
-# define NANOM_GENERATION 1
+# if NANOM_STRICT
+#  define NANOM_GENERATION 0
+# else
+#  define NANOM_GENERATION 1
+# endif
 #endif
 #ifndef NANOM_GENERATION_THROW
 # define NANOM_GENERATION_THROW 0
+#endif
+
+// NANOM_LIFETIMEBOUND — Clang's compile-time dangling-view diagnostic. Applied
+// to the zero-copy entry points (from(), as_str()) so a view/span bound to a
+// temporary buffer is diagnosed at compile time. Zero runtime cost; expands to
+// nothing on compilers without the attribute (e.g. GCC), which still build fine.
+// Under NANOM_STRICT the diagnostic is present whenever the toolchain supports
+// it; outside strict it is available but unobtrusive.
+#if defined(__has_cpp_attribute)
+# if __has_cpp_attribute(clang::lifetimebound)
+#  define NANOM_LIFETIMEBOUND [[clang::lifetimebound]]
+# elif __has_cpp_attribute(msvc::lifetimebound)
+#  define NANOM_LIFETIMEBOUND [[msvc::lifetimebound]]
+# endif
+#endif
+#ifndef NANOM_LIFETIMEBOUND
+# define NANOM_LIFETIMEBOUND
 #endif
 
 // NANOM_HD marks the functions on the zero-copy decode path as callable from a
@@ -1341,10 +1427,13 @@ struct input {
   }
 };
 
-/// Make an input from anything byte-like.
-constexpr input from(bytes b) { return input(b); }
+/// Make an input from anything byte-like. NANOM_LIFETIMEBOUND ties the returned
+/// cursor to the buffer's lifetime: binding it to a temporary is diagnosed at
+/// compile time on toolchains that support the attribute (Clang), which is the
+/// compile-time half of nanom's dangling-view defense (see docs/RUST_SAFETY_REVIEW.md).
+constexpr input from(bytes b NANOM_LIFETIMEBOUND) { return input(b); }
 #if NANOM_GENERATION
-inline input from(bytes b, wire_arena& arena) {
+inline input from(bytes b NANOM_LIFETIMEBOUND, wire_arena& arena) {
   arena.open(b.data(), b.size());
   input in = from(b.unchecked_span());
   in.arena = &arena;
@@ -1355,28 +1444,55 @@ inline input from(const void* data, std::size_t len, wire_arena& arena) {
   return from(bytes(std::span<const std::byte>(static_cast<const std::byte*>(data), len)), arena);
 }
 #endif
-inline input from(std::string_view s) {
+inline input from(std::string_view s NANOM_LIFETIMEBOUND) {
   return input(bytes(reinterpret_cast<const std::byte*>(s.data()), s.size()));
 }
+#if !NANOM_STRICT
+/// Raw pointer + length entry. Removed under NANOM_STRICT: the strict profile
+/// requires a sized span/array/string_view so provenance is never an unbounded
+/// (pointer, length) pair a caller can get wrong. Wrap in std::span at the call
+/// site to opt back in explicitly.
 inline input from(const void* data, std::size_t len) {
   if (!data && len > 0) return input{};
   return input(bytes(static_cast<const std::byte*>(data), len));
 }
+#endif
 template <class T, std::size_t N>
   requires(sizeof(T) == 1)
-constexpr input from(const std::array<T, N>& a) {
-  return from(a.data(), N);
+inline input from(const std::array<T, N>& a NANOM_LIFETIMEBOUND) {
+  return input(bytes(reinterpret_cast<const std::byte*>(a.data()), N));
 }
+#if NANOM_GENERATION
+/// std::span convenience (only distinct from from(bytes) when bytes is the
+/// attested wrapper; when generation is off, bytes IS std::span and from(bytes)
+/// already accepts it).
+constexpr input from(std::span<const std::byte> s NANOM_LIFETIMEBOUND) {
+  return input(bytes(s.data(), s.size()));
+}
+#endif
 
 /// Mark an input as a stream prefix: parsers that hit the end will report
 /// `incomplete` with the byte count still needed, so the caller can refill
 /// and retry (nom's streaming mode; default inputs behave like nom complete).
 constexpr input streaming(input in) { in.live = true; return in; }
 
-/// View a span of raw bytes as text (zero-copy).
-inline std::string_view as_str(bytes b) {
+/// View a span of raw bytes as text (zero-copy). NANOM_LIFETIMEBOUND ties the
+/// returned string_view to the byte buffer so binding it to a temporary is a
+/// compile-time diagnostic on supporting toolchains.
+inline std::string_view as_str(bytes b NANOM_LIFETIMEBOUND) {
   return {reinterpret_cast<const char*>(b.data()), b.size()};
 }
+
+#if NANOM_STRICT
+// Compile-time dangling-view guard: a temporary std::string converts to the
+// std::string_view from() takes, leaving the returned cursor pointing at freed
+// storage the moment the statement ends. Under the strict profile this is a
+// compile error instead of a runtime use-after-free (which strict no longer
+// tracks at runtime — that is the trade the profile makes). Bind the string to
+// a named variable first, then parse it.
+input from(std::string&&)       = delete;
+input from(const std::string&&) = delete;
+#endif
 
 // ---------------------------------------------------------------------------
 // 2. error — POD, allocation-free until render()
