@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783422854566,
+  "lastUpdate": 1783425426979,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -527,6 +527,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 23.4,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "1188f512fd7ed2ed45f376cdf04e1fbbb97db434",
+          "message": "Merge pull request #15 from yoavbendor/cursor/safety-stage3-gap-tests-1ef9\n\nStage 3: WILL_FAIL gap safety test suite",
+          "timestamp": "2026-07-07T14:56:39+03:00",
+          "tree_id": "f2e1a073f0a5d6750b8e117172c573c5dd59e0cd",
+          "url": "https://github.com/yoavbendor/nanom/commit/1188f512fd7ed2ed45f376cdf04e1fbbb97db434"
+        },
+        "date": 1783425426523,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 28.6,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 104.9,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 38.6,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 19.9,
             "unit": "ns/pkt"
           }
         ]
