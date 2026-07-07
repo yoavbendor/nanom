@@ -115,6 +115,15 @@ nanom_exe(nanom_generation_tests tests/test_memory_safety_generation.cpp)
 target_compile_definitions(nanom_generation_tests PRIVATE NANOM_GENERATION_THROW=1)
 add_test(NAME nanom_generation_tests COMMAND nanom_generation_tests)
 
+# Streaming / incremental parser safety (short-prefix, refill boundaries).
+nanom_exe(nanom_streaming_safety_tests tests/test_streaming_safety.cpp)
+target_compile_definitions(nanom_streaming_safety_tests PRIVATE
+  NANOM_GENERATION_THROW=1
+  NANOM_STREAMING_FIXTURE="${td}/SRL_front_left_51_short.pcapng")
+target_include_directories(nanom_streaming_safety_tests PRIVATE
+  ${CMAKE_SOURCE_DIR}/bench ${parity_dir})
+add_test(NAME nanom_streaming_safety_tests COMMAND nanom_streaming_safety_tests)
+
 if(NANOM_MEMORY_SAFETY_GAP_TESTS)
   # Gap suite: residual hazards from THREAT_MODEL.md — WILL_FAIL until hardened.
   nanom_exe_generation(nanom_memory_safety_gap_tests 0 tests/test_memory_safety_gaps.cpp)
@@ -196,10 +205,14 @@ if(NANOM_BUILD_FUZZERS)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(FATAL_ERROR "NANOM_BUILD_FUZZERS requires Clang (libFuzzer)")
   endif()
-  foreach(fz scan_walk)
+  foreach(fz scan_walk streaming_pcapng)
     add_executable(fuzz_${fz} fuzz/fuzz_${fz}.cpp)
     target_link_libraries(fuzz_${fz} PRIVATE nanom Threads::Threads)
+    target_include_directories(fuzz_${fz} PRIVATE ${CMAKE_SOURCE_DIR}/bench ${parity_dir})
     target_compile_options(fuzz_${fz} PRIVATE -g -O1 -fsanitize=fuzzer,address,undefined)
     target_link_options(fuzz_${fz}    PRIVATE   -fsanitize=fuzzer,address,undefined)
+    if(fz STREQUAL streaming_pcapng)
+      target_compile_definitions(fuzz_${fz} PRIVATE NANOM_GENERATION=1 NANOM_GUARD_VIEWS=1)
+    endif()
   endforeach()
 endif()

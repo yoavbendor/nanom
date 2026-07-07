@@ -1,7 +1,7 @@
 # nanom fuzzers
 
-Two fuzzers, both feeding random / bit-flipped / truncated / extended bytes into
-the pcap scan + Eth/VLAN/IPv4/IPv6/TCP/UDP walk.
+Fuzzers feeding arbitrary bytes into nanom parse paths. `self_fuzz` runs in ctest;
+libFuzzer targets run in the `fuzz` workflow and `streaming-sanitizer` CI job.
 
 ## `self_fuzz.cpp` — robustness (self-contained, in CI)
 
@@ -11,26 +11,35 @@ No external deps. Build with sanitizers to make any violation fatal:
 ```sh
 g++-13 -std=c++23 -O1 -fsanitize=address,undefined -fno-sanitize-recover=all \
     -I include -o self_fuzz fuzz/self_fuzz.cpp && ./self_fuzz
-# self fuzz: 600000 cases, no crash (sink ...)
 ```
 
-Run as the `self_fuzz` ctest target. Every combinator bounds-checks by
-construction, so this is where a zero-copy parser library must be airtight.
+Run as the `self_fuzz` ctest target.
+
+## `fuzz_scan_walk.cpp` — pcap scan + walk (libFuzzer, in CI)
+
+Coverage-guided fuzz of `scan_blocks` + `walk_packet` on arbitrary file and packet bytes.
+
+## `fuzz_streaming_pcapng.cpp` — streaming refill (libFuzzer, in CI)
+
+Feeds arbitrary bytes into the **streaming pcapng** parse loop with a **variable
+refill-window cap** (16..8192 bytes). Built with `NANOM_GENERATION=1` and
+`NANOM_GUARD_VIEWS=1`. Exercises `nm::streaming` → `incomplete` → refill boundaries.
+
+```sh
+cmake -B build -DCMAKE_CXX_COMPILER=clang++-18 -DNANOM_BUILD_FUZZERS=ON
+cmake --build build --target fuzz_streaming_pcapng
+mkdir -p corpus_streaming && cp examples/nanotins_parity/testdata/*.pcapng corpus_streaming/
+./build/fuzz_streaming_pcapng -max_total_time=60 corpus_streaming/
+```
 
 ## `differential_fuzz.cpp` — parity with nanotins (manual)
 
-Additionally asserts that **nanom and nanotins decode identically** — same
-layers emitted, same field values — on every input. Needs the nanotins headers
-on the include path, so it is not in the default CI build:
+Asserts **nanom and nanotins decode identically** on every input. Needs nanotins
+headers; not in default CI.
 
 ```sh
 g++-13 -std=c++23 -O1 -fsanitize=address,undefined -fno-sanitize-recover=all \
     -I include -I . \
     -I path/to/nanotins/nanotins/include -I path/to/nanotins/soatins/include \
     -o difffuzz fuzz/differential_fuzz.cpp && ./difffuzz
-# differential fuzz: 600000 cases, 0 mismatches
 ```
-
-Result on the current tree: **600,000 cases, 0 mismatches**, clean under
-ASan+UBSan — strong evidence that the nanom port is behaviorally equivalent to
-nanotins on malformed input, not just on the curated captures.

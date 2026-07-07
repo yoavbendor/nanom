@@ -79,7 +79,7 @@ Future work: auto-tracked containers; stronger provenance/cross-arena diagnostic
 - `tests/test_memory_safety_gaps.cpp` — **WILL_FAIL** residual hazards without generation tracking
 - `tests/test_memory_safety_gaps_generation.cpp` — **WILL_FAIL** attested_bytes / arena gaps
 - `tests/test_memory_safety_ub.cpp` — optional ASan red-team demos (`NANOM_MEMORY_SAFETY_UB_DEMOS=ON`)
-- `tests/test_nanom.cpp` — incremental one-byte streaming behavior (`test_streaming_incremental`)
+- `tests/test_streaming_safety.cpp` — streaming/incremental refill safety (`nanom_streaming_safety_tests`)
 - `bench/safety_microbench.cpp` — performance baselines per guard
 
 CMake registers gap targets when `NANOM_MEMORY_SAFETY_GAP_TESTS=ON` (default). Remove

@@ -74,7 +74,7 @@ Track these in failing/gap safety tests and fuzz targets as they are added.
 | Untracked span lifetime (no `wire_arena`) | `nanom_memory_safety_gap_tests` |
 | `attested_bytes::operator[]` OOB vs `at()` | `nanom_memory_safety_gap_generation_tests` |
 | `unchecked_span()` bypasses generation | `nanom_memory_safety_gap_generation_tests` |
-| `bytes::data()` / `as_str()` skip generation | `nanom_memory_safety_gap_generation_tests` |
+| Streaming short-prefix / refill boundaries | `nanom_streaming_safety_tests`, `fuzz_streaming_pcapng` |
 
 ## Reviewer checklist
 
@@ -90,7 +90,7 @@ Use this checklist for PRs touching parse path, lifetime model, or docs claims.
 
 ### Test checks
 
-- [ ] `nanom_tests` includes incremental streaming behavior (`test_streaming_incremental`).
+- [ ] `nanom_streaming_safety_tests` covers incremental growth, variable-cap refill, and generation+streaming.
 - [ ] Memory-safety suites pass for expected profile (`nanom_memory_safety_tests`,
       `nanom_generation_tests` where applicable).
 - [ ] Gap suite (`nanom_memory_safety_gap_tests`,
