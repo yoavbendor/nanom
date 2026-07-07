@@ -46,24 +46,27 @@ set(NANOM_REFLECTION_FLAGS "-freflection-latest;-stdlib=libc++" CACHE STRING
 
 # One interface target carrying the warning + sanitizer flags, linked by every
 # test/example/bench binary so the whole tree is checked uniformly.
-add_library(nanom_flags INTERFACE)
+add_library(nanom_common_flags INTERFACE)
 # -Wall/-Wextra/-Wpedantic is the strict set we gate on. -Wshadow/-Wconversion
 # are deliberately NOT here: nanom exposes short global parser names (u8, rest,
 # tag, ...) by design, so `auto rest = ...` in user code legitimately shadows
 # them — gating on -Wshadow would punish the intended API. CI runs them as a
 # separate advisory (non-blocking) lint instead.
-target_compile_options(nanom_flags INTERFACE
+target_compile_options(nanom_common_flags INTERFACE
   -Wall -Wextra -Wpedantic
   $<$<BOOL:${NANOM_WERROR}>:-Werror>)
 if(NANOM_SANITIZER)
-  target_compile_options(nanom_flags INTERFACE -fsanitize=${NANOM_SANITIZER} -fno-omit-frame-pointer -g)
-  target_link_options(nanom_flags    INTERFACE -fsanitize=${NANOM_SANITIZER})
+  target_compile_options(nanom_common_flags INTERFACE -fsanitize=${NANOM_SANITIZER} -fno-omit-frame-pointer -g)
+  target_link_options(nanom_common_flags INTERFACE -fsanitize=${NANOM_SANITIZER})
 endif()
 if(NANOM_GUARD_VIEWS)
-  target_compile_definitions(nanom_flags INTERFACE NANOM_GUARD_VIEWS=1)
+  target_compile_definitions(nanom_common_flags INTERFACE NANOM_GUARD_VIEWS=1)
 else()
-  target_compile_definitions(nanom_flags INTERFACE NANOM_GUARD_VIEWS=0)
+  target_compile_definitions(nanom_common_flags INTERFACE NANOM_GUARD_VIEWS=0)
 endif()
+
+add_library(nanom_flags INTERFACE)
+target_link_libraries(nanom_flags INTERFACE nanom_common_flags)
 if(NANOM_GENERATION)
   target_compile_definitions(nanom_flags INTERFACE NANOM_GENERATION=1)
 else()
@@ -90,6 +93,13 @@ function(nanom_exe name)
   target_link_libraries(${name} PRIVATE nanom nanom_flags Threads::Threads)
 endfunction()
 
+# Like nanom_exe but with an explicit NANOM_GENERATION value (for gap-test profiles).
+function(nanom_exe_generation name generation)
+  add_executable(${name} ${ARGN})
+  target_link_libraries(${name} PRIVATE nanom nanom_common_flags Threads::Threads)
+  target_compile_definitions(${name} PRIVATE NANOM_GENERATION=${generation})
+endfunction()
+
 set(parity_dir ${CMAKE_CURRENT_SOURCE_DIR}/examples/nanotins_parity)
 set(td ${parity_dir}/testdata)
 
@@ -99,25 +109,22 @@ add_test(NAME nanom_tests COMMAND nanom_tests)
 
 # Memory-safety regression suite: enforced guards (must pass).
 nanom_exe(nanom_memory_safety_tests tests/test_memory_safety.cpp)
-target_compile_definitions(nanom_memory_safety_tests PRIVATE NANOM_GUARD_VIEWS=1)
 add_test(NAME nanom_memory_safety_tests COMMAND nanom_memory_safety_tests)
 
 nanom_exe(nanom_generation_tests tests/test_memory_safety_generation.cpp)
-target_compile_definitions(nanom_generation_tests PRIVATE NANOM_GENERATION=1 NANOM_GENERATION_THROW=1
-                                                           NANOM_GUARD_VIEWS=1)
+target_compile_definitions(nanom_generation_tests PRIVATE NANOM_GENERATION_THROW=1)
 add_test(NAME nanom_generation_tests COMMAND nanom_generation_tests)
 
 if(NANOM_MEMORY_SAFETY_GAP_TESTS)
   # Gap suite: residual hazards from THREAT_MODEL.md — WILL_FAIL until hardened.
-  nanom_exe(nanom_memory_safety_gap_tests tests/test_memory_safety_gaps.cpp)
-  target_compile_definitions(nanom_memory_safety_gap_tests PRIVATE NANOM_GENERATION=0
-                                                                    NANOM_GUARD_VIEWS=1)
+  nanom_exe_generation(nanom_memory_safety_gap_tests 0 tests/test_memory_safety_gaps.cpp)
   add_test(NAME nanom_memory_safety_gap_tests COMMAND nanom_memory_safety_gap_tests)
   set_tests_properties(nanom_memory_safety_gap_tests PROPERTIES WILL_FAIL TRUE)
 
-  nanom_exe(nanom_memory_safety_gap_generation_tests tests/test_memory_safety_gaps_generation.cpp)
+  nanom_exe_generation(nanom_memory_safety_gap_generation_tests 1
+                       tests/test_memory_safety_gaps_generation.cpp)
   target_compile_definitions(nanom_memory_safety_gap_generation_tests PRIVATE
-    NANOM_GENERATION=1 NANOM_GENERATION_THROW=1 NANOM_GUARD_VIEWS=1)
+    NANOM_GENERATION_THROW=1)
   add_test(NAME nanom_memory_safety_gap_generation_tests
            COMMAND nanom_memory_safety_gap_generation_tests)
   set_tests_properties(nanom_memory_safety_gap_generation_tests PROPERTIES WILL_FAIL TRUE)

@@ -73,7 +73,7 @@ static void gap_untracked_lifetime_undetected() {
     auto r = nm::take(4)(nm::from(wire.data(), wire.size()));
     CHECK(r);
     payload = r->value;
-    CHECK(payload[0] == 0xde);
+    CHECK(std::to_integer<std::uint8_t>(payload[0]) == 0xde);
   }
   CHECK(nm::runtime_span_lifetime_is_enforced);
 }
