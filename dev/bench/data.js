@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783429425947,
+  "lastUpdate": 1783430348481,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -703,6 +703,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 20.1,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "16ae15b4aa4e08927f44130842d939514e42a9db",
+          "message": "Merge pull request #19 from yoavbendor/cursor/overlay-ub-docs-1ef9\n\ndocs: overlay decode / strict-aliasing FAQ in MEMORY_SAFETY",
+          "timestamp": "2026-07-07T16:18:43+03:00",
+          "tree_id": "a1d114f48f271d5e062819e174684b536dd1b2b3",
+          "url": "https://github.com/yoavbendor/nanom/commit/16ae15b4aa4e08927f44130842d939514e42a9db"
+        },
+        "date": 1783430347659,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 25.1,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 80.7,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 30.2,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 15.8,
             "unit": "ns/pkt"
           }
         ]
