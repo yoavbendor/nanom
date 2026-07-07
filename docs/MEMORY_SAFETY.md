@@ -21,6 +21,52 @@ for a focused answer to lifetime, type-punning UB, and TLV overflow questions.
 | Bulk descriptors | `pkt_ref_valid`, `bulk_decode` | Rejects null data + nonzero len |
 | Null view (debug) | `view::get` / `raw` / `to_struct` | `NANOM_GUARD_VIEWS` asserts `p != nullptr` |
 | Generation tracking | `wire_arena`, `from(buf, arena)`, `view::get/raw`, `bytes` subscript | `NANOM_GENERATION=1`; enabled by default |
+| Safe wire decode | `overlay`, `strct`, `view::get` | byte assembly + `std::bit_cast`; no `reinterpret_cast<T*>` (see below) |
+
+## Overlay decode — strict aliasing and unaligned reads
+
+**Does `overlay<T>()` just `reinterpret_cast` the byte buffer?**
+
+**No.** A `view<T>` stores a `const std::byte* p` to the start of the struct's wire
+image. Fields are **decoded on access** into local values — nanom never treats the
+buffer as a live `T` object and never casts wire bytes to `T*`.
+
+This is the same safety model as Rust's `zerocopy` / `bytemuck`: read bytes, assemble
+a value, return it. Zero-copy means the **view handle** points at your buffer; field
+**values** are produced by explicit decode, not aliasing.
+
+### How decode works (`decode_field` in `reflect.hpp`)
+
+| Field kind | Mechanism | UB avoided |
+|------------|-----------|------------|
+| Plain integrals / floats | Load wire bytes into a local integer `U` with a byte loop, then `std::bit_cast<F>(U)` | No type-punning through a pointer; no unaligned scalar load |
+| `be<>` / `le<>` | Same byte assembly into host order | Same |
+| `ubits<>` / `ibits<>` | Shift+mask over the covering bytes (or `read_bits` for odd layouts) | Unaligned bit fields: no cast to a wider type at an arbitrary offset |
+| Nested structs | Recurse field-by-field | Same decode path as `strct<T>()` |
+| `std::array` of 1-byte elements | Zero-copy `span` into the buffer (element pointer, not struct pointer) | Caller lifetime contract |
+
+`overlay<T>()` and `strct<T>()` share this decode engine. `strct` materializes a full
+`T` on the stack; `overlay` keeps the lazy `view<T>` and calls `decode_field` inside
+`get<"field">()`.
+
+Compile-time layout checks (`layout_ok<T>()`) require non-bit fields to start on byte
+boundaries and the total wire size to be a whole number of bytes.
+
+### What nanom does **not** do
+
+- `reinterpret_cast<T*>(wire)` or `std::start_lifetime_as<T>(wire)` — the wire buffer
+  is not presented as a `T` object.
+- Unaligned wide loads through a misaligned `T*` or `uint32_t*` on the wire.
+- Silent strict-aliasing violations from reading the same bytes as two incompatible types.
+
+### Performance
+
+The byte-assembly loops are `constexpr` and compile to the same machine code as a
+hand-tuned overlay on hot paths (often one load + `bswap` for 2/4/8-byte fields).
+Documenting the decode model does not change the implementation or its speed.
+
+Implementation reference: [`include/nanom/reflect.hpp`](https://github.com/yoavbendor/nanom/blob/main/include/nanom/reflect.hpp)
+(`decode_field`, `view<T>::get`, `overlay<T>()`).
 
 ## Generation tracking (`NANOM_GENERATION`)
 
