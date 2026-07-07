@@ -93,6 +93,16 @@ struct input {
   NANOM_HD constexpr input advance(std::size_t n) const { return {first + n, last, base, live}; }
   /// First n bytes as a zero-copy span (precondition: n <= size()).
   NANOM_HD constexpr bytes take_span(std::size_t n) const { return {first, n}; }
+  /// Bounds-checked index; empty when i >= size().
+  NANOM_HD constexpr std::optional<std::uint8_t> safe_at(std::size_t i) const {
+    if (i >= size()) return std::nullopt;
+    return std::uint8_t(first[i]);
+  }
+  /// Bounds-checked advance; empty when n > size().
+  NANOM_HD constexpr std::optional<input> checked_advance(std::size_t n) const {
+    if (n > size()) return std::nullopt;
+    return advance(n);
+  }
 };
 
 /// Make an input from anything byte-like.
@@ -101,6 +111,7 @@ inline input from(std::string_view s) {
   return input(bytes(reinterpret_cast<const std::byte*>(s.data()), s.size()));
 }
 inline input from(const void* data, std::size_t len) {
+  if (!data && len > 0) return input{};
   return input(bytes(static_cast<const std::byte*>(data), len));
 }
 template <class T, std::size_t N>
@@ -136,6 +147,9 @@ enum class errk : std::uint8_t { err, fail, incomplete };
 /// path too. offsets are 32-bit for the same reason (a parse buffer over 4 GiB
 /// is out of scope; the whole point is zero-copy in-memory parsing).
 inline constexpr std::size_t max_context = 4;
+/// Upper bound on error::needed in streaming incomplete errors — avoids OOM when
+/// callers pre-allocate from hostile length prefixes. 0 still means unknown.
+inline constexpr std::uint32_t max_incomplete_needed = 64 * 1024;
 
 struct error {
   struct frame { const char* label; std::uint32_t offset; };
@@ -219,7 +233,8 @@ inline unexpected<error> make_err(input at, const char* expected) {
 inline unexpected<error> make_incomplete(input at, std::size_t needed) {
   error e; e.kind = at.live ? errk::incomplete : errk::err;
   e.offset = std::uint32_t(at.offset() + at.size());
-  e.expected = "more input"; e.needed = std::uint32_t(needed);
+  e.expected = "more input";
+  e.needed = std::uint32_t(std::min(needed, std::size_t(max_incomplete_needed)));
   return unexp(e);
 }
 

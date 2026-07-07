@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <array>
+#include <cassert>
 #include <bit>
 #include <charconv>
 #include <concepts>
@@ -48,6 +49,16 @@
 #include <type_traits>
 #include <utility>
 #include <vector>
+
+// Safety defaults (override with -D...=0/1):
+// - NANOM_GUARD_VIEWS: assert on null view access (debug/runtime contract checks)
+//
+// The project defaults to the strongest practical currently-implemented runtime
+// protections while keeping straightforward opt-out for users with stricter
+// performance constraints.
+#ifndef NANOM_GUARD_VIEWS
+#define NANOM_GUARD_VIEWS 1
+#endif
 
 // NANOM_HD marks the functions on the zero-copy decode path as callable from a
 // GPU kernel. On a normal host build it expands to nothing (zero cost, zero API

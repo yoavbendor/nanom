@@ -403,6 +403,9 @@ struct view {
   /// Decoded value of the named field. Unknown names are a compile error.
   template <fixed_string Name>
   NANOM_HD constexpr auto get() const {
+#if NANOM_GUARD_VIEWS
+    assert(p != nullptr && "nanom: view access on null/uninitialized overlay");
+#endif
     constexpr std::size_t I = detail::field_index<T, Name>();
     static_assert(I != std::size_t(-1),
                   "nanom: no such field in this struct — check NANOM_DESCRIBE");
@@ -421,9 +424,17 @@ struct view {
     }
   }
   /// The struct's raw wire bytes.
-  NANOM_HD constexpr bytes raw() const { return {p, wire_size_v<T>}; }
+  NANOM_HD constexpr bytes raw() const {
+#if NANOM_GUARD_VIEWS
+    assert(p != nullptr && "nanom: view access on null/uninitialized overlay");
+#endif
+    return {p, wire_size_v<T>};
+  }
   /// Materialize a full T (same as strct would produce).
   NANOM_HD constexpr T to_struct() const {
+#if NANOM_GUARD_VIEWS
+    assert(p != nullptr && "nanom: view access on null/uninitialized overlay");
+#endif
     T out{};
     constexpr auto offs = detail::field_bit_offsets<T>();
     std::size_t i = 0;

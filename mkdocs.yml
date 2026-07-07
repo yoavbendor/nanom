@@ -64,6 +64,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Memory safety: MEMORY_SAFETY.md
   - Getting started: getting-started.md
   - Cheat sheet (nom → nanom): CHEATSHEET.md
   - nom parity audit: NOM_PARITY_AUDIT.md
