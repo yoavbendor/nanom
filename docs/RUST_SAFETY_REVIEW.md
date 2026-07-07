@@ -213,5 +213,5 @@ cmake --build build-fuzz --target fuzz_streaming_pcapng
 
 - [Memory safety model](MEMORY_SAFETY.md) — enforced guards, generation API, caller contract
 - [Threat model + reviewer checklist](THREAT_MODEL.md) — scope, gaps, PR checklist
-- [Fuzz harnesses](../fuzz/README.md) — target descriptions and build commands
+- [Fuzz harnesses](https://github.com/yoavbendor/nanom/blob/main/fuzz/README.md) — target descriptions and build commands
 - [vs Rust nom (streaming pcapng)](BENCH_RUST_NOM.md) — equal-work benchmark methodology
