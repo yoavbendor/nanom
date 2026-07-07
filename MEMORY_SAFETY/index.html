@@ -1075,7 +1075,7 @@ covers what the library <strong>does</strong> enforce and what remains <strong>c
 <li><code>tests/test_memory_safety_gaps.cpp</code> — <strong>WILL_FAIL</strong> residual hazards without generation tracking</li>
 <li><code>tests/test_memory_safety_gaps_generation.cpp</code> — <strong>WILL_FAIL</strong> attested_bytes / arena gaps</li>
 <li><code>tests/test_memory_safety_ub.cpp</code> — optional ASan red-team demos (<code>NANOM_MEMORY_SAFETY_UB_DEMOS=ON</code>)</li>
-<li><code>tests/test_nanom.cpp</code> — incremental one-byte streaming behavior (<code>test_streaming_incremental</code>)</li>
+<li><code>tests/test_streaming_safety.cpp</code> — streaming/incremental refill safety (<code>nanom_streaming_safety_tests</code>)</li>
 <li><code>bench/safety_microbench.cpp</code> — performance baselines per guard</li>
 </ul>
 <p>CMake registers gap targets when <code>NANOM_MEMORY_SAFETY_GAP_TESTS=ON</code> (default). Remove

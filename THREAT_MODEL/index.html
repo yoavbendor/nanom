@@ -1165,8 +1165,8 @@ provides a concrete checklist for external memory-safety review.</p>
 <td><code>nanom_memory_safety_gap_generation_tests</code></td>
 </tr>
 <tr>
-<td><code>bytes::data()</code> / <code>as_str()</code> skip generation</td>
-<td><code>nanom_memory_safety_gap_generation_tests</code></td>
+<td>Streaming short-prefix / refill boundaries</td>
+<td><code>nanom_streaming_safety_tests</code>, <code>fuzz_streaming_pcapng</code></td>
 </tr>
 </tbody>
 </table>
@@ -1182,7 +1182,7 @@ provides a concrete checklist for external memory-safety review.</p>
 </ul>
 <h3 id="test-checks">Test checks<a class="headerlink" href="#test-checks" title="Permanent link">&para;</a></h3>
 <ul>
-<li>[ ] <code>nanom_tests</code> includes incremental streaming behavior (<code>test_streaming_incremental</code>).</li>
+<li>[ ] <code>nanom_streaming_safety_tests</code> covers incremental growth, variable-cap refill, and generation+streaming.</li>
 <li>[ ] Memory-safety suites pass for expected profile (<code>nanom_memory_safety_tests</code>,
       <code>nanom_generation_tests</code> where applicable).</li>
 <li>[ ] Gap suite (<code>nanom_memory_safety_gap_tests</code>,
