@@ -117,4 +117,7 @@ ctest --test-dir build -R "nanom_memory_safety_tests|nanom_generation_tests" --o
 
 # baseline perf sanity
 python3 bench/compare_rust.py --build --safety both --iters 20000
+
+# CI perf budget gate (full safety vs minimal opt-out baseline)
+python3 bench/compare_rust.py --build --safety both --iters 10000 --max-overhead 1.20
 ```
