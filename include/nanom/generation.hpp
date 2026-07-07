@@ -244,6 +244,12 @@ struct attested_bytes {
   }
 };
 
+/// Gap markers for tests/docs — flip to true when the hazard is enforced.
+inline constexpr bool attested_bytes_subscript_is_bounds_checked = false;
+inline constexpr bool bytes_data_skips_generation_check          = true;
+inline constexpr bool unchecked_span_bypasses_generation           = true;
+inline constexpr bool in_place_wire_mutation_bumps_generation      = false;
+
 namespace detail {
 inline void dispatch_generation_fault(generation_fault f) {
   if (generation_handler) {

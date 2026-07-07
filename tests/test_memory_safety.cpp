@@ -1,18 +1,11 @@
-// nanom memory-safety regression suite — intentionally FAILING tests.
+// nanom memory-safety regression suite — enforced guards (must pass).
 //
-// Each test documents a memory/lifetime hazard in the zero-copy parse path and
-// asserts the *desired* defensive behavior nanom does not yet provide. These
-// tests are written to avoid executing undefined behavior themselves (no
-// deliberate OOB reads or use-after-free in the test process); they fail via
-// CHECK so you can review gaps safely before adding fencing or guards.
+// Each test documents a memory/lifetime hazard and asserts defensive behavior
+// nanom provides today (tiers A–E + generation tracking). For residual hazards
+// that are not yet enforced, see test_memory_safety_gaps*.cpp (WILL_FAIL).
 //
 // Optional red-team demos that *do* exercise UB live in test_memory_safety_ub.cpp
 // and only build when NANOM_MEMORY_SAFETY_UB_DEMOS=ON (run under ASan).
-//
-//   cmake -B build && cmake --build build -j --target nanom_memory_safety_tests
-//   ./build/nanom_memory_safety_tests
-//
-// Registered in ctest; was WILL_FAIL until tiers A–E landed (see docs/MEMORY_SAFETY.md).
 
 #include <nanom/nanom.hpp>
 #include <nanom/bulk.hpp>  // pkt_ref (opt-in header)
@@ -339,8 +332,7 @@ void run() {
 
 // ------------------------------------------------------------------ driver
 int main() {
-  std::printf("nanom memory-safety tests (expected to FAIL until guards land)\n");
-  std::printf("============================================================\n");
+  std::printf("nanom memory-safety tests (enforced guards)\n");
 
   null_pointer_input::run();
   cursor_overrun::run();
@@ -358,8 +350,7 @@ int main() {
   bulk_null_pkt_ref::run();
 
   if (failures) {
-    std::printf("============================================================\n");
-    std::printf("%d FAILURE(S) — these document missing memory-safety guards\n", failures);
+    std::printf("%d FAILURE(S)\n", failures);
     return 1;
   }
   std::printf("all memory-safety tests passed\n");

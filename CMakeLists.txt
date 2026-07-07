@@ -32,6 +32,7 @@ endif()
 option(NANOM_WERROR         "Treat warnings as errors"                  OFF)
 option(NANOM_BUILD_FUZZERS  "Build the libFuzzer targets (Clang only)"  OFF)
 option(NANOM_MEMORY_SAFETY_UB_DEMOS "Build UB red-team demos (ASan only)" OFF)
+option(NANOM_MEMORY_SAFETY_GAP_TESTS "Register WILL_FAIL gap safety tests in ctest" ON)
 option(NANOM_GUARD_VIEWS "Enable runtime null/uninitialized view guards" ON)
 option(NANOM_GENERATION "Enable wire-buffer generation lifetime tracking" ON)
 set(NANOM_SANITIZER "" CACHE STRING "Sanitizer: '', 'address,undefined', or 'thread'")
@@ -96,8 +97,7 @@ set(td ${parity_dir}/testdata)
 nanom_exe(nanom_tests tests/test_nanom.cpp)
 add_test(NAME nanom_tests COMMAND nanom_tests)
 
-# Memory-safety regression suite: each CHECK asserts desired defensive behavior
-# nanom does not yet provide. WILL_FAIL keeps CI green until guards land.
+# Memory-safety regression suite: enforced guards (must pass).
 nanom_exe(nanom_memory_safety_tests tests/test_memory_safety.cpp)
 target_compile_definitions(nanom_memory_safety_tests PRIVATE NANOM_GUARD_VIEWS=1)
 add_test(NAME nanom_memory_safety_tests COMMAND nanom_memory_safety_tests)
@@ -106,6 +106,22 @@ nanom_exe(nanom_generation_tests tests/test_memory_safety_generation.cpp)
 target_compile_definitions(nanom_generation_tests PRIVATE NANOM_GENERATION=1 NANOM_GENERATION_THROW=1
                                                            NANOM_GUARD_VIEWS=1)
 add_test(NAME nanom_generation_tests COMMAND nanom_generation_tests)
+
+if(NANOM_MEMORY_SAFETY_GAP_TESTS)
+  # Gap suite: residual hazards from THREAT_MODEL.md — WILL_FAIL until hardened.
+  nanom_exe(nanom_memory_safety_gap_tests tests/test_memory_safety_gaps.cpp)
+  target_compile_definitions(nanom_memory_safety_gap_tests PRIVATE NANOM_GENERATION=0
+                                                                    NANOM_GUARD_VIEWS=1)
+  add_test(NAME nanom_memory_safety_gap_tests COMMAND nanom_memory_safety_gap_tests)
+  set_tests_properties(nanom_memory_safety_gap_tests PROPERTIES WILL_FAIL TRUE)
+
+  nanom_exe(nanom_memory_safety_gap_generation_tests tests/test_memory_safety_gaps_generation.cpp)
+  target_compile_definitions(nanom_memory_safety_gap_generation_tests PRIVATE
+    NANOM_GENERATION=1 NANOM_GENERATION_THROW=1 NANOM_GUARD_VIEWS=1)
+  add_test(NAME nanom_memory_safety_gap_generation_tests
+           COMMAND nanom_memory_safety_gap_generation_tests)
+  set_tests_properties(nanom_memory_safety_gap_generation_tests PROPERTIES WILL_FAIL TRUE)
+endif()
 
 if(NANOM_MEMORY_SAFETY_UB_DEMOS)
   nanom_exe(nanom_memory_safety_ub_demos tests/test_memory_safety_ub.cpp)

@@ -411,6 +411,10 @@ NANOM_HD inline constexpr void guard_view_pointer(const std::byte* p) {
 /// docs/MEMORY_SAFETY.md). constexpr flags let tests assert the API surface.
 inline constexpr bool overlay_wire_must_be_immutable = true;
 inline constexpr bool span_lifetime_is_caller_scoped   = true;
+/// Set true when span/view lifetime is runtime-enforced (e.g. via wire_arena on all parses).
+inline constexpr bool runtime_span_lifetime_is_enforced = false;
+/// Set true when in-place wire mutation behind a live view is runtime-detected.
+inline constexpr bool wire_mutation_is_runtime_detected = false;
 
 /// A zero-copy overlay of T's wire format over the original buffer. Fields
 /// decode on access (endian conversion / bit extraction), nothing is stored.
