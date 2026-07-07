@@ -64,6 +64,7 @@ markdown_extensions:
 
 nav:
   - Home: index.md
+  - Safety for Rust reviewers: RUST_SAFETY_REVIEW.md
   - Memory safety: MEMORY_SAFETY.md
   - Threat model: THREAT_MODEL.md
   - Getting started: getting-started.md

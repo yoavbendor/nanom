@@ -48,7 +48,8 @@ nanom defaults to strong runtime safety checks:
 - `NANOM_GENERATION_THROW=0` (set to `1` to throw `generation_exception` instead of abort+report)
 
 Override per target/build with compile definitions (`-DNANOM_GENERATION=0`, etc.). See
-[MEMORY_SAFETY.md](MEMORY_SAFETY.md) for contracts and review guidance.
+[MEMORY_SAFETY.md](MEMORY_SAFETY.md) for contracts and review guidance, or
+[Safety for Rust reviewers](RUST_SAFETY_REVIEW.md) for a nom-audience walkthrough.
 
 ## Your first parser
 

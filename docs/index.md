@@ -15,7 +15,8 @@ nom-parallel parser is one self-contained header (`nom.hpp`); reflection and the
 layer cleanly on top.
 
 [Get started](getting-started.md){ .md-button .md-button--primary }
-[Memory safety](MEMORY_SAFETY.md){ .md-button .md-button--primary }
+[Safety for Rust reviewers](RUST_SAFETY_REVIEW.md){ .md-button .md-button--primary }
+[Memory safety](MEMORY_SAFETY.md){ .md-button }
 [Threat model](THREAT_MODEL.md){ .md-button }
 [Cheat sheet](CHEATSHEET.md){ .md-button }
 [API reference](https://yoavbendor.github.io/nanom/api/){ .md-button }
@@ -26,16 +27,20 @@ layer cleanly on top.
 nanom follows nom's streaming contract directly: parse on `nm::streaming(input)`, and on short prefixes
 you get `errk::incomplete` with `needed` so callers can refill and retry.
 
-Safety defaults are now strong by default and configurable:
+Safety defaults are strong by default and configurable:
 
+- `NANOM_GENERATION=1` — `wire_arena` runtime stale-buffer detection on `view` / `bytes` access
 - `NANOM_GUARD_VIEWS=1` — guard null/uninitialized `view` access
 - safe null input handling (`from(nullptr, n>0)` => empty input)
 - bounded streaming `needed` (`max_incomplete_needed = 64 KiB`)
-- checked cursor helpers (`safe_at`, `checked_advance`) for defensive code paths
+- bounds-checked consume on every combinator (`take`, `overlay`, `strct`, …); `overlay` decodes via byte assembly + `bit_cast`, not struct pointer casts
+- checked cursor helpers (`safe_at`, `checked_advance`) for defensive hand-rolled paths
+- continuous libFuzzer in CI (`fuzz_scan_walk`, `fuzz_streaming_pcapng`) + ASan/UBSan matrix
 
-Reviewers: see the dedicated [memory-safety model and contracts](MEMORY_SAFETY.md) and the
-[threat model + checklist](THREAT_MODEL.md), plus generation and streaming behavior tests in
-`tests/test_nanom.cpp` / `tests/test_memory_safety.cpp`.
+**Coming from Rust nom?** Read [Safety for Rust reviewers](RUST_SAFETY_REVIEW.md) — it
+preempts the usual lifetime, UB, and overflow objections with what is enforced, what is
+fuzzed, and what remains caller contract. Also see [memory-safety model](MEMORY_SAFETY.md)
+and [threat model + checklist](THREAT_MODEL.md).
 
 ## As fast as Rust nom — proven, not asserted
 
