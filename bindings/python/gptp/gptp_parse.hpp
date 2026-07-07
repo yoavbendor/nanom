@@ -54,7 +54,7 @@ struct FieldReader {
     std::array<std::uint8_t, N> out{};
     auto r = nm::take(N)(cur);
     if (!r) { ok = false; return out; }
-    for (std::size_t i = 0; i < N; ++i) out[i] = std::to_integer<std::uint8_t>(r->value[i]);
+    for (std::size_t i = 0; i < N; ++i) out[i] = static_cast<std::uint8_t>(r->value[i]);
     cur = r->rest;
     return out;
   }
