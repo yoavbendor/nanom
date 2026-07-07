@@ -66,6 +66,7 @@ nav:
   - Home: index.md
   - Safety for Rust reviewers: RUST_SAFETY_REVIEW.md
   - Memory safety: MEMORY_SAFETY.md
+  - Compile-time safety (strict profile): COMPILE_TIME_SAFETY.md
   - Threat model: THREAT_MODEL.md
   - Getting started: getting-started.md
   - Cheat sheet (nom → nanom): CHEATSHEET.md

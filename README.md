@@ -31,10 +31,32 @@ and defaults to the strongest practical memory-safety posture:
 
 **Rust nom audience:** see [Safety for Rust reviewers](docs/RUST_SAFETY_REVIEW.md) for lifetime, UB, and overflow defenses.
 
+### Strict profile — compile-time safety at the unchecked speed
+
+For safety- **and** performance-obsessed users, `-DNANOM_STRICT=1` narrows the API at
+compile time so the runtime can drop the checks those APIs made necessary. It removes the
+raw `from(ptr, len)` entry, **deletes** `from(std::string&&)` (owning-temporary dangle is a
+compile error), refuses `<nanom/bulk.hpp>` (GPU/bulk raw-pointer scatter), and adds
+`[[clang::lifetimebound]]` diagnostics — then runs with generation tracking and view guards
+**off** for a leaner data model (`input` 48→32 B, `bytes` 32→16 B).
+
+Proven, not asserted (verified byte-identical output, best-of-5):
+
+| profile | ns/packet | throughput |
+|---|---:|---:|
+| minimal (unchecked) | 84 | 17.5 GiB/s |
+| full (safety-first) | 82 | 17.8 GiB/s |
+| **strict** (compile-time enforced) | **83** | 17.5 GiB/s |
+
+All three at parity → **compile-time-enforced memory safety with zero runtime cost**. The
+restrictions are proven by `WILL_FAIL` negative compile tests. See
+[Compile-time safety](docs/COMPILE_TIME_SAFETY.md).
+
 Users can still tune behavior per target/build with compile definitions:
 
 ```sh
 # examples
+-DNANOM_STRICT=1        # safe routes only, lean runtime
 -DNANOM_GENERATION=0
 -DNANOM_GUARD_VIEWS=0
 ```
