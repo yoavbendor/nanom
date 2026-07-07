@@ -16,6 +16,7 @@ layer cleanly on top.
 
 [Get started](getting-started.md){ .md-button .md-button--primary }
 [Memory safety](MEMORY_SAFETY.md){ .md-button .md-button--primary }
+[Threat model](THREAT_MODEL.md){ .md-button }
 [Cheat sheet](CHEATSHEET.md){ .md-button }
 [API reference](https://yoavbendor.github.io/nanom/api/){ .md-button }
 [GitHub](https://github.com/yoavbendor/nanom){ .md-button }
@@ -32,8 +33,9 @@ Safety defaults are now strong by default and configurable:
 - bounded streaming `needed` (`max_incomplete_needed = 64 KiB`)
 - checked cursor helpers (`safe_at`, `checked_advance`) for defensive code paths
 
-Reviewers: see the dedicated [memory-safety model and contracts](MEMORY_SAFETY.md), plus generation and
-streaming behavior tests in `tests/test_nanom.cpp` / `tests/test_memory_safety.cpp`.
+Reviewers: see the dedicated [memory-safety model and contracts](MEMORY_SAFETY.md) and the
+[threat model + checklist](THREAT_MODEL.md), plus generation and streaming behavior tests in
+`tests/test_nanom.cpp` / `tests/test_memory_safety.cpp`.
 
 ## As fast as Rust nom — proven, not asserted
 
