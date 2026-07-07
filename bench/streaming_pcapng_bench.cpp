@@ -14,6 +14,10 @@
 // short buffer yields `incomplete`, the harness refills and retries — nom's streaming contract.
 //
 // usage: streaming_pcapng_bench <file.pcapng> <iters>   (best of 5; parses in-memory bytes `iters`x)
+//
+// Build profiles (see bench/compare_rust.py):
+//   minimal — Release defaults: tiers A/B always on, NANOM_GENERATION=0, NANOM_GUARD_VIEWS=0
+//   full    — NANOM_GENERATION=1 + wire_arena on the refill buffer (attested input/bytes metadata)
 
 #include "nm_pcap.hpp"  // nmpcap:: block/EPB structs + magics (reused from the parity example)
 
@@ -23,6 +27,10 @@
 #include <cstring>
 #include <string>
 #include <vector>
+
+#ifndef NANOM_SAFETY_PROFILE
+#define NANOM_SAFETY_PROFILE "minimal"
+#endif
 
 namespace nm = nanom;
 using namespace nmpcap;
@@ -38,6 +46,57 @@ struct Agg {
 };
 inline std::uint64_t mix(std::uint64_t h, std::uint64_t v) { return (h ^ v) * FNV_PRIME; }
 
+#if NANOM_GENERATION
+/// Keeps wire_arena in sync with the refill window [base, base+have).
+struct track_ctx {
+    nm::wire_arena arena{};
+    const std::byte* base = nullptr;
+    std::size_t      have = 0;
+
+    void sync(const std::byte* buf_base, std::size_t buf_have) {
+        if (buf_base != base || buf_have != have) {
+            arena.open(buf_base, buf_have);
+            base = buf_base;
+            have = buf_have;
+        }
+    }
+
+    nm::input make(const std::byte* p, std::size_t n, const std::byte* buf_base,
+                   std::size_t buf_have, bool stream) {
+        sync(buf_base, buf_have);
+        nm::input in = nm::from(p, n);
+        in.arena     = &arena;
+        in.gen       = arena.generation;
+        return stream ? nm::streaming(in) : in;
+    }
+};
+#endif
+
+inline nm::input bench_input(const std::byte* p, std::size_t n,
+#if NANOM_GENERATION
+                             track_ctx& trk, const std::byte* buf_base, std::size_t buf_have,
+#endif
+                             bool stream) {
+#if NANOM_GENERATION
+    return trk.make(p, n, buf_base, buf_have, stream);
+#else
+    return stream ? nm::streaming(nm::from(p, n)) : nm::from(p, n);
+#endif
+}
+
+inline nm::input bench_body(const std::byte* p, std::size_t n
+#if NANOM_GENERATION
+                            ,
+                            track_ctx& trk, const std::byte* buf_base, std::size_t buf_have
+#endif
+) {
+#if NANOM_GENERATION
+    return trk.make(p, n, buf_base, buf_have, false);
+#else
+    return nm::from(p, n);
+#endif
+}
+
 // One streaming pass over the whole capture held in `data`, through a bounded window `buf` of CAP
 // bytes that refills from `data` (never the whole file resident in the parser's working set).
 Agg parse_once(const std::vector<std::uint8_t>& data) {
@@ -47,6 +106,10 @@ Agg parse_once(const std::vector<std::uint8_t>& data) {
     std::size_t pos = 0;   // read cursor: parsed up to buf[pos)  (== pcap-parser's `consume`)
     std::size_t have = 0;  // filled: valid bytes in buf[0..have)
     bool little = true;    // section endianness (from the SHB byte-order magic)
+#if NANOM_GENERATION
+    track_ctx trk;
+#endif
+    const auto buf_base = reinterpret_cast<const std::byte*>(buf.data());
 
     // Compact the unparsed tail [pos,have) to the front and read more source into the free space —
     // the only place bytes move, mirroring pcap-parser's refill(). Returns false at real EOF.
@@ -67,7 +130,13 @@ Agg parse_once(const std::vector<std::uint8_t>& data) {
     while (true) {
         const std::size_t avail = have - pos;
         // Read the 8-byte block header in nanom STREAMING mode; refill on `incomplete`.
-        nm::input in = nm::streaming(nm::from(buf.data() + pos, avail));
+        nm::input in = bench_input(buf_base + pos, avail
+#if NANOM_GENERATION
+                                   ,
+                                   trk, buf_base, have
+#endif
+                                   ,
+                                   true);
         auto hdr = nm::strct<png_block_hdr>(order_of(little))(in);
         if (!hdr) {
             if (hdr.error().kind == nm::errk::incomplete && refill()) continue;
@@ -75,14 +144,26 @@ Agg parse_once(const std::vector<std::uint8_t>& data) {
         }
         // SHB type is a byte-order-independent palindrome; its byte-order magic sets the section order.
         if (hdr->value.type == kShb) {
-            nm::input bo = nm::streaming(nm::from(buf.data() + pos, avail));
+            nm::input bo = bench_input(buf_base + pos, avail
+#if NANOM_GENERATION
+                                       ,
+                                       trk, buf_base, have
+#endif
+                                       ,
+                                       true);
             auto probe = nm::preceded(nm::take(std::size_t{8}), nm::le_u32)(bo);
             if (!probe) {
                 if (probe.error().kind == nm::errk::incomplete && refill()) continue;
                 break;
             }
             little = (probe->value == kByteOrderMagic);
-            nm::input in2 = nm::streaming(nm::from(buf.data() + pos, avail));
+            nm::input in2 = bench_input(buf_base + pos, avail
+#if NANOM_GENERATION
+                                        ,
+                                        trk, buf_base, have
+#endif
+                                        ,
+                                        true);
             hdr = nm::strct<png_block_hdr>(order_of(little))(in2);
             if (!hdr) break;
         }
@@ -95,7 +176,12 @@ Agg parse_once(const std::vector<std::uint8_t>& data) {
         }
         // The block is fully resident at buf[pos..pos+total). If EPB, decode its fixed body at +8.
         if (hdr->value.type == kEpb) {
-            nm::input body = nm::from(buf.data() + pos + 8, total - 8);
+            nm::input body = bench_body(buf_base + pos + 8, total - 8
+#if NANOM_GENERATION
+                                        ,
+                                        trk, buf_base, have
+#endif
+            );
             auto e = nm::strct<png_epb_body>(order_of(little))(body);
             if (e) {
                 const std::uint64_t ts_raw = (std::uint64_t(e->value.ts_high) << 32) | e->value.ts_low;
@@ -113,7 +199,12 @@ Agg parse_once(const std::vector<std::uint8_t>& data) {
                 std::size_t opt_off = pos + 28 + pad4(e->value.caplen);  // after header+fixed(20)+padded data
                 const std::size_t opt_end = pos + total - 4;             // before the trailing block_total_length
                 while (opt_off + 4 <= opt_end) {
-                    nm::input oh_in = nm::from(buf.data() + opt_off, opt_end - opt_off);
+                    nm::input oh_in = bench_body(buf_base + opt_off, opt_end - opt_off
+#if NANOM_GENERATION
+                                                 ,
+                                                 trk, buf_base, have
+#endif
+                    );
                     auto oh = nm::strct<png_opt_hdr>(order_of(little))(oh_in);
                     if (!oh) break;
                     const std::uint16_t code = oh->value.code, olen = oh->value.length;
@@ -175,8 +266,9 @@ int main(int argc, char** argv) {
     const double ns_per_pkt = double(best_ns) / double(base.packets ? base.packets : 1);
     const double mbps = bytes / (double(best_ns) / 1e9) / (1024.0 * 1024.0);
     std::printf(
-        "RESULT engine=nanom packets=%llu sum_caplen=%llu sum_origlen=%llu opts=%llu checksum=%016llx "
-        "file_bytes=%zu best_ns_per_pass=%llu ns_per_pkt=%.2f mbps=%.1f\n",
+        "RESULT engine=nanom safety=%s packets=%llu sum_caplen=%llu sum_origlen=%llu opts=%llu "
+        "checksum=%016llx file_bytes=%zu best_ns_per_pass=%llu ns_per_pkt=%.2f mbps=%.1f\n",
+        NANOM_SAFETY_PROFILE,
         (unsigned long long)base.packets, (unsigned long long)base.sum_caplen,
         (unsigned long long)base.sum_origlen, (unsigned long long)base.opts,
         (unsigned long long)base.checksum, data.size(),

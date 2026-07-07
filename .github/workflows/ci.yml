@@ -36,6 +36,36 @@ jobs:
       - name: test
         run: ctest --test-dir build --output-on-failure -j
 
+  # ---- safety-first profile: enforced guards always on (matches library defaults) ----
+  safety-first:
+    name: safety-first (NANOM_GENERATION + NANOM_GUARD_VIEWS)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: configure
+        run: cmake -B build -DCMAKE_CXX_COMPILER=g++-13
+             -DCMAKE_BUILD_TYPE=Release -DNANOM_WERROR=ON
+             -DNANOM_GUARD_VIEWS=ON -DNANOM_GENERATION=ON
+      - name: build
+        run: cmake --build build -j
+      - name: enforced safety regression tests
+        run: |
+          ctest --test-dir build --output-on-failure \
+            -R 'nanom_memory_safety_tests|nanom_generation_tests'
+      - name: gap suite (WILL_FAIL — documents residual hazards)
+        run: ctest --test-dir build -R 'nanom_memory_safety_gap'
+
+  # ---- perf budget: full safety must stay within ratio of minimal on streaming bench ----
+  perf-budget:
+    name: perf budget (full vs minimal safety)
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: rust toolchain
+        run: rustup toolchain install stable --profile minimal
+      - name: streaming bench + verified output + budget gate
+        run: python3 bench/compare_rust.py --build --safety both --iters 10000 --max-overhead 1.20
+
   # ---- sanitizers (gcc runtimes are always present on the runner) -------
   sanitizers:
     name: sanitize (${{ matrix.san }})

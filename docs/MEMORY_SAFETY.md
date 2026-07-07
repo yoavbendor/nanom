@@ -84,3 +84,12 @@ Future work: auto-tracked containers; stronger provenance/cross-arena diagnostic
 
 CMake registers gap targets when `NANOM_MEMORY_SAFETY_GAP_TESTS=ON` (default). Remove
 `WILL_FAIL` from a gap test only when every targeted `CHECK` in that file passes.
+
+## CI safety-first profile
+
+The `safety-first` CI job builds with `NANOM_GUARD_VIEWS=ON` and `NANOM_GENERATION=ON`
+(explicitly matching library defaults) and runs enforced safety regression tests.
+
+The separate `perf-budget` job runs `bench/compare_rust.py --safety both --max-overhead 1.20`:
+full safety (generation + view guards + `wire_arena` on the streaming refill buffer) must stay
+within 20% of the opt-out minimal profile on the verified-equal streaming pcapng benchmark.

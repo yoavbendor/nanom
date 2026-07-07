@@ -32,6 +32,18 @@ both zero-copy. The `pcap-parser` row is what people actually use; the only diff
 hand-written scanner is that `opt_parse_options` allocates a `Vec<PcapNGOption>` per packet — so that
 row isolates the **cost of allocation**, not of extra parsing.
 
+## Safety profiles
+
+`compare_rust.py` builds nanom twice for the equal-work streaming benchmark:
+
+| profile | flags | role |
+|---|---|---|
+| **minimal** | `NANOM_GENERATION=0`, `NANOM_GUARD_VIEWS=0` | opt-out perf baseline |
+| **full** | `NANOM_GENERATION=1`, `NANOM_GUARD_VIEWS=1`, `wire_arena` on refill buffer | **safety-first** (matches CI/library defaults) |
+
+Both profiles must produce **identical** aggregates before timings are reported. CI's `perf-budget`
+job fails if `full/minimal` ns/packet exceeds **1.20×** on the standard fixture.
+
 ## Result
 
 Best-of-5, one machine (`g++-13 -O3 -march=native`; `cargo --release` LTO; nom 8.0.0,
@@ -65,6 +77,7 @@ per-packet allocation. Against the real `pcap-parser` library doing the identica
 ## Reproduce
 
 ```sh
-python3 bench/compare_rust.py --build           # builds both, verifies equal output, prints the table
-python3 bench/compare_rust.py --iters 20000     # more iterations for a steadier number
+python3 bench/compare_rust.py --build --safety both    # both profiles + parity table
+python3 bench/compare_rust.py --iters 20000            # steadier numbers
+python3 bench/compare_rust.py --build --safety both --max-overhead 1.20  # CI budget gate
 ```

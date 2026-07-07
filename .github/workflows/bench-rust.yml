@@ -22,4 +22,4 @@ jobs:
       - name: rust toolchain
         run: rustup toolchain install stable --profile minimal && rustc --version && cargo --version
       - name: build + verify equal output + benchmark
-        run: python3 bench/compare_rust.py --build --iters 20000
+        run: python3 bench/compare_rust.py --build --safety both --iters 20000
