@@ -33,7 +33,7 @@ Safety defaults are strong by default and configurable:
 - `NANOM_GUARD_VIEWS=1` — guard null/uninitialized `view` access
 - safe null input handling (`from(nullptr, n>0)` => empty input)
 - bounded streaming `needed` (`max_incomplete_needed = 64 KiB`)
-- bounds-checked consume on every combinator (`take`, `overlay`, `strct`, …); `overlay` decodes via byte assembly + `bit_cast`, not struct pointer casts
+- bounds-checked consume on every combinator (`take`, `overlay`, `strct`, …); **`overlay` does not `reinterpret_cast` wire to `T*`** — byte assembly + `std::bit_cast` ([details](MEMORY_SAFETY.md#overlay-decode-strict-aliasing-and-unaligned-reads))
 - checked cursor helpers (`safe_at`, `checked_advance`) for defensive hand-rolled paths
 - continuous libFuzzer in CI (`fuzz_scan_walk`, `fuzz_streaming_pcapng`) + ASan/UBSan matrix
 

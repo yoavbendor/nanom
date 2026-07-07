@@ -94,7 +94,8 @@ some ISAs). If `overlay<T>()` were a `reinterpret_cast`, reviewers would reject 
 ### What nanom does
 
 `overlay<T>()` does **not** cast wire bytes to a `T*`. A `view<T>` holds a
-`const std::byte* p` and **decodes on access**:
+`const std::byte* p` and **decodes on access** (full detail in
+[Memory safety — overlay decode](MEMORY_SAFETY.md#overlay-decode-strict-aliasing-and-unaligned-reads)):
 
 - Integral and floating fields: byte assembly into a local integer, then
   `std::bit_cast` to the field type.

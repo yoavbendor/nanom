@@ -25,7 +25,7 @@ and defaults to the strongest practical memory-safety posture:
 - `NANOM_GUARD_VIEWS=1` (default): null/uninitialized `view` access guard
 - `from(nullptr, n>0)` safe handling (returns empty input)
 - `max_incomplete_needed` cap for streaming `incomplete.needed` (64 KiB)
-- bounds-checked consume on every combinator; `overlay` decodes via byte assembly + `bit_cast` (no struct pointer cast)
+- bounds-checked consume on every combinator; **`overlay` does not `reinterpret_cast` wire to `T*`** — it decodes via byte assembly + `std::bit_cast` ([details](docs/MEMORY_SAFETY.md#overlay-decode-strict-aliasing-and-unaligned-reads))
 - continuous libFuzzer in CI + ASan/UBSan matrix
 - bounds-checked cursor helpers: `input::safe_at()` / `input::checked_advance()` for hand-rolled paths
 
