@@ -17,11 +17,12 @@ covers what the library **does** enforce and what remains **caller contract**.
 | Error render window | `error::render` | Offset clamped to buffer |
 | Bulk descriptors | `pkt_ref_valid`, `bulk_decode` | Rejects null data + nonzero len |
 | Null view (debug) | `view::get` / `raw` / `to_struct` | `NANOM_GUARD_VIEWS` asserts `p != nullptr` |
-| Generation tracking (opt-in) | `wire_arena`, `from(buf, arena)`, `view::get` | `NANOM_GENERATION=1`; see below |
+| Generation tracking | `wire_arena`, `from(buf, arena)`, `view::get` | `NANOM_GENERATION=1`; enabled by default |
 
-## Opt-in generation tracking (`NANOM_GENERATION`)
+## Generation tracking (`NANOM_GENERATION`)
 
-Off by default — **no extra fields, code, or checks** in Release when unset.
+Enabled by default. For strict perf/compat modes, users can opt out with
+`-DNANOM_GENERATION=0`.
 
 ```cpp
 std::vector<std::byte> buf = load();
@@ -42,7 +43,7 @@ arena.invalidate();           // or arena.open() after realloc
 | `render_generation_fault` | Human-readable report (gen diff, offset, hex) |
 | `generation_handler` | Optional callback; return `ignore` only in tests |
 
-CMake: `-DNANOM_GENERATION=ON` or define on one target. Tests: `nanom_generation_tests`.
+CMake: `-DNANOM_GENERATION=ON|OFF` or define on one target. Tests: `nanom_generation_tests`.
 
 ## Caller contract (documented, not runtime-tracked without `NANOM_GENERATION`)
 
@@ -64,8 +65,8 @@ These `constexpr` flags mark the contract surface:
 
 | Flag | Default | Effect |
 |------|---------|--------|
-| `NANOM_GUARD_VIEWS` | on in debug, off in `NDEBUG` | Assert null `view` access |
-| `NANOM_GENERATION` | **off** | `wire_arena` lifetime checks on `view::get` |
+| `NANOM_GUARD_VIEWS` | **on** | Assert null `view` access |
+| `NANOM_GENERATION` | **on** | `wire_arena` lifetime checks on `view::get` |
 | `NANOM_GENERATION_THROW` | off (abort+print) | Throw `generation_exception` instead of abort |
 
 Future work: `attested_bytes` for guarded `bytes` subscript; auto-tracked containers.
@@ -74,4 +75,5 @@ Future work: `attested_bytes` for guarded `bytes` subscript; auto-tracked contai
 
 - `tests/test_memory_safety.cpp` — regression suite (`NANOM_GUARD_VIEWS=1`)
 - `tests/test_memory_safety_generation.cpp` — generation suite (`NANOM_GENERATION=1`)
+- `tests/test_nanom.cpp` — incremental one-byte streaming behavior (`test_streaming_incremental`)
 - `bench/safety_microbench.cpp` — performance baselines per guard

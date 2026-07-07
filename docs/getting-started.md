@@ -39,6 +39,17 @@ namespace nm = nanom;
 Or include just the layer you need — `#include <nanom/nom.hpp>` gives the **parser-only** subset (the
 pure rust-nom parallel), with none of the reflection/schema/soa extras.
 
+## Safety defaults and knobs
+
+nanom defaults to strong runtime safety checks:
+
+- `NANOM_GENERATION=1` (tracked lifetime checks for `input` / `bytes` / `view`)
+- `NANOM_GUARD_VIEWS=1` (guards null/uninitialized view access)
+- `NANOM_GENERATION_THROW=0` (set to `1` to throw `generation_exception` instead of abort+report)
+
+Override per target/build with compile definitions (`-DNANOM_GENERATION=0`, etc.). See
+[MEMORY_SAFETY.md](MEMORY_SAFETY.md) for contracts and review guidance.
+
 ## Your first parser
 
 ```cpp

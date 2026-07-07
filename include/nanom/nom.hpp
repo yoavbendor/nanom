@@ -184,7 +184,7 @@ enum class errk : std::uint8_t { err, fail, incomplete };
 /// is out of scope; the whole point is zero-copy in-memory parsing).
 inline constexpr std::size_t max_context = 4;
 /// Upper bound on error::needed in streaming incomplete errors — avoids OOM when
-/// callers pre-allocate from a hostile length prefix. 0 still means unknown.
+/// callers pre-allocate from hostile length prefixes. 0 still means unknown.
 inline constexpr std::uint32_t max_incomplete_needed = 64 * 1024;
 
 struct error {

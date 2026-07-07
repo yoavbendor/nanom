@@ -15,9 +15,25 @@ nom-parallel parser is one self-contained header (`nom.hpp`); reflection and the
 layer cleanly on top.
 
 [Get started](getting-started.md){ .md-button .md-button--primary }
+[Memory safety](MEMORY_SAFETY.md){ .md-button .md-button--primary }
 [Cheat sheet](CHEATSHEET.md){ .md-button }
 [API reference](https://yoavbendor.github.io/nanom/api/){ .md-button }
 [GitHub](https://github.com/yoavbendor/nanom){ .md-button }
+
+## Streaming + safety posture
+
+nanom follows nom's streaming contract directly: parse on `nm::streaming(input)`, and on short prefixes
+you get `errk::incomplete` with `needed` so callers can refill and retry.
+
+Safety defaults are now strong by default and configurable:
+
+- `NANOM_GUARD_VIEWS=1` — guard null/uninitialized `view` access
+- safe null input handling (`from(nullptr, n>0)` => empty input)
+- bounded streaming `needed` (`max_incomplete_needed = 64 KiB`)
+- checked cursor helpers (`safe_at`, `checked_advance`) for defensive code paths
+
+Reviewers: see the dedicated [memory-safety model and contracts](MEMORY_SAFETY.md), plus generation and
+streaming behavior tests in `tests/test_nanom.cpp` / `tests/test_memory_safety.cpp`.
 
 ## As fast as Rust nom — proven, not asserted
 
@@ -29,15 +45,15 @@ Packet Block's fixed fields **and walks all of its option TLVs** — the full bl
 
 | parser | work | ns/packet | throughput | output |
 |---|---|---:|---:|---|
-| **nanom** (`nm::streaming`) | EPB fields + all options | **~110** | ~13 GiB/s | identical |
-| **Rust nom** (hand-written) | EPB fields + all options (equal work) | ~119 | ~12 GiB/s | identical |
-| Rust `pcap-parser` lib | same, + allocates options | ~203 | ~7 GiB/s | identical |
+| **nanom** (`minimal`) | EPB fields + all options | **~84** | ~17 GiB/s | identical |
+| **nanom** (`full`) | same + generation tracking | ~82 | ~18 GiB/s | identical |
+| **Rust nom** (hand-written) | EPB fields + all options (equal work) | ~83 | ~18 GiB/s | identical |
+| Rust `pcap-parser` lib | same, + allocates options | ~138 | ~11 GiB/s | identical |
 
-**Equal-work head-to-head: nanom ~110 ns/pkt vs stable Rust nom ~119 ns/pkt — parity**, a hair in
-nanom's favour, both parsing the full block (fixed fields + every option) zero-copy with no per-packet
-allocation; against the real `pcap-parser` library doing the identical parse, nanom is ~1.85× faster.
-The claim is scoped and reproducible (`python3 bench/compare_rust.py --build`); it is not "nanom beats
-nom in general".
+**Equal-work head-to-head: nanom ~84 ns/pkt vs stable Rust nom ~83 ns/pkt — parity**, both parsing the
+full block (fixed fields + every option) zero-copy with no per-packet allocation. The full safety
+profile stays within best-of-5 noise on this workload. Reproduce with
+`python3 bench/compare_rust.py --build --safety both`; this is scoped evidence, not a universal claim.
 
 ## Why nanom
 

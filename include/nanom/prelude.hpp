@@ -50,19 +50,14 @@
 #include <utility>
 #include <vector>
 
-// Debug view guards: assert on null overlay access. Enabled in debug builds;
-// override with -DNANOM_GUARD_VIEWS=0/1 (memory-safety tests force it on).
+// Safety defaults (override with -D...=0/1).
+// Strong defaults are chosen for reviewer-facing and production hardening;
+// users can opt out per target when needed.
 #ifndef NANOM_GUARD_VIEWS
-# if !defined(NDEBUG)
-#  define NANOM_GUARD_VIEWS 1
-# else
-#  define NANOM_GUARD_VIEWS 0
-# endif
+# define NANOM_GUARD_VIEWS 1
 #endif
-
-// Opt-in wire generation tracking (see generation.hpp). Off by default — zero size/cost.
 #ifndef NANOM_GENERATION
-# define NANOM_GENERATION 0
+# define NANOM_GENERATION 1
 #endif
 #ifndef NANOM_GENERATION_THROW
 # define NANOM_GENERATION_THROW 0
