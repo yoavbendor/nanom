@@ -12,7 +12,8 @@ and data-tooling extras layer cleanly on top.
 📖 **[Documentation site](https://yoavbendor.github.io/nanom/)** ·
 🗺️ **[nom → nanom cheat sheet](docs/CHEATSHEET.md)** ·
 📐 **[API reference](https://yoavbendor.github.io/nanom/api/)** ·
-🛡️ **[Memory safety model](docs/MEMORY_SAFETY.md)**
+🛡️ **[Memory safety model](docs/MEMORY_SAFETY.md)** ·
+🎯 **[Threat model + reviewer checklist](docs/THREAT_MODEL.md)**
 
 ## Streaming + safety first
 
