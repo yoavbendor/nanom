@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783426553177,
+  "lastUpdate": 1783429425947,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -659,6 +659,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 19.8,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "4da66013fecff39373a67001a5266a80e1ab2473",
+          "message": "Merge pull request #18 from yoavbendor/cursor/rust-safety-review-docs-1ef9\n\ndocs: Safety for Rust reviewers page + homepage visibility",
+          "timestamp": "2026-07-07T16:03:14+03:00",
+          "tree_id": "943ef6163f5e25c851dbf93813d15b3402527bd2",
+          "url": "https://github.com/yoavbendor/nanom/commit/4da66013fecff39373a67001a5266a80e1ab2473"
+        },
+        "date": 1783429424724,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 28.6,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 102.4,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 38.6,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 20.1,
             "unit": "ns/pkt"
           }
         ]
