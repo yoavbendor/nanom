@@ -6,5 +6,6 @@ var searchData=
   ['arrow_5fformat_3',['arrow_format',['../namespacenanom.html#a607c33c6acf1e544059703248fa01267',1,'nanom']]],
   ['as_4',['as',['../structnanom_1_1soa_1_1chunk.html#a7ffd2a219257625dfae45f15bd48afe9',1,'nanom::soa::chunk']]],
   ['as_5fstr_5',['as_str',['../namespacenanom.html#a2a23ff58bde7adaa42232afd51de7b26',1,'nanom']]],
-  ['avro_5fschema_6',['avro_schema',['../namespacenanom.html#af2e2813fa297a8c7790cb530fadf6dcc',1,'nanom']]]
+  ['attested_5fspan_6',['attested_span',['../structnanom_1_1input.html#ae6f5f94fff5b99bb4b7df5c1d6a2600c',1,'nanom::input::attested_span(std::size_t n) const'],['../structnanom_1_1input.html#a2045b9d25f6979cd1594cd22d7bc2d9f',1,'nanom::input::attested_span(const std::byte *p, std::size_t n) const']]],
+  ['avro_5fschema_7',['avro_schema',['../namespacenanom.html#af2e2813fa297a8c7790cb530fadf6dcc',1,'nanom']]]
 ];

@@ -951,7 +951,7 @@ covers what the library <strong>does</strong> enforce and what remains <strong>c
 </tr>
 <tr>
 <td>Generation tracking</td>
-<td><code>wire_arena</code>, <code>from(buf, arena)</code>, <code>view::get</code></td>
+<td><code>wire_arena</code>, <code>from(buf, arena)</code>, <code>view::get/raw</code>, <code>bytes</code> subscript</td>
 <td><code>NANOM_GENERATION=1</code>; enabled by default</td>
 </tr>
 </tbody>
@@ -979,6 +979,10 @@ covers what the library <strong>does</strong> enforce and what remains <strong>c
 <tr>
 <td><code>wire_arena</code></td>
 <td>Registers <code>[base, size)</code>; <code>invalidate()</code> bumps generation</td>
+</tr>
+<tr>
+<td><code>attested_bytes</code></td>
+<td>Generation-attested <code>bytes</code> wrapper (<code>operator[]</code>, <code>at</code>)</td>
 </tr>
 <tr>
 <td><code>from(span, arena)</code></td>
@@ -1041,14 +1045,19 @@ covers what the library <strong>does</strong> enforce and what remains <strong>c
 </tr>
 </tbody>
 </table>
-<p>Future work: <code>attested_bytes</code> for guarded <code>bytes</code> subscript; auto-tracked containers.</p>
+<p>Future work: auto-tracked containers; stronger provenance/cross-arena diagnostics.</p>
 <h2 id="tests">Tests<a class="headerlink" href="#tests" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>tests/test_memory_safety.cpp</code> — regression suite (<code>NANOM_GUARD_VIEWS=1</code>)</li>
-<li><code>tests/test_memory_safety_generation.cpp</code> — generation suite (<code>NANOM_GENERATION=1</code>)</li>
+<li><code>tests/test_memory_safety.cpp</code> — regression suite (<code>NANOM_GUARD_VIEWS=1</code>, must pass)</li>
+<li><code>tests/test_memory_safety_generation.cpp</code> — generation suite (<code>NANOM_GENERATION=1</code>, must pass)</li>
+<li><code>tests/test_memory_safety_gaps.cpp</code> — <strong>WILL_FAIL</strong> residual hazards without generation tracking</li>
+<li><code>tests/test_memory_safety_gaps_generation.cpp</code> — <strong>WILL_FAIL</strong> attested_bytes / arena gaps</li>
+<li><code>tests/test_memory_safety_ub.cpp</code> — optional ASan red-team demos (<code>NANOM_MEMORY_SAFETY_UB_DEMOS=ON</code>)</li>
 <li><code>tests/test_nanom.cpp</code> — incremental one-byte streaming behavior (<code>test_streaming_incremental</code>)</li>
 <li><code>bench/safety_microbench.cpp</code> — performance baselines per guard</li>
 </ul>
+<p>CMake registers gap targets when <code>NANOM_MEMORY_SAFETY_GAP_TESTS=ON</code> (default). Remove
+<code>WILL_FAIL</code> from a gap test only when every targeted <code>CHECK</code> in that file passes.</p>
 
 
 

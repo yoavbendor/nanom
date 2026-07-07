@@ -616,6 +616,12 @@ Variables</h2></td></tr>
 <tr class="memitem:acaf6cc260fec56602e1108104f035432" id="r_acaf6cc260fec56602e1108104f035432"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#acaf6cc260fec56602e1108104f035432">many0_guards_zero_consumption</a> = true</td></tr>
 <tr class="memdesc:acaf6cc260fec56602e1108104f035432"><td class="mdescLeft">&#160;</td><td class="mdescRight">many0(p) — zero or more, into std::vector.  <br /></td></tr>
 <tr class="separator:acaf6cc260fec56602e1108104f035432"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a479ec03c37d4d9cc1671e3cdc6340275" id="r_a479ec03c37d4d9cc1671e3cdc6340275"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a479ec03c37d4d9cc1671e3cdc6340275">input_subscript_is_bounds_checked</a> = false</td></tr>
+<tr class="memdesc:a479ec03c37d4d9cc1671e3cdc6340275"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set true when <a class="el" href="structnanom_1_1input.html#a589660887c094d45af29cb99a5ea3127">input::operator[]</a> bounds-checks (today use safe_at).  <br /></td></tr>
+<tr class="separator:a479ec03c37d4d9cc1671e3cdc6340275"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:abf8c724a05240326602043c5f1d4222f" id="r_abf8c724a05240326602043c5f1d4222f"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#abf8c724a05240326602043c5f1d4222f">input_advance_validates_bounds</a> = false</td></tr>
+<tr class="memdesc:abf8c724a05240326602043c5f1d4222f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set true when <a class="el" href="structnanom_1_1input.html#a2f05fa0cf16328e6a3cb91d360bd9cae" title="Cursor advanced by n bytes (precondition: n &lt;= size()).">input::advance</a> rejects n &gt; size() (today use checked_advance).  <br /></td></tr>
+<tr class="separator:abf8c724a05240326602043c5f1d4222f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:adb5bdd721cdb59c2708f1bb33f2b1edd" id="r_adb5bdd721cdb59c2708f1bb33f2b1edd"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#adb5bdd721cdb59c2708f1bb33f2b1edd">length_prefix_spans_are_unowned</a> = true</td></tr>
 <tr class="memdesc:adb5bdd721cdb59c2708f1bb33f2b1edd"><td class="mdescLeft">&#160;</td><td class="mdescRight">length_data(np) — np yields a length N; then take N raw bytes (zero-copy).  <br /></td></tr>
 <tr class="separator:adb5bdd721cdb59c2708f1bb33f2b1edd"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -691,6 +697,12 @@ Variables</h2></td></tr>
 <tr class="separator:ad25a10d8efd4b863807f5d42dd95c1fb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ac9c22bc09f8b4f30f28cef738130758a" id="r_ac9c22bc09f8b4f30f28cef738130758a"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#ac9c22bc09f8b4f30f28cef738130758a">span_lifetime_is_caller_scoped</a> = true</td></tr>
 <tr class="separator:ac9c22bc09f8b4f30f28cef738130758a"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a99ea0d5717d64fa9ffe8ba033592a3e7" id="r_a99ea0d5717d64fa9ffe8ba033592a3e7"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a99ea0d5717d64fa9ffe8ba033592a3e7">runtime_span_lifetime_is_enforced</a> = false</td></tr>
+<tr class="memdesc:a99ea0d5717d64fa9ffe8ba033592a3e7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set true when span/view lifetime is runtime-enforced (e.g. via wire_arena on all parses).  <br /></td></tr>
+<tr class="separator:a99ea0d5717d64fa9ffe8ba033592a3e7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1df0707718895a1a4a16c161db8c1571" id="r_a1df0707718895a1a4a16c161db8c1571"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a1df0707718895a1a4a16c161db8c1571">wire_mutation_is_runtime_detected</a> = false</td></tr>
+<tr class="memdesc:a1df0707718895a1a4a16c161db8c1571"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set true when in-place wire mutation behind a live view is runtime-detected.  <br /></td></tr>
+<tr class="separator:a1df0707718895a1a4a16c161db8c1571"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Typedef Documentation</h2>
 <a id="a2cb1eeb47b70a1e8f6b109642a541fe2" name="a2cb1eeb47b70a1e8f6b109642a541fe2"></a>
@@ -3996,7 +4008,7 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{char(in[0]), in.advance(1)};</div>
 <div class="line">}</div>
 <div class="ttc" id="anamespacenanom_html_a91c7985d0464f531b30c781da779abe9"><div class="ttname"><a href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">nanom::done</a></div><div class="ttdeci">done(T, input) -&gt; done&lt; T &gt;</div></div>
-<div class="ttc" id="anamespacenanom_html_a9641ef1c751b997f3fd186f0b5ad34e8"><div class="ttname"><a href="namespacenanom.html#a9641ef1c751b997f3fd186f0b5ad34e8">nanom::make_incomplete</a></div><div class="ttdeci">unexpected&lt; error &gt; make_incomplete(input at, std::size_t needed)</div><div class="ttdoc">Ran out of input: incomplete on streaming inputs (caller refills and retries), a plain backtrackable ...</div><div class="ttdef"><b>Definition</b> nom.hpp:271</div></div>
+<div class="ttc" id="anamespacenanom_html_a9641ef1c751b997f3fd186f0b5ad34e8"><div class="ttname"><a href="namespacenanom.html#a9641ef1c751b997f3fd186f0b5ad34e8">nanom::make_incomplete</a></div><div class="ttdeci">unexpected&lt; error &gt; make_incomplete(input at, std::size_t needed)</div><div class="ttdoc">Ran out of input: incomplete on streaming inputs (caller refills and retries), a plain backtrackable ...</div><div class="ttdef"><b>Definition</b> nom.hpp:287</div></div>
 </div><!-- fragment -->
 <p>anychar — any single char. </p>
 
@@ -4026,7 +4038,7 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  <span class="keywordflow">if</span> (!r) <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">unexp</a>(r.error());</div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{std::bit_cast&lt;float&gt;(r-&gt;value), r-&gt;rest};</div>
 <div class="line">}</div>
-<div class="ttc" id="anamespacenanom_html_a240215857a8180d01e7a8461dc51da46"><div class="ttname"><a href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">nanom::unexp</a></div><div class="ttdeci">unexpected&lt; error &gt; unexp(error e)</div><div class="ttdoc">Wrap an error for propagation between differently-typed results.</div><div class="ttdef"><b>Definition</b> nom.hpp:243</div></div>
+<div class="ttc" id="anamespacenanom_html_a240215857a8180d01e7a8461dc51da46"><div class="ttname"><a href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">nanom::unexp</a></div><div class="ttdeci">unexpected&lt; error &gt; unexp(error e)</div><div class="ttdoc">Wrap an error for propagation between differently-typed results.</div><div class="ttdef"><b>Definition</b> nom.hpp:259</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -4301,8 +4313,8 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  <span class="keywordflow">if</span> (!r) <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">unexp</a>(r.error());</div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{<a class="code hl_function" href="namespacenanom.html#a2a23ff58bde7adaa42232afd51de7b26">as_str</a>(r-&gt;value), r-&gt;rest};</div>
 <div class="line">}</div>
-<div class="ttc" id="anamespacenanom_html_a232088c3d5af378c4da8979fbc89aebc"><div class="ttname"><a href="namespacenanom.html#a232088c3d5af378c4da8979fbc89aebc">nanom::tag</a></div><div class="ttdeci">auto tag(std::string_view pattern)</div><div class="ttdoc">tag(&quot;GET&quot;) / tag(bytes) — match an exact byte sequence, yield it zero-copy.</div><div class="ttdef"><b>Definition</b> nom.hpp:348</div></div>
-<div class="ttc" id="anamespacenanom_html_a2a23ff58bde7adaa42232afd51de7b26"><div class="ttname"><a href="namespacenanom.html#a2a23ff58bde7adaa42232afd51de7b26">nanom::as_str</a></div><div class="ttdeci">std::string_view as_str(bytes b)</div><div class="ttdoc">View a span of raw bytes as text (zero-copy).</div><div class="ttdef"><b>Definition</b> nom.hpp:165</div></div>
+<div class="ttc" id="anamespacenanom_html_a232088c3d5af378c4da8979fbc89aebc"><div class="ttname"><a href="namespacenanom.html#a232088c3d5af378c4da8979fbc89aebc">nanom::tag</a></div><div class="ttdeci">auto tag(std::string_view pattern)</div><div class="ttdoc">tag(&quot;GET&quot;) / tag(bytes) — match an exact byte sequence, yield it zero-copy.</div><div class="ttdef"><b>Definition</b> nom.hpp:364</div></div>
+<div class="ttc" id="anamespacenanom_html_a2a23ff58bde7adaa42232afd51de7b26"><div class="ttname"><a href="namespacenanom.html#a2a23ff58bde7adaa42232afd51de7b26">nanom::as_str</a></div><div class="ttdeci">std::string_view as_str(bytes b)</div><div class="ttdoc">View a span of raw bytes as text (zero-copy).</div><div class="ttdef"><b>Definition</b> nom.hpp:181</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -4407,7 +4419,7 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  <span class="keywordflow">if</span> (!in.empty()) <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a2226dbc1b8e47adc0f180242f80587e6">make_err</a>(in, <span class="stringliteral">&quot;end of input&quot;</span>);</div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{unit{}, in};</div>
 <div class="line">}</div>
-<div class="ttc" id="anamespacenanom_html_a2226dbc1b8e47adc0f180242f80587e6"><div class="ttname"><a href="namespacenanom.html#a2226dbc1b8e47adc0f180242f80587e6">nanom::make_err</a></div><div class="ttdeci">unexpected&lt; error &gt; make_err(input at, const char *expected)</div><div class="ttdoc">Build a recoverable error at the current position.</div><div class="ttdef"><b>Definition</b> nom.hpp:264</div></div>
+<div class="ttc" id="anamespacenanom_html_a2226dbc1b8e47adc0f180242f80587e6"><div class="ttname"><a href="namespacenanom.html#a2226dbc1b8e47adc0f180242f80587e6">nanom::make_err</a></div><div class="ttdeci">unexpected&lt; error &gt; make_err(input at, const char *expected)</div><div class="ttdoc">Build a recoverable error at the current position.</div><div class="ttdef"><b>Definition</b> nom.hpp:280</div></div>
 </div><!-- fragment -->
 <p>eof — succeeds (with unit) only if all input is consumed. </p>
 
@@ -4437,7 +4449,7 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  <span class="keywordflow">if</span> (!r) <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">unexp</a>(r.error());</div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{float(r-&gt;value), r-&gt;rest};</div>
 <div class="line">}</div>
-<div class="ttc" id="anamespacenanom_html_af94ead8ae2b3f3ed9c70d76e5fed1eaf"><div class="ttname"><a href="namespacenanom.html#af94ead8ae2b3f3ed9c70d76e5fed1eaf">nanom::double_</a></div><div class="ttdeci">constexpr auto double_</div><div class="ttdoc">float_ / double_ — text floating point (&quot;3.14&quot;, &quot;-1e9&quot;). (nom: float/double)</div><div class="ttdef"><b>Definition</b> nom.hpp:1430</div></div>
+<div class="ttc" id="anamespacenanom_html_af94ead8ae2b3f3ed9c70d76e5fed1eaf"><div class="ttname"><a href="namespacenanom.html#af94ead8ae2b3f3ed9c70d76e5fed1eaf">nanom::double_</a></div><div class="ttdeci">constexpr auto double_</div><div class="ttdoc">float_ / double_ — text floating point (&quot;3.14&quot;, &quot;-1e9&quot;). (nom: float/double)</div><div class="ttdef"><b>Definition</b> nom.hpp:1451</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -4504,6 +4516,54 @@ template&lt;Parser P, class Pred &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="abf8c724a05240326602043c5f1d4222f" name="abf8c724a05240326602043c5f1d4222f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#abf8c724a05240326602043c5f1d4222f">&#9670;&#160;</a></span>input_advance_validates_bounds</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr bool nanom::input_advance_validates_bounds = false</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Set true when <a class="el" href="structnanom_1_1input.html#a2f05fa0cf16328e6a3cb91d360bd9cae" title="Cursor advanced by n bytes (precondition: n &lt;= size()).">input::advance</a> rejects n &gt; size() (today use checked_advance). </p>
+
+</div>
+</div>
+<a id="a479ec03c37d4d9cc1671e3cdc6340275" name="a479ec03c37d4d9cc1671e3cdc6340275"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a479ec03c37d4d9cc1671e3cdc6340275">&#9670;&#160;</a></span>input_subscript_is_bounds_checked</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr bool nanom::input_subscript_is_bounds_checked = false</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Set true when <a class="el" href="structnanom_1_1input.html#a589660887c094d45af29cb99a5ea3127">input::operator[]</a> bounds-checks (today use safe_at). </p>
 
 </div>
 </div>
@@ -4834,7 +4894,7 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  }</div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a2226dbc1b8e47adc0f180242f80587e6">make_err</a>(in, <span class="stringliteral">&quot;line ending&quot;</span>);</div>
 <div class="line">}</div>
-<div class="ttc" id="astructnanom_1_1done_html"><div class="ttname"><a href="structnanom_1_1done.html">nanom::done</a></div><div class="ttdoc">Successful parse: the produced value plus the un-consumed rest.</div><div class="ttdef"><b>Definition</b> nom.hpp:251</div></div>
+<div class="ttc" id="astructnanom_1_1done_html"><div class="ttname"><a href="structnanom_1_1done.html">nanom::done</a></div><div class="ttdoc">Successful parse: the produced value plus the un-consumed rest.</div><div class="ttdef"><b>Definition</b> nom.hpp:267</div></div>
 </div><!-- fragment -->
 <p>"\n" or "\r\n" </p>
 
@@ -5196,6 +5256,30 @@ template&lt;Parser P, class Pred &gt; </div>
 </div><!-- fragment -->
 </div>
 </div>
+<a id="a99ea0d5717d64fa9ffe8ba033592a3e7" name="a99ea0d5717d64fa9ffe8ba033592a3e7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a99ea0d5717d64fa9ffe8ba033592a3e7">&#9670;&#160;</a></span>runtime_span_lifetime_is_enforced</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr bool nanom::runtime_span_lifetime_is_enforced = false</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Set true when span/view lifetime is runtime-enforced (e.g. via wire_arena on all parses). </p>
+
+</div>
+</div>
 <a id="ab697bf8f81833cf286f710581225700f" name="ab697bf8f81833cf286f710581225700f"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab697bf8f81833cf286f710581225700f">&#9670;&#160;</a></span>space0</h2>
 
@@ -5303,6 +5387,30 @@ template&lt;Parser P, class Pred &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a1df0707718895a1a4a16c161db8c1571" name="a1df0707718895a1a4a16c161db8c1571"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1df0707718895a1a4a16c161db8c1571">&#9670;&#160;</a></span>wire_mutation_is_runtime_detected</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr bool nanom::wire_mutation_is_runtime_detected = false</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Set true when in-place wire mutation behind a live view is runtime-detected. </p>
 
 </div>
 </div>

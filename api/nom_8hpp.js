@@ -129,6 +129,8 @@ var nom_8hpp =
     [ "hex_digit0", "nom_8hpp.html#aad65372dbf3b095c04ec179fa248d04d", null ],
     [ "hex_digit1", "nom_8hpp.html#a892ca9f161490f686465fb0239c2e707", null ],
     [ "i8", "nom_8hpp.html#a56489ab13d93002b7a19005cdee7284d", null ],
+    [ "input_advance_validates_bounds", "nom_8hpp.html#abf8c724a05240326602043c5f1d4222f", null ],
+    [ "input_subscript_is_bounds_checked", "nom_8hpp.html#a479ec03c37d4d9cc1671e3cdc6340275", null ],
     [ "le_f32", "nom_8hpp.html#a5e6e70393cd50ce3b29c38299231e0f4", null ],
     [ "le_f64", "nom_8hpp.html#aba690a949f6237f376da2fa850679cf5", null ],
     [ "le_i16", "nom_8hpp.html#af9f7b515c2c8e391302dcc68cea40780", null ],

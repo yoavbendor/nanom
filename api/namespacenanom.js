@@ -170,6 +170,8 @@ var namespacenanom =
     [ "hex_digit0", "namespacenanom.html#aad65372dbf3b095c04ec179fa248d04d", null ],
     [ "hex_digit1", "namespacenanom.html#a892ca9f161490f686465fb0239c2e707", null ],
     [ "i8", "namespacenanom.html#a56489ab13d93002b7a19005cdee7284d", null ],
+    [ "input_advance_validates_bounds", "namespacenanom.html#abf8c724a05240326602043c5f1d4222f", null ],
+    [ "input_subscript_is_bounds_checked", "namespacenanom.html#a479ec03c37d4d9cc1671e3cdc6340275", null ],
     [ "le_f32", "namespacenanom.html#a5e6e70393cd50ce3b29c38299231e0f4", null ],
     [ "le_f64", "namespacenanom.html#aba690a949f6237f376da2fa850679cf5", null ],
     [ "le_i16", "namespacenanom.html#af9f7b515c2c8e391302dcc68cea40780", null ],
@@ -199,10 +201,12 @@ var namespacenanom =
     [ "overlay_wire_must_be_immutable", "namespacenanom.html#ad25a10d8efd4b863807f5d42dd95c1fb", null ],
     [ "rest", "namespacenanom.html#a6a8e53de84eb53899c2311a223bcee14", null ],
     [ "rest_len", "namespacenanom.html#afbcc370a9c788ba0127dcf891ac4cfa9", null ],
+    [ "runtime_span_lifetime_is_enforced", "namespacenanom.html#a99ea0d5717d64fa9ffe8ba033592a3e7", null ],
     [ "space0", "namespacenanom.html#ab697bf8f81833cf286f710581225700f", null ],
     [ "space1", "namespacenanom.html#a200b20da9542ffcfa4e06dbe42a55264", null ],
     [ "span_lifetime_is_caller_scoped", "namespacenanom.html#ac9c22bc09f8b4f30f28cef738130758a", null ],
     [ "tab", "namespacenanom.html#a794950db65b51eec8f1e8f825607fb36", null ],
     [ "u8", "namespacenanom.html#afa7974bd70ebc29798de9e3e04c8f06c", null ],
+    [ "wire_mutation_is_runtime_detected", "namespacenanom.html#a1df0707718895a1a4a16c161db8c1571", null ],
     [ "wire_size_v", "namespacenanom.html#ad47fb5a1b8437c490c3a9b56faa24e8d", null ]
 ];

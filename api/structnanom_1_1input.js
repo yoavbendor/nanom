@@ -4,6 +4,8 @@ var structnanom_1_1input =
     [ "input", "structnanom_1_1input.html#afcd553a1321384b194260986fa3d27ba", null ],
     [ "input", "structnanom_1_1input.html#af60ae7a04dd79377369441ef35696d04", null ],
     [ "advance", "structnanom_1_1input.html#a2f05fa0cf16328e6a3cb91d360bd9cae", null ],
+    [ "attested_span", "structnanom_1_1input.html#a2045b9d25f6979cd1594cd22d7bc2d9f", null ],
+    [ "attested_span", "structnanom_1_1input.html#ae6f5f94fff5b99bb4b7df5c1d6a2600c", null ],
     [ "checked_advance", "structnanom_1_1input.html#af49b941361ccc4fcfa54f3060d37e399", null ],
     [ "empty", "structnanom_1_1input.html#a134bf84bcfbdd67a92195a05143807ee", null ],
     [ "offset", "structnanom_1_1input.html#ae37aa13fe3a37d1ecaf7aaeff1f223e8", null ],

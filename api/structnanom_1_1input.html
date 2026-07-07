@@ -120,6 +120,10 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:ae37aa13fe3a37d1ecaf7aaeff1f223e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae024becdb6757df57e4a1a77e1cda619" id="r_ae024becdb6757df57e4a1a77e1cda619"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html#ae024becdb6757df57e4a1a77e1cda619">span</a> () const</td></tr>
 <tr class="separator:ae024becdb6757df57e4a1a77e1cda619"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae6f5f94fff5b99bb4b7df5c1d6a2600c" id="r_ae6f5f94fff5b99bb4b7df5c1d6a2600c"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html#ae6f5f94fff5b99bb4b7df5c1d6a2600c">attested_span</a> (std::size_t n) const</td></tr>
+<tr class="separator:ae6f5f94fff5b99bb4b7df5c1d6a2600c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2045b9d25f6979cd1594cd22d7bc2d9f" id="r_a2045b9d25f6979cd1594cd22d7bc2d9f"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html#a2045b9d25f6979cd1594cd22d7bc2d9f">attested_span</a> (const std::byte *p, std::size_t n) const</td></tr>
+<tr class="separator:a2045b9d25f6979cd1594cd22d7bc2d9f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a589660887c094d45af29cb99a5ea3127" id="r_a589660887c094d45af29cb99a5ea3127"><td class="memItemLeft" align="right" valign="top">constexpr std::uint8_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html#a589660887c094d45af29cb99a5ea3127">operator[]</a> (std::size_t i) const</td></tr>
 <tr class="separator:a589660887c094d45af29cb99a5ea3127"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a2f05fa0cf16328e6a3cb91d360bd9cae" id="r_a2f05fa0cf16328e6a3cb91d360bd9cae"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html#a2f05fa0cf16328e6a3cb91d360bd9cae">advance</a> (std::size_t n) const</td></tr>
@@ -279,6 +283,68 @@ Public Attributes</h2></td></tr>
 </div><div class="memdoc">
 
 <p>Cursor advanced by n bytes (precondition: n &lt;= <a class="el" href="structnanom_1_1input.html#a9bb99f924ba6f88630fe8c9089b205d6">size()</a>). </p>
+
+</div>
+</div>
+<a id="a2045b9d25f6979cd1594cd22d7bc2d9f" name="a2045b9d25f6979cd1594cd22d7bc2d9f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2045b9d25f6979cd1594cd22d7bc2d9f">&#9670;&#160;</a></span>attested_span() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a> nanom::input::attested_span </td>
+          <td>(</td>
+          <td class="paramtype">const std::byte *&#160;</td>
+          <td class="paramname"><em>p</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>n</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae6f5f94fff5b99bb4b7df5c1d6a2600c" name="ae6f5f94fff5b99bb4b7df5c1d6a2600c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae6f5f94fff5b99bb4b7df5c1d6a2600c">&#9670;&#160;</a></span>attested_span() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a> nanom::input::attested_span </td>
+          <td>(</td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>n</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>

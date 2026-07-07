@@ -1115,6 +1115,11 @@ provides a concrete checklist for external memory-safety review.</p>
 <td><code>wire_arena</code>, <code>NANOM_GENERATION</code>, <code>check_wire_access</code></td>
 <td>on</td>
 </tr>
+<tr>
+<td>Attested span access</td>
+<td><code>attested_bytes::operator[]/at</code> on tracked parses</td>
+<td>on</td>
+</tr>
 </tbody>
 </table>
 <h2 id="caller-contracts-required">Caller contracts (required)<a class="headerlink" href="#caller-contracts-required" title="Permanent link">&para;</a></h2>
@@ -1131,6 +1136,40 @@ provides a concrete checklist for external memory-safety review.</p>
 <li>Some checks are assertion-based and behavior differs by build policy.</li>
 </ul>
 <p>Track these in failing/gap safety tests and fuzz targets as they are added.</p>
+<table>
+<thead>
+<tr>
+<th>Gap</th>
+<th>Gap test</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>In-place wire mutation behind live view</td>
+<td><code>nanom_memory_safety_gap_tests</code>, <code>nanom_memory_safety_gap_generation_tests</code></td>
+</tr>
+<tr>
+<td>Unchecked <code>input::operator[]</code> / <code>advance</code></td>
+<td><code>nanom_memory_safety_gap_tests</code></td>
+</tr>
+<tr>
+<td>Untracked span lifetime (no <code>wire_arena</code>)</td>
+<td><code>nanom_memory_safety_gap_tests</code></td>
+</tr>
+<tr>
+<td><code>attested_bytes::operator[]</code> OOB vs <code>at()</code></td>
+<td><code>nanom_memory_safety_gap_generation_tests</code></td>
+</tr>
+<tr>
+<td><code>unchecked_span()</code> bypasses generation</td>
+<td><code>nanom_memory_safety_gap_generation_tests</code></td>
+</tr>
+<tr>
+<td><code>bytes::data()</code> / <code>as_str()</code> skip generation</td>
+<td><code>nanom_memory_safety_gap_generation_tests</code></td>
+</tr>
+</tbody>
+</table>
 <h2 id="reviewer-checklist">Reviewer checklist<a class="headerlink" href="#reviewer-checklist" title="Permanent link">&para;</a></h2>
 <p>Use this checklist for PRs touching parse path, lifetime model, or docs claims.</p>
 <h3 id="code-checks">Code checks<a class="headerlink" href="#code-checks" title="Permanent link">&para;</a></h3>
@@ -1146,6 +1185,9 @@ provides a concrete checklist for external memory-safety review.</p>
 <li>[ ] <code>nanom_tests</code> includes incremental streaming behavior (<code>test_streaming_incremental</code>).</li>
 <li>[ ] Memory-safety suites pass for expected profile (<code>nanom_memory_safety_tests</code>,
       <code>nanom_generation_tests</code> where applicable).</li>
+<li>[ ] Gap suite (<code>nanom_memory_safety_gap_tests</code>,
+      <code>nanom_memory_safety_gap_generation_tests</code>) remains <code>WILL_FAIL</code> until hazards are
+      hardened; flip only when all targeted checks pass.</li>
 <li>[ ] Any accepted residual risk has a test or documented rationale.</li>
 </ul>
 <h3 id="performance-checks">Performance checks<a class="headerlink" href="#performance-checks" title="Permanent link">&para;</a></h3>
