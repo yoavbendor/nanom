@@ -35,6 +35,7 @@ option(NANOM_MEMORY_SAFETY_UB_DEMOS "Build UB red-team demos (ASan only)" OFF)
 option(NANOM_MEMORY_SAFETY_GAP_TESTS "Register WILL_FAIL gap safety tests in ctest" ON)
 option(NANOM_GUARD_VIEWS "Enable runtime null/uninitialized view guards" ON)
 option(NANOM_GENERATION "Enable wire-buffer generation lifetime tracking" ON)
+option(NANOM_STRICT "Strict 'safe routes only' profile: compile-time restrictions buy a lean, fast runtime" OFF)
 set(NANOM_SANITIZER "" CACHE STRING "Sanitizer: '', 'address,undefined', or 'thread'")
 # C++26 P2996 reflection mode: the whole tree (tests, examples, parity ports) builds at C++26 with
 # the reflection provider active — the macro-free nanom. Needs a P2996 compiler (today: the
@@ -44,26 +45,37 @@ option(NANOM_CXX26_REFLECTION "Build in C++26 P2996 reflection mode" OFF)
 set(NANOM_REFLECTION_FLAGS "-freflection-latest;-stdlib=libc++" CACHE STRING
     "Extra compile/link flags for NANOM_CXX26_REFLECTION")
 
-# One interface target carrying the warning + sanitizer flags, linked by every
-# test/example/bench binary so the whole tree is checked uniformly.
-add_library(nanom_common_flags INTERFACE)
+# Warnings + sanitizer only (no safety-profile defines). Every flags target
+# below builds on this so the whole tree is checked uniformly.
 # -Wall/-Wextra/-Wpedantic is the strict set we gate on. -Wshadow/-Wconversion
 # are deliberately NOT here: nanom exposes short global parser names (u8, rest,
 # tag, ...) by design, so `auto rest = ...` in user code legitimately shadows
 # them — gating on -Wshadow would punish the intended API. CI runs them as a
 # separate advisory (non-blocking) lint instead.
-target_compile_options(nanom_common_flags INTERFACE
+add_library(nanom_warn_flags INTERFACE)
+target_compile_options(nanom_warn_flags INTERFACE
   -Wall -Wextra -Wpedantic
   $<$<BOOL:${NANOM_WERROR}>:-Werror>)
 if(NANOM_SANITIZER)
-  target_compile_options(nanom_common_flags INTERFACE -fsanitize=${NANOM_SANITIZER} -fno-omit-frame-pointer -g)
-  target_link_options(nanom_common_flags INTERFACE -fsanitize=${NANOM_SANITIZER})
+  target_compile_options(nanom_warn_flags INTERFACE -fsanitize=${NANOM_SANITIZER} -fno-omit-frame-pointer -g)
+  target_link_options(nanom_warn_flags INTERFACE -fsanitize=${NANOM_SANITIZER})
 endif()
+
+# Default profile flags: warnings + the explicit NANOM_GUARD_VIEWS define.
+add_library(nanom_common_flags INTERFACE)
+target_link_libraries(nanom_common_flags INTERFACE nanom_warn_flags)
 if(NANOM_GUARD_VIEWS)
   target_compile_definitions(nanom_common_flags INTERFACE NANOM_GUARD_VIEWS=1)
 else()
   target_compile_definitions(nanom_common_flags INTERFACE NANOM_GUARD_VIEWS=0)
 endif()
+
+# Strict "safe routes only" flags: define ONLY NANOM_STRICT=1 and let prelude.hpp
+# derive the lean runtime defaults (GENERATION=0, GUARD_VIEWS=0). Deliberately
+# does NOT link nanom_common_flags/nanom_flags, which force the runtime nets on.
+add_library(nanom_strict_flags INTERFACE)
+target_link_libraries(nanom_strict_flags INTERFACE nanom_warn_flags)
+target_compile_definitions(nanom_strict_flags INTERFACE NANOM_STRICT=1)
 
 add_library(nanom_flags INTERFACE)
 target_link_libraries(nanom_flags INTERFACE nanom_common_flags)
@@ -100,6 +112,13 @@ function(nanom_exe_generation name generation)
   target_compile_definitions(${name} PRIVATE NANOM_GENERATION=${generation})
 endfunction()
 
+# Like nanom_exe but for the strict "safe routes only" profile (NANOM_STRICT=1;
+# prelude derives the lean runtime defaults).
+function(nanom_exe_strict name)
+  add_executable(${name} ${ARGN})
+  target_link_libraries(${name} PRIVATE nanom nanom_strict_flags Threads::Threads)
+endfunction()
+
 set(parity_dir ${CMAKE_CURRENT_SOURCE_DIR}/examples/nanotins_parity)
 set(td ${parity_dir}/testdata)
 
@@ -123,6 +142,34 @@ target_compile_definitions(nanom_streaming_safety_tests PRIVATE
 target_include_directories(nanom_streaming_safety_tests PRIVATE
   ${CMAKE_SOURCE_DIR}/bench ${parity_dir})
 add_test(NAME nanom_streaming_safety_tests COMMAND nanom_streaming_safety_tests)
+
+# Strict "safe routes only" profile: compile-time restrictions + lean runtime.
+# The test self-asserts the compile-time contract (removed raw-pointer entry,
+# deleted owning-temporary overloads, lean bytes/flags) then parses via the
+# safe routes.
+nanom_exe_strict(nanom_strict_profile_tests tests/test_strict_profile.cpp)
+add_test(NAME nanom_strict_profile_tests COMMAND nanom_strict_profile_tests)
+
+# Negative compile tests: the strict profile MUST refuse these. Each is expected
+# to FAIL to compile; ctest inverts the result (WILL_FAIL) so a regression that
+# accidentally re-enables an unsafe route turns the suite red.
+add_test(NAME nanom_strict_rejects_bulk
+  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target nanom_strict_neg_bulk)
+set_tests_properties(nanom_strict_rejects_bulk PROPERTIES WILL_FAIL TRUE)
+add_executable(nanom_strict_neg_bulk EXCLUDE_FROM_ALL tests/strict_neg/neg_bulk.cpp)
+target_link_libraries(nanom_strict_neg_bulk PRIVATE nanom nanom_strict_flags)
+
+add_test(NAME nanom_strict_rejects_raw_ptr
+  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target nanom_strict_neg_raw_ptr)
+set_tests_properties(nanom_strict_rejects_raw_ptr PROPERTIES WILL_FAIL TRUE)
+add_executable(nanom_strict_neg_raw_ptr EXCLUDE_FROM_ALL tests/strict_neg/neg_raw_ptr.cpp)
+target_link_libraries(nanom_strict_neg_raw_ptr PRIVATE nanom nanom_strict_flags)
+
+add_test(NAME nanom_strict_rejects_string_temp
+  COMMAND ${CMAKE_COMMAND} --build ${CMAKE_BINARY_DIR} --target nanom_strict_neg_string_temp)
+set_tests_properties(nanom_strict_rejects_string_temp PROPERTIES WILL_FAIL TRUE)
+add_executable(nanom_strict_neg_string_temp EXCLUDE_FROM_ALL tests/strict_neg/neg_string_temp.cpp)
+target_link_libraries(nanom_strict_neg_string_temp PRIVATE nanom nanom_strict_flags)
 
 if(NANOM_MEMORY_SAFETY_GAP_TESTS)
   # Gap suite: residual hazards from THREAT_MODEL.md — WILL_FAIL until hardened.

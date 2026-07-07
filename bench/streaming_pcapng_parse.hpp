@@ -61,7 +61,10 @@ inline nm::input bench_input(const std::byte* p, std::size_t n,
 #if NANOM_GENERATION
   return trk.make(p, n, buf_base, buf_have, stream);
 #else
-  return stream ? nm::streaming(nm::from(p, n)) : nm::from(p, n);
+  // Sized-span entry (works in every profile incl. NANOM_STRICT, which removes
+  // the raw pointer+length from()).
+  const auto in = nm::from(std::span<const std::byte>(p, n));
+  return stream ? nm::streaming(in) : in;
 #endif
 }
 
@@ -74,7 +77,7 @@ inline nm::input bench_body(const std::byte* p, std::size_t n
 #if NANOM_GENERATION
   return trk.make(p, n, buf_base, buf_have, false);
 #else
-  return nm::from(p, n);
+  return nm::from(std::span<const std::byte>(p, n));
 #endif
 }
 
