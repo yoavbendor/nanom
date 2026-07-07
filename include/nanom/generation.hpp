@@ -168,7 +168,71 @@ class generation_exception : public std::exception {
 };
 
 namespace detail {
+inline void dispatch_generation_fault(generation_fault f);
+inline void check_wire_access(const wire_arena* arena, std::uint64_t expected_gen,
+                              const std::byte* p, std::size_t len, const char* site);
+}  // namespace detail
 
+/// Zero-copy byte span with optional generation attestation. When arena is null
+/// (untracked parse), subscript behaves like a plain span. When arena is set,
+/// operator[] / at() validate generation and bounds before access.
+struct attested_bytes {
+  std::span<const std::byte> span_{};
+  const wire_arena*          arena_ = nullptr;
+  std::uint64_t              gen_   = 0;
+
+  constexpr attested_bytes() = default;
+  constexpr attested_bytes(std::span<const std::byte> s) noexcept : span_(s) {}
+  constexpr attested_bytes(const std::byte* p, std::size_t n) noexcept : span_(p, n) {}
+  constexpr attested_bytes(const std::byte* p, std::size_t n, const wire_arena* a,
+                           std::uint64_t g) noexcept
+      : span_(p, n), arena_(a), gen_(g) {}
+
+  [[nodiscard]] constexpr const std::byte* data() const noexcept { return span_.data(); }
+  [[nodiscard]] constexpr std::size_t      size() const noexcept { return span_.size(); }
+  [[nodiscard]] constexpr bool             empty() const noexcept { return span_.empty(); }
+  [[nodiscard]] constexpr auto             begin() const noexcept { return span_.begin(); }
+  [[nodiscard]] constexpr auto             end() const noexcept { return span_.end(); }
+  [[nodiscard]] constexpr std::span<const std::byte> unchecked_span() const noexcept {
+    return span_;
+  }
+
+  NANOM_HD std::uint8_t operator[](std::size_t i) const {
+    if consteval {
+      return std::uint8_t(span_[i]);
+    } else {
+      detail::check_wire_access(arena_, gen_, span_.data(), span_.size(),
+                                "attested_bytes::operator[]");
+      return std::uint8_t(span_[i]);
+    }
+  }
+
+  NANOM_HD std::uint8_t at(std::size_t i) const {
+    if consteval {
+      return std::uint8_t(span_[i]);
+    } else {
+      if (i >= span_.size()) {
+        generation_fault f{};
+        f.kind = gen_fault_kind::out_of_arena;
+        f.arena = arena_;
+        f.expected_gen = gen_;
+        f.actual_gen = arena_ ? arena_->generation : 0;
+        f.access_ptr = span_.data();
+        f.access_len = span_.size();
+        f.offset_in_arena =
+            span_.data() && arena_ && arena_->base && span_.data() >= arena_->base
+                ? std::uint32_t(std::size_t(span_.data() - arena_->base) + i)
+                : 0;
+        f.site = "attested_bytes::at";
+        detail::dispatch_generation_fault(std::move(f));
+      }
+      detail::check_wire_access(arena_, gen_, span_.data(), span_.size(), "attested_bytes::at");
+      return std::uint8_t(span_[i]);
+    }
+  }
+};
+
+namespace detail {
 inline void dispatch_generation_fault(generation_fault f) {
   if (generation_handler) {
     if (generation_handler(f) == gen_action::ignore) return;

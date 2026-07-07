@@ -450,8 +450,13 @@ struct view {
       // byte array (MAC / IPv4 / IPv6 address, name field…): the wire bytes ARE
       // the value, so return a zero-copy span into the buffer instead of
       // materializing a std::array. get<"src">()[0] is then a single byte load.
+#if NANOM_GENERATION
+      return bytes(reinterpret_cast<const std::byte*>(p + off / 8), std::tuple_size_v<F>, arena,
+                   gen);
+#else
       return std::span<const typename F::value_type, std::tuple_size_v<F>>(
           reinterpret_cast<const typename F::value_type*>(p + off / 8), std::tuple_size_v<F>);
+#endif
     } else {
       return detail::decode_field<F>(p, off, dflt);
     }
@@ -465,7 +470,11 @@ struct view {
       detail::check_wire_access(arena, gen, p, wire_size_v<T>, "view::raw");
     }
 #endif
+#if NANOM_GENERATION
+    return bytes{p, wire_size_v<T>, arena, gen};
+#else
     return {p, wire_size_v<T>};
+#endif
   }
   /// Materialize a full T (same as strct would produce).
   NANOM_HD constexpr T to_struct() const {
