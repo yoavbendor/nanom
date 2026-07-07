@@ -100,19 +100,14 @@
 #define NANOM_HAS_REFLECTION 0
 #endif
 
-// Debug view guards: assert on null overlay access. Enabled in debug builds;
-// override with -DNANOM_GUARD_VIEWS=0/1 (memory-safety tests force it on).
+// Safety defaults (override with -D...=0/1).
+// Strong defaults are chosen for reviewer-facing and production hardening;
+// users can opt out per target when needed.
 #ifndef NANOM_GUARD_VIEWS
-# if !defined(NDEBUG)
-#  define NANOM_GUARD_VIEWS 1
-# else
-#  define NANOM_GUARD_VIEWS 0
-# endif
+# define NANOM_GUARD_VIEWS 1
 #endif
-
-// Opt-in wire generation tracking (see generation.hpp). Off by default — zero size/cost.
 #ifndef NANOM_GENERATION
-# define NANOM_GENERATION 0
+# define NANOM_GENERATION 1
 #endif
 #ifndef NANOM_GENERATION_THROW
 # define NANOM_GENERATION_THROW 0
@@ -541,7 +536,7 @@ enum class errk : std::uint8_t { err, fail, incomplete };
 /// is out of scope; the whole point is zero-copy in-memory parsing).
 inline constexpr std::size_t max_context = 4;
 /// Upper bound on error::needed in streaming incomplete errors — avoids OOM when
-/// callers pre-allocate from a hostile length prefix. 0 still means unknown.
+/// callers pre-allocate from hostile length prefixes. 0 still means unknown.
 inline constexpr std::uint32_t max_incomplete_needed = 64 * 1024;
 
 struct error {

@@ -13,6 +13,10 @@
         <link rel="canonical" href="https://yoavbendor.github.io/nanom/MEMORY_SAFETY/">
       
       
+        <link rel="prev" href="..">
+      
+      
+        <link rel="next" href="../THREAT_MODEL/">
       
       
         
@@ -23,7 +27,7 @@
     
     
       
-        <title>nanom memory safety - nanom</title>
+        <title>Memory safety - nanom</title>
       
     
     
@@ -129,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              nanom memory safety
+              Memory safety
             
           </span>
         </div>
@@ -301,6 +305,162 @@
       
   
   
+    
+  
+  
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory safety
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#enforced-by-the-library" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enforced by the library
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#generation-tracking-nanom_generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Generation tracking (NANOM_GENERATION)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caller-contract-documented-not-runtime-tracked-without-nanom_generation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caller contract (documented, not runtime-tracked without NANOM_GENERATION)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#debug-options" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Debug options
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#tests" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Tests
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../THREAT_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
   
   
     <li class="md-nav__item">
@@ -452,10 +612,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
             
   
   
@@ -473,8 +633,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -667,10 +827,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#opt-in-generation-tracking-nanom_generation" class="md-nav__link">
+  <a href="#generation-tracking-nanom_generation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Opt-in generation tracking (NANOM_GENERATION)
+        Generation tracking (NANOM_GENERATION)
       
     </span>
   </a>
@@ -790,14 +950,15 @@ covers what the library <strong>does</strong> enforce and what remains <strong>c
 <td><code>NANOM_GUARD_VIEWS</code> asserts <code>p != nullptr</code></td>
 </tr>
 <tr>
-<td>Generation tracking (opt-in)</td>
+<td>Generation tracking</td>
 <td><code>wire_arena</code>, <code>from(buf, arena)</code>, <code>view::get</code></td>
-<td><code>NANOM_GENERATION=1</code>; see below</td>
+<td><code>NANOM_GENERATION=1</code>; enabled by default</td>
 </tr>
 </tbody>
 </table>
-<h2 id="opt-in-generation-tracking-nanom_generation">Opt-in generation tracking (<code>NANOM_GENERATION</code>)<a class="headerlink" href="#opt-in-generation-tracking-nanom_generation" title="Permanent link">&para;</a></h2>
-<p>Off by default — <strong>no extra fields, code, or checks</strong> in Release when unset.</p>
+<h2 id="generation-tracking-nanom_generation">Generation tracking (<code>NANOM_GENERATION</code>)<a class="headerlink" href="#generation-tracking-nanom_generation" title="Permanent link">&para;</a></h2>
+<p>Enabled by default. For strict perf/compat modes, users can opt out with
+<code>-DNANOM_GENERATION=0</code>.</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">&gt;</span><span class="w"> </span><span class="n">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">load</span><span class="p">();</span>
 <a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a><span class="n">nm</span><span class="o">::</span><span class="n">wire_arena</span><span class="w"> </span><span class="n">arena</span><span class="p">;</span>
 <a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a><span class="n">nm</span><span class="o">::</span><span class="n">input</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">nm</span><span class="o">::</span><span class="n">bytes</span><span class="p">(</span><span class="n">buf</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="n">buf</span><span class="p">.</span><span class="n">size</span><span class="p">()),</span><span class="w"> </span><span class="n">arena</span><span class="p">);</span>
@@ -837,7 +998,7 @@ covers what the library <strong>does</strong> enforce and what remains <strong>c
 </tr>
 </tbody>
 </table>
-<p>CMake: <code>-DNANOM_GENERATION=ON</code> or define on one target. Tests: <code>nanom_generation_tests</code>.</p>
+<p>CMake: <code>-DNANOM_GENERATION=ON|OFF</code> or define on one target. Tests: <code>nanom_generation_tests</code>.</p>
 <h2 id="caller-contract-documented-not-runtime-tracked-without-nanom_generation">Caller contract (documented, not runtime-tracked without <code>NANOM_GENERATION</code>)<a class="headerlink" href="#caller-contract-documented-not-runtime-tracked-without-nanom_generation" title="Permanent link">&para;</a></h2>
 <p>These <code>constexpr</code> flags mark the contract surface:</p>
 <ul>
@@ -865,12 +1026,12 @@ covers what the library <strong>does</strong> enforce and what remains <strong>c
 <tbody>
 <tr>
 <td><code>NANOM_GUARD_VIEWS</code></td>
-<td>on in debug, off in <code>NDEBUG</code></td>
+<td><strong>on</strong></td>
 <td>Assert null <code>view</code> access</td>
 </tr>
 <tr>
 <td><code>NANOM_GENERATION</code></td>
-<td><strong>off</strong></td>
+<td><strong>on</strong></td>
 <td><code>wire_arena</code> lifetime checks on <code>view::get</code></td>
 </tr>
 <tr>
@@ -885,6 +1046,7 @@ covers what the library <strong>does</strong> enforce and what remains <strong>c
 <ul>
 <li><code>tests/test_memory_safety.cpp</code> — regression suite (<code>NANOM_GUARD_VIEWS=1</code>)</li>
 <li><code>tests/test_memory_safety_generation.cpp</code> — generation suite (<code>NANOM_GENERATION=1</code>)</li>
+<li><code>tests/test_nanom.cpp</code> — incremental one-byte streaming behavior (<code>test_streaming_incremental</code>)</li>
 <li><code>bench/safety_microbench.cpp</code> — performance baselines per guard</li>
 </ul>
 
@@ -917,6 +1079,44 @@ covers what the library <strong>does</strong> enforce and what remains <strong>c
       
         <footer class="md-footer">
   
+    
+      
+      <nav class="md-footer__inner md-grid" aria-label="Footer" >
+        
+          
+          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home">
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
+            </div>
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Previous
+              </span>
+              <div class="md-ellipsis">
+                Home
+              </div>
+            </div>
+          </a>
+        
+        
+          
+          <a href="../THREAT_MODEL/" class="md-footer__link md-footer__link--next" aria-label="Next: Threat model">
+            <div class="md-footer__title">
+              <span class="md-footer__direction">
+                Next
+              </span>
+              <div class="md-ellipsis">
+                Threat model
+              </div>
+            </div>
+            <div class="md-footer__button md-icon">
+              
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M4 11v2h12l-5.5 5.5 1.42 1.42L19.84 12l-7.92-7.92L10.5 5.5 16 11z"/></svg>
+            </div>
+          </a>
+        
+      </nav>
     
   
   <div class="md-footer-meta md-typeset">

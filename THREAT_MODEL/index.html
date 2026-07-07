@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://yoavbendor.github.io/nanom/design/">
+        <link rel="canonical" href="https://yoavbendor.github.io/nanom/THREAT_MODEL/">
       
       
-        <link rel="prev" href="../NOM_PARITY_AUDIT/">
+        <link rel="prev" href="../MEMORY_SAFETY/">
       
       
-        <link rel="next" href="../P2996_COMPAT/">
+        <link rel="next" href="../getting-started/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Design - nanom</title>
+        <title>Threat model - nanom</title>
       
     
     
@@ -97,7 +97,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#nanom-design" class="md-skip">
+        <a href="#nanom-threat-model-and-reviewer-checklist" class="md-skip">
           Skip to content
         </a>
       
@@ -133,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Design
+              Threat model
             
           </span>
         </div>
@@ -332,10 +332,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../THREAT_MODEL/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat model
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -351,6 +378,153 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#scope-and-assumptions" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Scope and assumptions
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#assets-and-trust-boundaries" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Assets and trust boundaries
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#safety-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enforced-protections-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enforced protections (current)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caller-contracts-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caller contracts (required)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-gaps-and-residual-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known gaps and residual risk
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reviewer-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reviewer checklist
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reviewer checklist">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#code-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Code checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#recommended-reviewer-commands" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Recommended reviewer commands
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -440,37 +614,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Design
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../design/" class="md-nav__link">
         
   
   
@@ -486,131 +633,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#header-layout-the-layers-made-physical" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Header layout (the layers, made physical)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#1-sources-studied-and-what-was-taken-from-each" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. Sources studied and what was taken from each
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="1. Sources studied and what was taken from each">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#c26-realized-nanom26" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        C++26: realized (nanom26)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-core-model" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. Core model
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-nom-feature-coverage-matrix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. nom feature coverage matrix
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-reflection-registration-layer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Reflection &amp; registration layer
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-schema-columnar-layer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Schema + columnar layer
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-ergonomic-pledges-checked-by-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Ergonomic pledges (checked by tests)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-test-workloads" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Test workloads
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -866,10 +888,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#header-layout-the-layers-made-physical" class="md-nav__link">
+  <a href="#scope-and-assumptions" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Header layout (the layers, made physical)
+        Scope and assumptions
       
     </span>
   </a>
@@ -877,22 +899,99 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#1-sources-studied-and-what-was-taken-from-each" class="md-nav__link">
+  <a href="#assets-and-trust-boundaries" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. Sources studied and what was taken from each
+        Assets and trust boundaries
       
     </span>
   </a>
   
-    <nav class="md-nav" aria-label="1. Sources studied and what was taken from each">
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#safety-goals" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety goals
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#enforced-protections-current" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Enforced protections (current)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#caller-contracts-required" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Caller contracts (required)
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#known-gaps-and-residual-risk" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Known gaps and residual risk
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#reviewer-checklist" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Reviewer checklist
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Reviewer checklist">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#c26-realized-nanom26" class="md-nav__link">
+  <a href="#code-checks" class="md-nav__link">
     <span class="md-ellipsis">
       
-        C++26: realized (nanom26)
+        Code checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#test-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Test checks
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#performance-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Performance checks
       
     </span>
   </a>
@@ -905,65 +1004,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-core-model" class="md-nav__link">
+  <a href="#recommended-reviewer-commands" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. Core model
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-nom-feature-coverage-matrix" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. nom feature coverage matrix
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#4-reflection-registration-layer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        4. Reflection &amp; registration layer
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#5-schema-columnar-layer" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        5. Schema + columnar layer
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#6-ergonomic-pledges-checked-by-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        6. Ergonomic pledges (checked by tests)
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#7-test-workloads" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        7. Test workloads
+        Recommended reviewer commands
       
     </span>
   </a>
@@ -990,287 +1034,138 @@
   
 
 
-<h1 id="nanom-design">nanom — design<a class="headerlink" href="#nanom-design" title="Permanent link">&para;</a></h1>
-<p><code>nanom</code> is a header-only C++23 parser-combinator library for <strong>binary-first</strong>
-parsing, modeled on Rust's <a href="https://github.com/rust-bakery/nom">nom</a>, with three
-extra pillars nom does not have:</p>
+<h1 id="nanom-threat-model-and-reviewer-checklist">nanom threat model and reviewer checklist<a class="headerlink" href="#nanom-threat-model-and-reviewer-checklist" title="Permanent link">&para;</a></h1>
+<p>This page describes what nanom's safety features do and do not guarantee, and
+provides a concrete checklist for external memory-safety review.</p>
+<h2 id="scope-and-assumptions">Scope and assumptions<a class="headerlink" href="#scope-and-assumptions" title="Permanent link">&para;</a></h2>
+<p>nanom is a zero-copy parser library. Its core data model (<code>input</code>, <code>bytes</code>,
+<code>view&lt;T&gt;</code>) references caller-owned memory. Safety depends on a mix of:</p>
+<ul>
+<li>library-enforced checks (bounds, streaming invariants, view guards, generation checks),</li>
+<li>caller contracts (lifetime, immutability while views are live),</li>
+<li>build/runtime hardening choices (sanitizers, fuzzing, defensive profile flags).</li>
+</ul>
+<p>Out of scope:</p>
+<ul>
+<li>confidentiality/integrity beyond process memory safety,</li>
+<li>attacker model involving arbitrary code execution outside parser input,</li>
+<li>side-channel hardening.</li>
+</ul>
+<h2 id="assets-and-trust-boundaries">Assets and trust boundaries<a class="headerlink" href="#assets-and-trust-boundaries" title="Permanent link">&para;</a></h2>
+<p>Assets:</p>
+<ul>
+<li>process memory integrity and availability,</li>
+<li>parser correctness under malformed/untrusted byte streams.</li>
+</ul>
+<p>Trust boundaries:</p>
+<ul>
+<li><strong>untrusted input bytes</strong> crossing into parser combinators,</li>
+<li><strong>caller-managed buffer ownership/lifetime</strong> crossing into zero-copy views.</li>
+</ul>
+<h2 id="safety-goals">Safety goals<a class="headerlink" href="#safety-goals" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Struct registration / reflection</strong> — any C struct (plus explicit-endian and
-   bit-field wrappers) can be registered and parsed zero-copy, with
-   <code>view&lt;T&gt;.get&lt;"field"&gt;()</code> string-literal access.</li>
-<li><strong>Schema generation</strong> — a registered struct yields a <code>schema</code> object that can
-   be emitted as an Arrow C-Data format string (nanoarrow / Lance), an Avro JSON
-   schema, or JSON/CSV for debugging.</li>
-<li><strong>Columnar chunked storage</strong> — <code>soa&lt;T&gt;</code> accumulates parse results
-   column-wise in fixed-size chunks so results can be handed to nanoarrow /
-   nanolance buffers without a transpose.</li>
+<li>Prevent out-of-bounds reads on parse path.</li>
+<li>Prevent null/uninitialized view dereference.</li>
+<li>Detect stale/dangling tracked buffer access when generation tracking is enabled.</li>
+<li>Keep streaming behavior deterministic under short prefixes (<code>incomplete</code> with bounded <code>needed</code>).</li>
+<li>Preserve low-overhead hot-path behavior while allowing stricter opt-ins.</li>
 </ol>
-<p>Target users are AI agents: the API mirrors nom's names 1:1 so prior nom
-knowledge transfers without reading docs, and the docs are a cheat-sheet plus
-copy-paste examples.</p>
-<h3 id="header-layout-the-layers-made-physical">Header layout (the layers, made physical)<a class="headerlink" href="#header-layout-the-layers-made-physical" title="Permanent link">&para;</a></h3>
-<p>The three extra pillars are exactly why nanom is bigger than nom — so they live in their own headers,
-and the file tree reads as the dependency stack. <code>nanom.hpp</code> is a thin umbrella that includes them in
-order; each header also stands alone (the CI <code>header-selfcontained</code> job compiles every
-<code>include/nanom/*.hpp</code> by itself):</p>
-<ul>
-<li><code>nom.hpp</code> — the <strong>pure nom parallel</strong>: <code>input</code>/<code>result</code>/<code>Parser</code>, the combinator vocabulary, binary</li>
-<li>text numbers, bits. No reflection, schema, or storage. This is the "as fast, nicer-looking than
-  rust-nom" surface, and it depends on nothing but <code>prelude.hpp</code>.</li>
-<li><code>reflect.hpp</code> — pillar 1: <code>fixed_string</code>, wire types, the <code>describe&lt;T&gt;</code> seam, <code>strct&lt;&gt;</code>/<code>overlay&lt;&gt;</code>.
-  Ends by including the two <code>describe&lt;T&gt;</code> providers (<code>nanom26.hpp</code> reflection / <code>describe_macro.hpp</code>).</li>
-<li><code>schema.hpp</code> — pillar 2 (Arrow/Avro/JSON/CSV). <code>soa.hpp</code> — pillar 3 (columnar). <code>bulk.hpp</code> — the
-  opt-in data-parallel scatter on top of <code>soa</code>.</li>
-</ul>
-<p>Verified one-directional: nothing in <code>nom.hpp</code>/<code>reflect.hpp</code> references any schema/soa symbol, so the
-"extras" are strictly additive. The split is a pure code move — same code, same order, wrapped in
-per-header guards.</p>
-<hr />
-<h2 id="1-sources-studied-and-what-was-taken-from-each">1. Sources studied and what was taken from each<a class="headerlink" href="#1-sources-studied-and-what-was-taken-from-each" title="Permanent link">&para;</a></h2>
+<h2 id="enforced-protections-current">Enforced protections (current)<a class="headerlink" href="#enforced-protections-current" title="Permanent link">&para;</a></h2>
 <table>
 <thead>
 <tr>
-<th>Library</th>
-<th>What nanom takes</th>
-<th>What nanom rejects</th>
+<th>Protection</th>
+<th>Mechanism</th>
+<th>Default</th>
 </tr>
 </thead>
 <tbody>
 <tr>
-<td><strong>rust nom</strong></td>
-<td>The whole combinator vocabulary (<code>tag</code>, <code>alt</code>, <code>many0</code>, <code>preceded</code>, …), the <code>IResult = (rest, value)</code> shape, the three-way error model (<em>Error</em> / <em>Failure</em> / <em>Incomplete</em>), <code>cut</code>, <code>context</code>, streaming-vs-complete, the bits sub-parser idea</td>
-<td>Rust-specific trait plumbing; nom's <code>VerboseError</code> heap allocation (we use a fixed inline context stack)</td>
+<td>Consume bounds checks</td>
+<td><code>take</code>, <code>tag</code>, numbers, <code>overlay</code>, <code>strct</code> gate on <code>in.size()</code></td>
+<td>on</td>
 </tr>
 <tr>
-<td><strong>Boost.Parser</strong></td>
-<td>The idea that error messages must be <em>localized</em> (offset + caret/hex context) and human-quality; <code>separated_list</code> ergonomics</td>
-<td>Global operator overloading (<code>&gt;&gt;</code>, <code>|</code> on arbitrary types) — too spooky for agents; heavy TU cost; text-first orientation</td>
+<td>Streaming short-prefix handling</td>
+<td><code>nm::streaming</code> + <code>errk::incomplete</code> + bounded <code>needed</code></td>
+<td>on</td>
 </tr>
 <tr>
-<td><strong>acd1034/monadic-parser-combinator</strong></td>
-<td>Proof that C++20 concepts + monadic bind make clean combinators; <code>and_then</code>/<code>or_else</code> naming for the monadic layer</td>
-<td><code>std::shared_ptr</code>-based parser storage (kills speed); string-only input</td>
+<td>Needed cap</td>
+<td><code>max_incomplete_needed</code> (64 KiB) clamp</td>
+<td>on</td>
 </tr>
 <tr>
-<td><strong>hexorer/parsi</strong></td>
-<td>The "always <code>constexpr</code>, always inlinable function objects" discipline; benchmark-driven zero-overhead claims</td>
-<td>Char-only input model</td>
+<td>Null view access guard</td>
+<td><code>NANOM_GUARD_VIEWS</code> in <code>view::get/raw/to_struct</code></td>
+<td>on</td>
 </tr>
 <tr>
-<td><strong>OneBit74/ezpz</strong></td>
-<td>The "results decay into your own structs" goal — realized here as <code>strct&lt;T&gt;()</code> aggregate parsing</td>
-<td>Context-object mutation style</td>
+<td>Null input pointer handling</td>
+<td><code>from(nullptr, n&gt;0)</code> =&gt; empty input</td>
+<td>on</td>
 </tr>
 <tr>
-<td><strong>Boost.Describe</strong></td>
-<td>The registration-macro approach (<code>NANOM_DESCRIBE</code>) as the C++23 stand-in for real reflection</td>
-<td>Dependency itself — nanom re-implements the 5% it needs so the header stays standalone</td>
+<td>Defensive cursor helpers</td>
+<td><code>safe_at</code>, <code>checked_advance</code></td>
+<td>available</td>
+</tr>
+<tr>
+<td>Generation lifetime checks</td>
+<td><code>wire_arena</code>, <code>NANOM_GENERATION</code>, <code>check_wire_access</code></td>
+<td>on</td>
 </tr>
 </tbody>
 </table>
-<h3 id="c26-realized-nanom26">C++26: realized (nanom26)<a class="headerlink" href="#c26-realized-nanom26" title="Permanent link">&para;</a></h3>
-<p>All struct metadata flows through one customization point — <code>describe&lt;T&gt;</code> returning a tuple of
-<code>detail::fld&lt;Name, MemPtr&gt;</code> — and that seam now has <strong>two interchangeable providers</strong>:</p>
-<ul>
-<li><strong><code>nanom26.hpp</code> (the primary design):</strong> a constrained partial specialization
-  <code>template&lt;Reflectable T&gt; struct describe&lt;T&gt;</code> synthesizes the tuple by P2996 static reflection —
-  every eligible struct is auto-described, macro-free. <code>Reflectable</code> = named non-union class, no
-  bases, ≥1 NSDM, all members public/named/non-bitfield, namespace chain not rooted in <code>std</code> or
-  <code>nanom</code> (that fence keeps <code>std::array</code>, <code>be&lt;&gt;</code>, <code>ubits&lt;&gt;</code> on their dedicated core branches).
-  Qualified type names are rebuilt via a <code>parent_of</code> walk so <code>describe&lt;T&gt;::name()</code> matches the
-  macro's <code>#T</code> spelling exactly. Implementation deliberately avoids expansion statements and
-  <code>define_static_string</code>: per-index <code>constexpr std::meta::info</code> variables + <code>index_sequence</code>
-  expansion + <code>&amp;[:m:]</code> splices are the entire fork-facing surface (~6 <code>std::meta</code> calls).</li>
-<li><strong><code>describe_macro.hpp</code>:</strong> <code>NANOM_DESCRIBE</code> synthesizes the identical tuple with the
-  preprocessor (C++23). Under reflection the macro degrades to
-  <code>static_assert(Described&lt;T&gt;)</code> — every legacy registration line is a coverage proof — and
-  <code>NANOM_DESCRIBE_FORCE_MACRO</code> restores explicit registration (an explicit specialization beats
-  the partial one, so it doubles as the per-type override, e.g. registering a member subset).</li>
-</ul>
-<p>The core consumes only the seam (via <code>detail::for_each_field</code>) and cannot tell the providers
-apart — proven by running the full test + golden-parity corpus in pure-reflection mode,
-byte-identical (see <code>docs/P2996_COMPAT.md</code>). Semantic note: under C++26 every eligible aggregate
-satisfies <code>Described</code>, so "forgot to register" becomes silent success — that is the feature.
-<code>NANOM_HD</code> (CUDA host/device) remains a macro by nature; nvcc TUs keep the macro path since they
-never probe true for reflection.</p>
-<hr />
-<h2 id="2-core-model">2. Core model<a class="headerlink" href="#2-core-model" title="Permanent link">&para;</a></h2>
-<div class="language-text highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>input  = { const std::byte* first, last; const std::byte* base }   // zero-copy view + error offsets
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>result&lt;T&gt; = std::expected&lt; done&lt;T&gt;, error &gt;                        // done&lt;T&gt; = { T value; input rest; }
-<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>Parser&lt;T&gt; = callable: (input) -&gt; result&lt;T&gt;                         // a concept, not a base class
-</code></pre></div>
-<ul>
-<li><strong>Zero-copy, always.</strong> No parser allocates or copies input bytes. <code>take</code>,
-  <code>tag</code>, <code>recognize</code>, <code>rest</code> return <code>bytes</code> (a <code>std::span&lt;const std::byte&gt;</code>
-  into the original buffer); text parsers return <code>std::string_view</code> into it.
-  Multi-combinators (<code>many0</code>, …) collect <em>values</em> into a container the caller
-  controls (default <code>std::vector</code>, or fold variants for none).</li>
-<li><strong>Errors are POD.</strong> <code>error</code> = kind (error/failure/incomplete) + absolute
-  offset + expected-code + a fixed inline stack of up to 8 <code>context()</code> frames.
-  No allocation on the failure path; <code>alt</code> backtracking is therefore free.
-  <code>error::render(input)</code> produces the pretty localized message (offset,
-  hex window, caret, context chain) — you pay for formatting only when you
-  print.</li>
-<li><strong>Failure vs Error (<code>cut</code>).</strong> Exactly nom's semantics: <code>alt</code> and <code>opt</code>
-  backtrack on <em>Error</em> but propagate <em>Failure</em>; <code>cut(p)</code> upgrades. This is what
-  makes error messages point at the real problem instead of the last
-  alternative.</li>
-<li><strong>Incomplete / streaming.</strong> Parsers that run out of input return
-  <code>incomplete(n)</code> with bytes still needed — usable for packet reassembly. The
-  <code>complete(p)</code> adapter converts Incomplete→Error for whole-buffer parsing
-  (nom's complete/streaming split, without duplicating every module).</li>
-</ul>
-<h2 id="3-nom-feature-coverage-matrix">3. nom feature coverage matrix<a class="headerlink" href="#3-nom-feature-coverage-matrix" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>nom module</th>
-<th>nom items</th>
-<th>nanom status</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>bytes</code></td>
-<td>tag, tag_no_case, take, take_while(_m_n/1), take_till(1), take_until, is_a, is_not</td>
-<td>✔ all, byte- and char-flavored</td>
-</tr>
-<tr>
-<td><code>character</code></td>
-<td>char/one_of/none_of/satisfy/anychar, alpha0/1, digit0/1, hex_digit, alphanumeric, space/multispace, line_ending, crlf, newline, tab, not_line_ending</td>
-<td>✔ (<code>chr</code> instead of reserved <code>char</code>)</td>
-</tr>
-<tr>
-<td><code>sequence</code></td>
-<td>tuple, pair, separated_pair, preceded, terminated, delimited</td>
-<td>✔ (<code>seq</code> = nom <code>tuple</code>, returns <code>std::tuple</code>)</td>
-</tr>
-<tr>
-<td><code>branch</code></td>
-<td>alt, permutation</td>
-<td>✔</td>
-</tr>
-<tr>
-<td><code>multi</code></td>
-<td>many0/1, many_till, many_m_n, count, fold_many0/1/m_n, separated_list0/1, length_count, length_data, length_value</td>
-<td>✔</td>
-</tr>
-<tr>
-<td><code>combinator</code></td>
-<td>map, map_res, map_opt, map_parser, flat_map, opt, cond, peek, not, recognize, consumed, value, verify, success, fail, cut, complete, all_consuming, rest, rest_len, eof, into</td>
-<td>✔ (<code>not_</code> for reserved word)</td>
-</tr>
-<tr>
-<td><code>number</code></td>
-<td>be/le × u8..u64,i8..i64,f32,f64 (+ u24/u48 etc.), text <code>float</code>/<code>double</code>/dec/hex</td>
-<td>✔ + native-endian <code>ne_*</code></td>
-</tr>
-<tr>
-<td><code>bits</code></td>
-<td>bits(), bytes(), take(n bits), tag</td>
-<td>✔ <strong>plus</strong> LSB0 bit order and per-field mixing (nom is MSB0-only)</td>
-</tr>
-<tr>
-<td><code>error</code></td>
-<td>ParseError, context, VerboseError, convert_error</td>
-<td>✔ allocation-free equivalent, <code>error::render</code> ≈ <code>convert_error</code></td>
-</tr>
-<tr>
-<td>streaming</td>
-<td>Incomplete(Needed)</td>
-<td>✔</td>
-</tr>
-</tbody>
-</table>
-<p>Beyond nom: <code>strct&lt;T&gt;()</code>, <code>view&lt;T&gt;</code> overlays, <code>schema_of&lt;T&gt;()</code>, <code>soa&lt;T&gt;</code>
-columnar chunking, Arrow/Avro/JSON/CSV emission.</p>
-<h2 id="4-reflection-registration-layer">4. Reflection &amp; registration layer<a class="headerlink" href="#4-reflection-registration-layer" title="Permanent link">&para;</a></h2>
-<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">eth_hdr</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="w">  </span><span class="n">mac_t</span><span class="w">          </span><span class="n">dst</span><span class="p">;</span><span class="w">       </span><span class="c1">// std::array&lt;std::uint8_t,6&gt;</span>
-<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="w">  </span><span class="n">mac_t</span><span class="w">          </span><span class="n">src</span><span class="p">;</span>
-<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="n">nm</span><span class="o">::</span><span class="n">be</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="kt">uint16_t</span><span class="o">&gt;</span><span class="w"> </span><span class="n">eth_type</span><span class="p">;</span><span class="w">   </span><span class="c1">// explicit endianness in the type</span>
-<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="p">};</span>
-<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="n">NANOM_DESCRIBE</span><span class="p">(</span><span class="n">eth_hdr</span><span class="p">,</span><span class="w"> </span><span class="n">dst</span><span class="p">,</span><span class="w"> </span><span class="n">src</span><span class="p">,</span><span class="w"> </span><span class="n">eth_type</span><span class="p">);</span>
-</code></pre></div>
-<p>Field types the registry understands:</p>
-<table>
-<thead>
-<tr>
-<th>type</th>
-<th>meaning</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>integral / floating T</td>
-<td>native endianness (must be explicit to serialize: prefer be/le)</td>
-</tr>
-<tr>
-<td><code>nm::be&lt;T&gt;</code> / <code>nm::le&lt;T&gt;</code></td>
-<td>big/little-endian wire integer/float; storage is raw bytes, converts on access — safe to mix in one struct</td>
-</tr>
-<tr>
-<td><code>nm::ubits&lt;N&gt;</code> / <code>nm::ibits&lt;N&gt;</code></td>
-<td>N-bit field inside a <code>nm::bitpack&lt;Order, ...&gt;</code> group</td>
-</tr>
-<tr>
-<td><code>std::array&lt;T,N&gt;</code></td>
-<td>fixed list</td>
-</tr>
-<tr>
-<td>nested described struct</td>
-<td>struct column</td>
-</tr>
-</tbody>
-</table>
-<p>Two ways to parse a registered struct:</p>
-<ul>
-<li><code>strct&lt;T&gt;()</code> — a real combinator: parses each field in declaration order
-  (through bit groups, endian wrappers, nested structs), aggregate-initializes
-  a <code>T</code> <strong>by value</strong>. Composable with everything (<code>many0(strct&lt;eth_hdr&gt;())</code>).</li>
-<li><code>overlay&lt;T&gt;()</code> — zero-copy: validates length, returns <code>view&lt;T&gt;</code> pointing at
-  the wire bytes. <code>view&lt;T&gt;::get&lt;"eth_type"&gt;()</code> decodes on access (endian/bit
-  extraction), <code>get&lt;"dst"&gt;()</code> of an array field returns a span. This requires
-  <code>T</code> to have a fully-defined wire layout (all multi-byte fields endian-wrapped,
-  packed layout) — checked at compile time, misuse is a <code>static_assert</code>.</li>
-</ul>
-<p><code>view.get&lt;"name"&gt;()</code> uses a <code>fixed_string</code> NTTP; unknown names fail at compile
-time with the field list in the error.</p>
-<h2 id="5-schema-columnar-layer">5. Schema + columnar layer<a class="headerlink" href="#5-schema-columnar-layer" title="Permanent link">&para;</a></h2>
-<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="k">constexpr</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">s</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">schema_of</span><span class="o">&lt;</span><span class="n">eth_hdr</span><span class="o">&gt;</span><span class="p">();</span><span class="w">      </span><span class="c1">// walkable schema tree</span>
-<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="n">s</span><span class="p">.</span><span class="n">to_arrow_format</span><span class="p">(</span><span class="n">field</span><span class="p">);</span><span class="w">   </span><span class="c1">// &quot;w:6&quot;, &quot;S&quot; (u16) … per Arrow C data interface</span>
-<a id="__codelineno-2-3" name="__codelineno-2-3" href="#__codelineno-2-3"></a><span class="n">nm</span><span class="o">::</span><span class="n">avro_schema</span><span class="o">&lt;</span><span class="n">eth_hdr</span><span class="o">&gt;</span><span class="p">()</span><span class="w">  </span><span class="c1">// {&quot;type&quot;:&quot;record&quot;,&quot;name&quot;:&quot;eth_hdr&quot;,...}</span>
-<a id="__codelineno-2-4" name="__codelineno-2-4" href="#__codelineno-2-4"></a><span class="n">nm</span><span class="o">::</span><span class="n">to_json</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">csv_header</span><span class="o">&lt;</span><span class="n">T</span><span class="o">&gt;</span><span class="p">()</span><span class="w"> </span><span class="o">/</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">csv_row</span><span class="p">(</span><span class="n">v</span><span class="p">)</span><span class="w">   </span><span class="c1">// debug dumps</span>
-<a id="__codelineno-2-5" name="__codelineno-2-5" href="#__codelineno-2-5"></a>
-<a id="__codelineno-2-6" name="__codelineno-2-6" href="#__codelineno-2-6"></a><span class="n">nm</span><span class="o">::</span><span class="n">soa</span><span class="o">&lt;</span><span class="n">eth_hdr</span><span class="o">&gt;</span><span class="w"> </span><span class="n">cols</span><span class="p">(</span><span class="cm">/*chunk_rows=*/</span><span class="mi">65536</span><span class="p">);</span>
-<a id="__codelineno-2-7" name="__codelineno-2-7" href="#__codelineno-2-7"></a><span class="n">cols</span><span class="p">.</span><span class="n">push</span><span class="p">(</span><span class="n">hdr</span><span class="p">);</span><span class="w">                       </span><span class="c1">// field-wise append, SoA</span>
-<a id="__codelineno-2-8" name="__codelineno-2-8" href="#__codelineno-2-8"></a><span class="n">cols</span><span class="p">.</span><span class="n">for_each_chunk</span><span class="p">([</span><span class="o">&amp;</span><span class="p">](</span><span class="k">auto</span><span class="o">&amp;&amp;</span><span class="w"> </span><span class="n">chunk</span><span class="p">){</span><span class="w"> </span><span class="cm">/* chunk.column&lt;&quot;eth_type&quot;&gt;() -&gt; span */</span><span class="w"> </span><span class="p">});</span>
-</code></pre></div>
-<p><code>soa&lt;T&gt;</code> stores one contiguous buffer per (flattened) leaf field, sealed into
-chunks of <code>chunk_rows</code> — exactly the shape nanoarrow <code>ArrowArray</code> /
-Lance fragment writers want, so dumping is <code>memcpy</code>-free (hand the spans to
-<code>ArrowBufferAppend</code> or wrap them as imported buffers).</p>
-<h2 id="6-ergonomic-pledges-checked-by-tests">6. Ergonomic pledges (checked by tests)<a class="headerlink" href="#6-ergonomic-pledges-checked-by-tests" title="Permanent link">&para;</a></h2>
+<h2 id="caller-contracts-required">Caller contracts (required)<a class="headerlink" href="#caller-contracts-required" title="Permanent link">&para;</a></h2>
 <ol>
-<li>Every public name a nom user would type either exists or has the obvious
-   C++ spelling (<code>chr</code>, <code>not_</code>, <code>seq</code>) — see docs/CHEATSHEET.md.</li>
-<li>Failure path never allocates.</li>
-<li><code>sizeof(error) &lt;= 160</code> and <code>result&lt;int&gt;</code> fits in two cache lines.</li>
-<li>A wrong <code>get&lt;"nmae"&gt;()</code> is a compile error listing valid fields.</li>
-<li><code>error::render()</code> output contains: absolute offset, hex window with caret,
-   innermost expected-token, outermost context chain — in that order.</li>
+<li>Keep the backing buffer alive while any <code>input</code>, <code>bytes</code>, or <code>view&lt;T&gt;</code> references it.</li>
+<li>Treat wire bytes as immutable while overlays/views are live.</li>
+<li>Call <code>wire_arena.invalidate()</code> / <code>open()</code> correctly on free/realloc/move of tracked buffers.</li>
 </ol>
-<h2 id="7-test-workloads">7. Test workloads<a class="headerlink" href="#7-test-workloads" title="Permanent link">&para;</a></h2>
+<p>Violating these can produce UB when checks are disabled or bypassed by caller behavior.</p>
+<h2 id="known-gaps-and-residual-risk">Known gaps and residual risk<a class="headerlink" href="#known-gaps-and-residual-risk" title="Permanent link">&para;</a></h2>
 <ul>
-<li><strong>Ethernet</strong>: Eth II → VLAN (bit fields: PCP/DEI/VID) → IPv4 (mixed bits +
-  BE fields, options via length_data) → UDP/TCP → TLV payload
-  (<code>length_value</code>, <code>many0</code>), from a synthetic pcap-like record stream.</li>
-<li><strong>ELF</strong>: ident magic (<code>tag</code>), class/endianness switch mid-parse (the same
-  header parsed BE or LE depending on <code>EI_DATA</code> — shows runtime endian
-  selection), program headers via <code>count</code> + offset seeking.</li>
-<li><strong>FAT16</strong>: boot sector overlay (packed, mixed widths), directory entries
-  (fixed 32-byte records, <code>many0</code> + <code>verify</code> filters), 8.3 names.</li>
+<li>In-place mutation without generation transition is contract-level unless actively tracked by caller.</li>
+<li>Not all misuse patterns are runtime-detectable without additional provenance metadata.</li>
+<li>Some checks are assertion-based and behavior differs by build policy.</li>
 </ul>
+<p>Track these in failing/gap safety tests and fuzz targets as they are added.</p>
+<h2 id="reviewer-checklist">Reviewer checklist<a class="headerlink" href="#reviewer-checklist" title="Permanent link">&para;</a></h2>
+<p>Use this checklist for PRs touching parse path, lifetime model, or docs claims.</p>
+<h3 id="code-checks">Code checks<a class="headerlink" href="#code-checks" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] Bounds checks still dominate all consume paths before memory access.</li>
+<li>[ ] <code>nm::streaming</code> paths propagate <code>incomplete</code> and preserve bounded <code>needed</code>.</li>
+<li>[ ] <code>view::get/raw/to_struct</code> retain null guard and (when enabled) generation checks.</li>
+<li>[ ] No new unchecked pointer arithmetic in hot path without prior validated size.</li>
+<li>[ ] Contract changes are documented in <code>MEMORY_SAFETY.md</code> and README/docs index.</li>
+</ul>
+<h3 id="test-checks">Test checks<a class="headerlink" href="#test-checks" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] <code>nanom_tests</code> includes incremental streaming behavior (<code>test_streaming_incremental</code>).</li>
+<li>[ ] Memory-safety suites pass for expected profile (<code>nanom_memory_safety_tests</code>,
+      <code>nanom_generation_tests</code> where applicable).</li>
+<li>[ ] Any accepted residual risk has a test or documented rationale.</li>
+</ul>
+<h3 id="performance-checks">Performance checks<a class="headerlink" href="#performance-checks" title="Permanent link">&para;</a></h3>
+<ul>
+<li>[ ] Safety-path changes benchmarked (<code>bench/safety_microbench.cpp</code> and/or
+      <code>bench/compare_rust.py</code> where relevant).</li>
+<li>[ ] Regressions beyond noise are either justified or guarded by opt-in policy.</li>
+</ul>
+<h2 id="recommended-reviewer-commands">Recommended reviewer commands<a class="headerlink" href="#recommended-reviewer-commands" title="Permanent link">&para;</a></h2>
+<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a><span class="c1"># core tests</span>
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span>-DCMAKE_CXX_COMPILER<span class="o">=</span>g++-13
+<a id="__codelineno-0-3" name="__codelineno-0-3" href="#__codelineno-0-3"></a>cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"> </span>-j
+<a id="__codelineno-0-4" name="__codelineno-0-4" href="#__codelineno-0-4"></a>ctest<span class="w"> </span>--test-dir<span class="w"> </span>build<span class="w"> </span>--output-on-failure
+<a id="__codelineno-0-5" name="__codelineno-0-5" href="#__codelineno-0-5"></a>
+<a id="__codelineno-0-6" name="__codelineno-0-6" href="#__codelineno-0-6"></a><span class="c1"># focused safety tests (when generation target exists in this branch)</span>
+<a id="__codelineno-0-7" name="__codelineno-0-7" href="#__codelineno-0-7"></a>ctest<span class="w"> </span>--test-dir<span class="w"> </span>build<span class="w"> </span>-R<span class="w"> </span><span class="s2">&quot;nanom_memory_safety_tests|nanom_generation_tests&quot;</span><span class="w"> </span>--output-on-failure
+<a id="__codelineno-0-8" name="__codelineno-0-8" href="#__codelineno-0-8"></a>
+<a id="__codelineno-0-9" name="__codelineno-0-9" href="#__codelineno-0-9"></a><span class="c1"># baseline perf sanity</span>
+<a id="__codelineno-0-10" name="__codelineno-0-10" href="#__codelineno-0-10"></a>python3<span class="w"> </span>bench/compare_rust.py<span class="w"> </span>--build<span class="w"> </span>--safety<span class="w"> </span>both<span class="w"> </span>--iters<span class="w"> </span><span class="m">20000</span>
+</code></pre></div>
 
 
 
@@ -1306,7 +1201,7 @@ Lance fragment writers want, so dumping is <code>memcpy</code>-free (hand the sp
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../NOM_PARITY_AUDIT/" class="md-footer__link md-footer__link--prev" aria-label="Previous: nom parity audit">
+          <a href="../MEMORY_SAFETY/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Memory safety">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1316,20 +1211,20 @@ Lance fragment writers want, so dumping is <code>memcpy</code>-free (hand the sp
                 Previous
               </span>
               <div class="md-ellipsis">
-                nom parity audit
+                Memory safety
               </div>
             </div>
           </a>
         
         
           
-          <a href="../P2996_COMPAT/" class="md-footer__link md-footer__link--next" aria-label="Next: C++26 reflection">
+          <a href="../getting-started/" class="md-footer__link md-footer__link--next" aria-label="Next: Getting started">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                C++26 reflection
+                Getting started
               </div>
             </div>
             <div class="md-footer__button md-icon">

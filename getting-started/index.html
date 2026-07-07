@@ -13,7 +13,7 @@
         <link rel="canonical" href="https://yoavbendor.github.io/nanom/getting-started/">
       
       
-        <link rel="prev" href="..">
+        <link rel="prev" href="../THREAT_MODEL/">
       
       
         <link rel="next" href="../CHEATSHEET/">
@@ -305,6 +305,60 @@
       
   
   
+  
+  
+    <li class="md-nav__item">
+      <a href="../MEMORY_SAFETY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="../THREAT_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
     
   
   
@@ -372,6 +426,17 @@
     <span class="md-ellipsis">
       
         Install
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#safety-defaults-and-knobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety defaults and knobs
       
     </span>
   </a>
@@ -547,10 +612,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
             
   
   
@@ -568,8 +633,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -762,6 +827,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#safety-defaults-and-knobs" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Safety defaults and knobs
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#your-first-parser" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -846,6 +922,15 @@ is header-only. Or grab the generated single-file
 </code></pre></div>
 <p>Or include just the layer you need — <code>#include &lt;nanom/nom.hpp&gt;</code> gives the <strong>parser-only</strong> subset (the
 pure rust-nom parallel), with none of the reflection/schema/soa extras.</p>
+<h2 id="safety-defaults-and-knobs">Safety defaults and knobs<a class="headerlink" href="#safety-defaults-and-knobs" title="Permanent link">&para;</a></h2>
+<p>nanom defaults to strong runtime safety checks:</p>
+<ul>
+<li><code>NANOM_GENERATION=1</code> (tracked lifetime checks for <code>input</code> / <code>bytes</code> / <code>view</code>)</li>
+<li><code>NANOM_GUARD_VIEWS=1</code> (guards null/uninitialized view access)</li>
+<li><code>NANOM_GENERATION_THROW=0</code> (set to <code>1</code> to throw <code>generation_exception</code> instead of abort+report)</li>
+</ul>
+<p>Override per target/build with compile definitions (<code>-DNANOM_GENERATION=0</code>, etc.). See
+<a href="../MEMORY_SAFETY/">MEMORY_SAFETY.md</a> for contracts and review guidance.</p>
 <h2 id="your-first-parser">Your first parser<a class="headerlink" href="#your-first-parser" title="Permanent link">&para;</a></h2>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nanom/nanom.hpp&gt;</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;array&gt;</span>
@@ -928,7 +1013,7 @@ fork.</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href=".." class="md-footer__link md-footer__link--prev" aria-label="Previous: Home">
+          <a href="../THREAT_MODEL/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Threat model">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -938,7 +1023,7 @@ fork.</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Home
+                Threat model
               </div>
             </div>
           </a>

@@ -14,7 +14,7 @@
       
       
       
-        <link rel="next" href="getting-started/">
+        <link rel="next" href="MEMORY_SAFETY/">
       
       
         
@@ -339,6 +339,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#streaming-safety-posture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streaming + safety posture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#as-fast-as-rust-nom-proven-not-asserted" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -375,6 +386,60 @@
   
 </nav>
       
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="MEMORY_SAFETY/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Memory safety
+  
+
+    
+  </span>
+  
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
+      <a href="THREAT_MODEL/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Threat model
+  
+
+    
+  </span>
+  
+  
+
+      </a>
     </li>
   
 
@@ -534,10 +599,10 @@
       
         
         
-        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_7" >
+        <input class="md-nav__toggle md-toggle " type="checkbox" id="__nav_9" >
         
           
-          <label class="md-nav__link" for="__nav_7" id="__nav_7_label" tabindex="">
+          <label class="md-nav__link" for="__nav_9" id="__nav_9_label" tabindex="">
             
   
   
@@ -555,8 +620,8 @@
             <span class="md-nav__icon md-icon"></span>
           </label>
         
-        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_7_label" aria-expanded="false">
-          <label class="md-nav__title" for="__nav_7">
+        <nav class="md-nav" data-md-level="1" aria-labelledby="__nav_9_label" aria-expanded="false">
+          <label class="md-nav__title" for="__nav_9">
             <span class="md-nav__icon md-icon"></span>
             
   
@@ -738,6 +803,17 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
+  <a href="#streaming-safety-posture" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Streaming + safety posture
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#as-fast-as-rust-nom-proven-not-asserted" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -800,9 +876,24 @@ automatic schemas (Apache Arrow / Avro / JSON / CSV), and columnar Struct-of-Arr
 nom-parallel parser is one self-contained header (<code>nom.hpp</code>); reflection and the data-tooling extras
 layer cleanly on top.</p>
 <p><a class="md-button md-button--primary" href="getting-started/">Get started</a>
+<a class="md-button md-button--primary" href="MEMORY_SAFETY/">Memory safety</a>
+<a class="md-button" href="THREAT_MODEL/">Threat model</a>
 <a class="md-button" href="CHEATSHEET/">Cheat sheet</a>
 <a class="md-button" href="https://yoavbendor.github.io/nanom/api/">API reference</a>
 <a class="md-button" href="https://github.com/yoavbendor/nanom">GitHub</a></p>
+<h2 id="streaming-safety-posture">Streaming + safety posture<a class="headerlink" href="#streaming-safety-posture" title="Permanent link">&para;</a></h2>
+<p>nanom follows nom's streaming contract directly: parse on <code>nm::streaming(input)</code>, and on short prefixes
+you get <code>errk::incomplete</code> with <code>needed</code> so callers can refill and retry.</p>
+<p>Safety defaults are now strong by default and configurable:</p>
+<ul>
+<li><code>NANOM_GUARD_VIEWS=1</code> — guard null/uninitialized <code>view</code> access</li>
+<li>safe null input handling (<code>from(nullptr, n&gt;0)</code> =&gt; empty input)</li>
+<li>bounded streaming <code>needed</code> (<code>max_incomplete_needed = 64 KiB</code>)</li>
+<li>checked cursor helpers (<code>safe_at</code>, <code>checked_advance</code>) for defensive code paths</li>
+</ul>
+<p>Reviewers: see the dedicated <a href="MEMORY_SAFETY/">memory-safety model and contracts</a> and the
+<a href="THREAT_MODEL/">threat model + checklist</a>, plus generation and streaming behavior tests in
+<code>tests/test_nanom.cpp</code> / <code>tests/test_memory_safety.cpp</code>.</p>
 <h2 id="as-fast-as-rust-nom-proven-not-asserted">As fast as Rust nom — proven, not asserted<a class="headerlink" href="#as-fast-as-rust-nom-proven-not-asserted" title="Permanent link">&para;</a></h2>
 <p>The headline question for a C++ nom-alike is <em>"is it actually as fast as Rust nom?"</em> nanom answers it
 falsifiably: the <strong>same streaming pcapng parse in both languages, on the same file, with output proven
@@ -821,33 +912,39 @@ Packet Block's fixed fields <strong>and walks all of its option TLVs</strong> �
 </thead>
 <tbody>
 <tr>
-<td><strong>nanom</strong> (<code>nm::streaming</code>)</td>
+<td><strong>nanom</strong> (<code>minimal</code>)</td>
 <td>EPB fields + all options</td>
-<td style="text-align: right;"><strong>~110</strong></td>
-<td style="text-align: right;">~13 GiB/s</td>
+<td style="text-align: right;"><strong>~84</strong></td>
+<td style="text-align: right;">~17 GiB/s</td>
+<td>identical</td>
+</tr>
+<tr>
+<td><strong>nanom</strong> (<code>full</code>)</td>
+<td>same + generation tracking</td>
+<td style="text-align: right;">~82</td>
+<td style="text-align: right;">~18 GiB/s</td>
 <td>identical</td>
 </tr>
 <tr>
 <td><strong>Rust nom</strong> (hand-written)</td>
 <td>EPB fields + all options (equal work)</td>
-<td style="text-align: right;">~119</td>
-<td style="text-align: right;">~12 GiB/s</td>
+<td style="text-align: right;">~83</td>
+<td style="text-align: right;">~18 GiB/s</td>
 <td>identical</td>
 </tr>
 <tr>
 <td>Rust <code>pcap-parser</code> lib</td>
 <td>same, + allocates options</td>
-<td style="text-align: right;">~203</td>
-<td style="text-align: right;">~7 GiB/s</td>
+<td style="text-align: right;">~138</td>
+<td style="text-align: right;">~11 GiB/s</td>
 <td>identical</td>
 </tr>
 </tbody>
 </table>
-<p><strong>Equal-work head-to-head: nanom ~110 ns/pkt vs stable Rust nom ~119 ns/pkt — parity</strong>, a hair in
-nanom's favour, both parsing the full block (fixed fields + every option) zero-copy with no per-packet
-allocation; against the real <code>pcap-parser</code> library doing the identical parse, nanom is ~1.85× faster.
-The claim is scoped and reproducible (<code>python3 bench/compare_rust.py --build</code>); it is not "nanom beats
-nom in general".</p>
+<p><strong>Equal-work head-to-head: nanom ~84 ns/pkt vs stable Rust nom ~83 ns/pkt — parity</strong>, both parsing the
+full block (fixed fields + every option) zero-copy with no per-packet allocation. The full safety
+profile stays within best-of-5 noise on this workload. Reproduce with
+<code>python3 bench/compare_rust.py --build --safety both</code>; this is scoped evidence, not a universal claim.</p>
 <h2 id="why-nanom">Why nanom<a class="headerlink" href="#why-nanom" title="Permanent link">&para;</a></h2>
 <ul>
 <li><strong>Zero-copy, always.</strong> Parsers return spans/views into your buffer.</li>
@@ -933,13 +1030,13 @@ nom in general".</p>
         
         
           
-          <a href="getting-started/" class="md-footer__link md-footer__link--next" aria-label="Next: Getting started">
+          <a href="MEMORY_SAFETY/" class="md-footer__link md-footer__link--next" aria-label="Next: Memory safety">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Getting started
+                Memory safety
               </div>
             </div>
             <div class="md-footer__button md-icon">
