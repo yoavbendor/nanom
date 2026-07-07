@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783425426979,
+  "lastUpdate": 1783425892982,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -571,6 +571,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 19.9,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "df8950960205c880a3236d80baa2eb1187ee1c66",
+          "message": "Merge pull request #16 from yoavbendor/cursor/safety-stage4-ci-perf-gate-1ef9\n\nStage 4: CI safety-first profile and perf budget gate",
+          "timestamp": "2026-07-07T15:03:56+03:00",
+          "tree_id": "130dd86f268c2289ca456a39178d53252a2715a7",
+          "url": "https://github.com/yoavbendor/nanom/commit/df8950960205c880a3236d80baa2eb1187ee1c66"
+        },
+        "date": 1783425891697,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 28.9,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 102.5,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 38.6,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 20.2,
             "unit": "ns/pkt"
           }
         ]
