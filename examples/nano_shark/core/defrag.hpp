@@ -7,8 +7,20 @@
 // This is the ONE deliberate, narrowly-scoped departure from nanom's zero-copy pledge: fragments
 // arrive non-contiguously in the source file, so reconstructing "the datagram" requires an owned,
 // stitched-together buffer. Every individual fragment's own IP header is still decoded zero-copy
-// over the original file bytes (see core/decode_pass.hpp); only the cross-fragment stitch point
-// here allocates.
+// over the original file bytes (see core/decode_pass.hpp). Fragments are BUFFERED as non-owning
+// spans into that same source buffer (valid for the whole decode pass -- the caller's `file` bytes
+// outlive every ReassemblyTable, which is local to one run_decode_pass call); only the final
+// cross-fragment stitch (Reassembly::assembled, built once a datagram completes) is an owned copy
+// -- exactly one copy per completed datagram, not one per fragment plus one more at the end.
+//
+// A fully zero-copy reassembly (fragments kept as spans, joined lazily via std::views::join
+// instead of ever stitching) isn't practical here: nanom's parsing surface (nom.hpp's `input`,
+// strct<T>(), overlay<T>()) is built on a contiguous [first,last) pointer pair, not a generalized
+// range. A join_view over disjoint spans is only a forward_range -- its elements aren't adjacent
+// in memory, so it can't yield the pointer+length pair nanom's parser needs; feeding it in would
+// still require materializing (copying) at the parse call site, likely losing nanom's
+// pointer-arithmetic fast paths in the process. Teaching nanom's core cursor to understand
+// segmented input would be a real change to the LIBRARY itself, out of scope for this example.
 //
 // Known scope trim: decode_pass.hpp re-enters L4 parsing over the reassembled buffer via a plain
 // nanom::from() (an "unattested" span), not a dedicated NANOM_GENERATION wire_arena scoped to the
@@ -85,10 +97,11 @@ struct ReassemblySummary {
 namespace detail {
 
 struct FragmentSpan {
-  std::uint32_t          offset_bytes;
-  packet_id_t            packet_id;
-  bool                   more_fragments;
-  std::vector<std::byte> data;  // OWNED: fragments are non-contiguous in the source file
+  std::uint32_t               offset_bytes;
+  packet_id_t                 packet_id;
+  bool                        more_fragments;
+  std::span<const std::byte>  data;  // a VIEW into the caller's source buffer, not a copy -- valid
+                                     // for the lifetime of the ReassemblyTable (see file header)
 };
 
 struct Reassembly {
@@ -153,8 +166,7 @@ class ReassemblyTable {
     for (const auto& f : r.fragments) already += f.data.size();
     if (already + payload.size() > cfg_.max_datagram_bytes) return out;  // oversized; drop
 
-    r.fragments.push_back(detail::FragmentSpan{
-        offset_bytes, pid, more_fragments, std::vector<std::byte>(payload.begin(), payload.end())});
+    r.fragments.push_back(detail::FragmentSpan{offset_bytes, pid, more_fragments, payload});
 
     if (!r.have_last) return out;  // can't know completeness without the terminal fragment
 
