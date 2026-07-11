@@ -256,6 +256,14 @@ target_compile_definitions(nano_shark_defrag_tests PRIVATE
   NANO_SHARK_TESTDATA="${nano_shark_dir}/testdata")
 add_test(NAME nano_shark_defrag_tests COMMAND nano_shark_defrag_tests)
 
+# Phase 3: SOME/IP (header + SD entries/options + optional TLV members), gPTP (all 8 message
+# kinds), LLDP (reusing the existing dpar_sample.pcap fixture).
+nanom_exe(nano_shark_protocols3_tests ${nano_shark_dir}/tests/test_protocols3.cpp)
+target_include_directories(nano_shark_protocols3_tests PRIVATE ${parity_dir} ${nano_shark_dir}/core)
+target_compile_definitions(nano_shark_protocols3_tests PRIVATE
+  NANO_SHARK_TESTDATA="${nano_shark_dir}/testdata")
+add_test(NAME nano_shark_protocols3_tests COMMAND nano_shark_protocols3_tests)
+
 # ---- robustness fuzzer (self-contained; also a ctest) ---------------------
 nanom_exe(nm_self_fuzz fuzz/self_fuzz.cpp)
 add_test(NAME self_fuzz COMMAND nm_self_fuzz)

@@ -5,7 +5,10 @@
 // (Ethernet/VLAN/IPv4/IPv6/UDP/TCP), reusing nanotins_parity's existing wire structs verbatim.
 
 #include "defrag.hpp"
+#include "gptp.hpp"
+#include "lldp_rows.hpp"
 #include "node_row.hpp"
+#include "someip_rows.hpp"
 
 #include "nm_protocols.hpp"  // nmproto::{Ethernet,VlanTag,Ipv4,Ipv6,Udp,Tcp}; include path set by CMake
 
@@ -30,10 +33,10 @@ NANOM_DESCRIBE(nano_shark::TcpNode, packet_id, datagram_id, is_reassembled, body
 namespace nano_shark {
 
 // One table per protocol layer decoded by the base L2-L4 walk, always populated by
-// run_decode_pass regardless of which sinks are active. Grows in later phases (SOME/IP, gPTP,
-// LLDP, IPv6 ext-header/SRv6 detail tables) as those sinks come online — the JSON sink does not
-// depend on this struct at all (it renders straight from the decoded values at each
-// walk_packet_ext callback site, see core/decode_pass.hpp).
+// run_decode_pass regardless of which sinks are active — the JSON sink does not depend on this
+// struct at all (it renders straight from the decoded values at each walk_packet_ext callback
+// site / dispatch call, see core/decode_pass.hpp). Grows further with the IPv6 ext-header/SRv6
+// detail tables a later sink (Parquet/Lance) needs.
 struct AllTables {
   node_table<EthNode>  eth{"eth"};
   node_table<VlanNode> vlan{"vlan"};
@@ -47,6 +50,16 @@ struct AllTables {
   node_table<defrag::Ipv4FragMeta> ipv4_frag{"ipv4_frag"};
   node_table<defrag::Ipv6FragMeta> ipv6_frag{"ipv6_frag"};
   node_table<defrag::DatagramRow>  datagram{"datagram"};
+
+  // Phase 3: SOME/IP (header + Service Discovery entries/options + optional TLV members), gPTP
+  // (its own 9-table bundle, joined by msg_index rather than node_table's packet_id-only shape),
+  // and LLDP (one row per TLV).
+  node_table<SomeipNode>          someip{"someip"};
+  node_table<SomeipSdEntryRow>    someip_sd_entry{"someip_sd_entry"};
+  node_table<SomeipSdOptionRow>   someip_sd_option{"someip_sd_option"};
+  node_table<SomeipTlvMemberRow>  someip_tlv{"someip_tlv"};
+  nmgptp::GptpTables              gptp{};
+  node_table<LldpTlvRow>          lldp{"lldp"};
 };
 
 }  // namespace nano_shark

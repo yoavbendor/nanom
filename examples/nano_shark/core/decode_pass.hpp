@@ -18,10 +18,14 @@
 // nm_protocols.hpp itself untouched rather than having it expose offsets it doesn't need for its
 // own (offset-free) callback contract.
 
+#include "decode_options.hpp"
 #include "defrag.hpp"
+#include "gptp.hpp"
 #include "json_tree.hpp"
 #include "l2l3_nodes.hpp"
 #include "l4_dispatch.hpp"
+#include "lldp.hpp"
+#include "someip.hpp"
 
 #include "nm_pcap.hpp"       // nmpcap::scan_blocks / parse_idb / parse_epb — include path set by CMake
 #include "nm_protocols.hpp"  // nmproto::walk_packet_ext
@@ -102,6 +106,7 @@ struct PacketVisitor {
   PacketJson*          json;          // nullptr when no JSON sink is attached
   defrag::DefragState* defrag_state;  // nullptr when defrag is disabled
   nanom::bytes         pkt;           // the whole packet's captured bytes, for offset bookkeeping
+  const DecodeOptions* opts;
 
   std::uint32_t vlan_count = 0;
   bool          is_fragment = false;  // suppresses the normal on_tcp/on_udp push when set
@@ -109,29 +114,48 @@ struct PacketVisitor {
   std::size_t   ipv6_ext_cursor = 0;      // running byte offset through the IPv6 ext-header chain
   std::size_t   ipv6_base_offset = 0;     // offset of the IPv6 base header's first byte in pkt
   std::uint16_t ipv6_payload_length = 0;  // IPv6 base header's payload_length (bytes after it)
+  std::size_t   ipv4_l3_after_offset = 0; // offset right after the IPv4 header (options included)
+  int           ip_version_seen = 0;      // 0 = neither yet, else 4 or 6 -- which offset on_udp uses
+
+  // gPTP (ethertype 0x88F7) and LLDP (0x88CC) both ride directly on Ethernet, optionally under one
+  // VLAN tag, with no further layers -- walk_packet_ext returns early right after on_eth/on_vlan
+  // once it sees a non-IPv4/IPv6 ethertype, so dispatching here needs no change to that function.
+  void maybe_dispatch_l2_protocol(std::uint16_t ethertype, std::size_t offset) {
+    if (offset > pkt.size()) return;
+    const nanom::bytes region = pkt.subspan(offset, pkt.size() - offset);
+    if (ethertype == nmgptp::kEtherTypeGptp) {
+      nmgptp::parse_gptp_message(tables->gptp, pid, nanom::from(region), json);
+    } else if (ethertype == lldp::kEtherTypeLldp) {
+      lldp::walk(region, pid, tables->lldp, json);
+    }
+  }
 
   void on_eth(const nmproto::Ethernet& v) {
     tables->eth.push(EthNode{pid, 0, false, v});
     if (json) json->add_layer("eth", v);
+    maybe_dispatch_l2_protocol(std::uint16_t(v.ethertype), 14);
   }
   void on_vlan(const nmproto::VlanTag& v) {
     tables->vlan.push(VlanNode{pid, 0, false, v});
     if (json) json->add_layer("vlan", v);
     ++vlan_count;
+    maybe_dispatch_l2_protocol(std::uint16_t(v.inner_ethertype), 14 + 4 * std::size_t(vlan_count));
   }
   void on_ipv4(const nmproto::Ipv4& v) {
     tables->ipv4.push(Ipv4Node{pid, 0, false, v});
     if (json) json->add_layer("ip", v);
-
-    const bool more_fragments = (std::uint8_t(v.flags) & 0x1) != 0;
-    const bool eligible = v.frag_offset != 0 || more_fragments;
-    if (!eligible || !defrag_state) return;
-    is_fragment = true;
+    ip_version_seen = 4;
 
     const std::size_t hdr_len =
         std::max<std::size_t>(std::size_t(v.ihl) * 4, nanom::wire_size_v<nmproto::Ipv4>);
     const std::size_t base_offset = 14 + 4 * std::size_t(vlan_count);  // Ethernet + N VLAN tags
     const std::size_t payload_offset = base_offset + hdr_len;
+    ipv4_l3_after_offset = payload_offset;
+
+    const bool more_fragments = (std::uint8_t(v.flags) & 0x1) != 0;
+    const bool eligible = v.frag_offset != 0 || more_fragments;
+    if (!eligible || !defrag_state) return;
+    is_fragment = true;
     if (payload_offset > pkt.size()) return;  // truncated capture; nothing usable
 
     const std::size_t declared = std::size_t(std::uint16_t(v.total_length));
@@ -170,12 +194,13 @@ struct PacketVisitor {
       tables->datagram.push(row);
       if (json) json->add_layer_json("ip.reassembled", detail::datagram_json(row));
       dispatch_l4(v.protocol, nanom::from(result.assembled), pid, result.datagram_id,
-                 /*is_reassembled=*/true, *tables, json);
+                 /*is_reassembled=*/true, *tables, json, *opts);
     }
   }
   void on_ipv6(const nmproto::Ipv6& v) {
     tables->ipv6.push(Ipv6Node{pid, 0, false, v});
     if (json) json->add_layer("ipv6", v);
+    ip_version_seen = 6;
     ipv6_base_offset = 14 + 4 * std::size_t(vlan_count);
     ipv6_ext_cursor = ipv6_base_offset + nanom::wire_size_v<nmproto::Ipv6>;
     ipv6_payload_length = std::uint16_t(v.payload_length);
@@ -188,6 +213,18 @@ struct PacketVisitor {
   void on_udp(const nmproto::Udp& v) {
     if (is_fragment) return;  // handled by the reassembly completion path instead
     push_udp_row(v, pid, 0, false, *tables, json);
+
+    // Locate the UDP payload the same way Phase 2 locates fragment payloads: the L3-header-end
+    // offset this visitor already tracks (ipv4_l3_after_offset / ipv6_ext_cursor), plus the fixed
+    // 8-byte UDP header. udp.length covers the header, so payload length is length - 8.
+    const std::size_t l3_after = (ip_version_seen == 4) ? ipv4_l3_after_offset : ipv6_ext_cursor;
+    const std::size_t payload_offset = l3_after + nanom::wire_size_v<nmproto::Udp>;
+    if (payload_offset > pkt.size()) return;
+    const std::size_t declared = std::size_t(std::uint16_t(v.length));
+    const std::size_t declared_payload = declared > 8 ? declared - 8 : 0;
+    const std::size_t avail = pkt.size() - payload_offset;
+    const nanom::bytes payload = pkt.subspan(payload_offset, std::min(declared_payload, avail));
+    maybe_dispatch_someip_from_udp(v, payload, pid, *tables, json, *opts);
   }
   void on_ext_opt(nmproto::Ipv6ExtKind kind, const nmproto::Ipv6ExtOpt& v) {
     if (json) {
@@ -251,7 +288,7 @@ struct PacketVisitor {
       tables->datagram.push(row);
       if (json) json->add_layer_json("ip.reassembled", detail::datagram_json(row));
       dispatch_l4(v.next_header, nanom::from(result.assembled), pid, result.datagram_id,
-                 /*is_reassembled=*/true, *tables, json);
+                 /*is_reassembled=*/true, *tables, json, *opts);
     }
   }
   void on_srh_segment(std::uint8_t srh_order, std::uint8_t segment_index,
@@ -288,13 +325,6 @@ struct PacketVisitor {
 
 struct SinkHub {
   std::vector<PacketJson>* json_packets = nullptr;  // non-null => build one PacketJson per packet
-};
-
-struct DecodeOptions {
-  bool decode_l2l3 = true;   // Eth/VLAN*/IPv4/IPv6(+ext headers, SRv6)/TCP/UDP
-  bool decode_defrag = true;  // IPv4/IPv6 reassembly + re-entry into L4
-  defrag::ReassemblyTable<defrag::Ipv4Key>::Config ipv4_defrag{};
-  defrag::ReassemblyTable<defrag::Ipv6Key>::Config ipv6_defrag{};
 };
 
 // The ONE decode pass: scan_blocks -> per EPB/pcap-record, walk_packet_ext (feeding IPv4/IPv6
@@ -342,7 +372,8 @@ inline bool run_decode_pass(nanom::bytes file, AllTables& tables, SinkHub sink,
     const std::size_t poff = std::size_t(e.payload_file_offset);
     if (opts.decode_l2l3 && poff + e.caplen <= file.size()) {
       const nanom::bytes pkt = file.subspan(poff, e.caplen);
-      detail::PacketVisitor visitor{pid, &tables, pj, opts.decode_defrag ? &defrag_state : nullptr, pkt};
+      detail::PacketVisitor visitor{pid, &tables, pj, opts.decode_defrag ? &defrag_state : nullptr,
+                                    pkt, &opts};
       nmproto::walk_packet_ext(link_type, pkt, visitor);
     }
 
