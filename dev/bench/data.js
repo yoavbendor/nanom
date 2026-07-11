@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783784185002,
+  "lastUpdate": 1783804243163,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -879,6 +879,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 20.2,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "c1b5cdf920da6256539a11bdf528ea3f7ea5ba29",
+          "message": "Merge pull request #23 from yoavbendor/claude/pcap-network-parser-zr8kf4",
+          "timestamp": "2026-07-12T00:09:46+03:00",
+          "tree_id": "2d36e9a02e097d36372f4e3cb79d44235b77fc05",
+          "url": "https://github.com/yoavbendor/nanom/commit/c1b5cdf920da6256539a11bdf528ea3f7ea5ba29"
+        },
+        "date": 1783804241965,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 28.5,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 100.5,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 38.6,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 20.4,
             "unit": "ns/pkt"
           }
         ]
