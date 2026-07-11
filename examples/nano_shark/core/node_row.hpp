@@ -54,3 +54,29 @@ class node_table {
 };
 
 }  // namespace nano_shark
+
+// Node<Body> is always exactly {packet_id, datagram_id, is_reassembled, body} regardless of Body,
+// so one partial specialization registers every protocol's Node<...> at once — no per-protocol
+// NANOM_DESCRIBE line needed (see l2l3_nodes.hpp / someip_rows.hpp, which used to each carry one).
+//
+// This is written as a plain partial specialization rather than through the NANOM_DESCRIBE macro
+// on purpose: Node<Body> is a class TEMPLATE INSTANTIATION, which nanom::Reflectable categorically
+// excludes (nanom26.hpp's `has_identifier` check treats template specializations like lambdas/
+// anonymous structs — no reflectable identifier), so under NANOM_HAS_REFLECTION, NANOM_DESCRIBE's
+// own reflection-mode branch (a static_assert that reflection covers the type) would always fail
+// here. NANOM_DESCRIBE_FORCE_MACRO isn't the right escape hatch either — it's a whole-build compile
+// flag (see describe_macro.hpp), not a per-type override. An explicit/partial specialization is
+// nanom's documented, always-wins override mechanism regardless of build mode (see
+// tests/test_reflect26.cpp's "override semantics" section), so it compiles identically whether
+// nanom itself is built with the C++23 macro provider or the C++26 reflection provider.
+template <class Body>
+struct nanom::describe<nano_shark::Node<Body>> {
+  static constexpr const char* name() { return "nano_shark::Node"; }
+  static constexpr auto fields() {
+    return std::make_tuple(
+        nanom::detail::fld<"packet_id", &nano_shark::Node<Body>::packet_id>{},
+        nanom::detail::fld<"datagram_id", &nano_shark::Node<Body>::datagram_id>{},
+        nanom::detail::fld<"is_reassembled", &nano_shark::Node<Body>::is_reassembled>{},
+        nanom::detail::fld<"body", &nano_shark::Node<Body>::body>{});
+  }
+};

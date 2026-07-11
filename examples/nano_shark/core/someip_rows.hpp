@@ -56,7 +56,8 @@ using SomeipNode = Node<SomeipHeader>;  // fits the generic Node<Body> pattern d
 
 }  // namespace nano_shark
 
-NANOM_DESCRIBE(nano_shark::SomeipNode, packet_id, datagram_id, is_reassembled, body);
+// SomeipNode's describe<> registration comes from node_row.hpp's shared Node<Body> partial
+// specialization (see l2l3_nodes.hpp) -- no separate NANOM_DESCRIBE line needed here.
 
 namespace nano_shark {
 

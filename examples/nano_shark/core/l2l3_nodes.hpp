@@ -23,12 +23,9 @@ using TcpNode  = Node<nmproto::Tcp>;
 
 }  // namespace nano_shark
 
-NANOM_DESCRIBE(nano_shark::EthNode, packet_id, datagram_id, is_reassembled, body);
-NANOM_DESCRIBE(nano_shark::VlanNode, packet_id, datagram_id, is_reassembled, body);
-NANOM_DESCRIBE(nano_shark::Ipv4Node, packet_id, datagram_id, is_reassembled, body);
-NANOM_DESCRIBE(nano_shark::Ipv6Node, packet_id, datagram_id, is_reassembled, body);
-NANOM_DESCRIBE(nano_shark::UdpNode, packet_id, datagram_id, is_reassembled, body);
-NANOM_DESCRIBE(nano_shark::TcpNode, packet_id, datagram_id, is_reassembled, body);
+// Node<Body>'s describe<> registration is one shared partial specialization in node_row.hpp,
+// covering EthNode/VlanNode/Ipv4Node/Ipv6Node/UdpNode/TcpNode (and SomeipNode, see someip_rows.hpp)
+// at once — no per-protocol NANOM_DESCRIBE line needed here.
 
 namespace nano_shark {
 
