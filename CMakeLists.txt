@@ -264,6 +264,11 @@ target_compile_definitions(nano_shark_protocols3_tests PRIVATE
   NANO_SHARK_TESTDATA="${nano_shark_dir}/testdata")
 add_test(NAME nano_shark_protocols3_tests COMMAND nano_shark_protocols3_tests)
 
+# Phase 4: the Avro Object Container File sink.
+nanom_exe(nano_shark_avro_tests ${nano_shark_dir}/tests/test_avro.cpp)
+target_include_directories(nano_shark_avro_tests PRIVATE ${nano_shark_dir}/core)
+add_test(NAME nano_shark_avro_tests COMMAND nano_shark_avro_tests)
+
 # ---- robustness fuzzer (self-contained; also a ctest) ---------------------
 nanom_exe(nm_self_fuzz fuzz/self_fuzz.cpp)
 add_test(NAME self_fuzz COMMAND nm_self_fuzz)
