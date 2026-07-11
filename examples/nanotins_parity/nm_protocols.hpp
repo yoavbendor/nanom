@@ -342,6 +342,13 @@ inline WalkResult walk_packet_ext(u32 link_type, nm::bytes pkt, V&& v) {
         NMPROTO_VISIT(on_fragment(h->value));
         nh = h->value.next_header;
         off += 8;
+        // offset_flags is [fragment_offset:13][res:2][M:1] (RFC 8200); a non-zero fragment offset
+        // means the bytes at `off` are fragment DATA, not `nh`'s header -- mirrors the IPv4 gate
+        // above (frag_offset == 0) instead of misparsing fragment payload as a next ext header/L4.
+        if ((std::uint16_t(h->value.offset_flags) >> 3) != 0) {
+          has_l4 = false;
+          break;
+        }
       } else {  // nh == 51 -> Authentication Header
         auto h = nm::strct<Ipv6Ah>()(at);
         if (!h) return res;
