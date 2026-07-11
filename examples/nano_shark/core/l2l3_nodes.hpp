@@ -4,6 +4,7 @@
 // nano_shark/core/l2l3_nodes.hpp — Node<> instantiations + registrations for the base L2-L4 walk
 // (Ethernet/VLAN/IPv4/IPv6/UDP/TCP), reusing nanotins_parity's existing wire structs verbatim.
 
+#include "defrag.hpp"
 #include "node_row.hpp"
 
 #include "nm_protocols.hpp"  // nmproto::{Ethernet,VlanTag,Ipv4,Ipv6,Udp,Tcp}; include path set by CMake
@@ -29,10 +30,10 @@ NANOM_DESCRIBE(nano_shark::TcpNode, packet_id, datagram_id, is_reassembled, body
 namespace nano_shark {
 
 // One table per protocol layer decoded by the base L2-L4 walk, always populated by
-// run_decode_pass regardless of which sinks are active. Grows in later phases (defrag,
-// SOME/IP, gPTP, LLDP, IPv6 ext-header/SRv6 detail tables) as those sinks come online — the
-// JSON sink does not depend on this struct at all (it renders straight from the decoded
-// values at each walk_packet_ext callback site, see core/decode_pass.hpp).
+// run_decode_pass regardless of which sinks are active. Grows in later phases (SOME/IP, gPTP,
+// LLDP, IPv6 ext-header/SRv6 detail tables) as those sinks come online — the JSON sink does not
+// depend on this struct at all (it renders straight from the decoded values at each
+// walk_packet_ext callback site, see core/decode_pass.hpp).
 struct AllTables {
   node_table<EthNode>  eth{"eth"};
   node_table<VlanNode> vlan{"vlan"};
@@ -40,6 +41,12 @@ struct AllTables {
   node_table<Ipv6Node> ipv6{"ipv6"};
   node_table<UdpNode>  udp{"udp"};
   node_table<TcpNode>  tcp{"tcp"};
+
+  // Phase 2: IPv4/IPv6 fragmentation. One row per observed fragment (forensic visibility, "this
+  // packet was fragment N of datagram D") plus one row per reassembly attempt, complete or not.
+  node_table<defrag::Ipv4FragMeta> ipv4_frag{"ipv4_frag"};
+  node_table<defrag::Ipv6FragMeta> ipv6_frag{"ipv6_frag"};
+  node_table<defrag::DatagramRow>  datagram{"datagram"};
 };
 
 }  // namespace nano_shark

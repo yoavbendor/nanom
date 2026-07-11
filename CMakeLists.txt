@@ -248,6 +248,14 @@ target_include_directories(nano_shark_tests PRIVATE ${parity_dir} ${nano_shark_d
 target_compile_definitions(nano_shark_tests PRIVATE NANO_SHARK_TESTDATA="${td}")
 add_test(NAME nano_shark_tests COMMAND nano_shark_tests)
 
+# Phase 2: IPv4/IPv6 defragmentation, against fixtures synthesized by testdata/gen_fragments.py
+# (no scapy dependency -- see that script's own header comment).
+nanom_exe(nano_shark_defrag_tests ${nano_shark_dir}/tests/test_defrag.cpp)
+target_include_directories(nano_shark_defrag_tests PRIVATE ${parity_dir} ${nano_shark_dir}/core)
+target_compile_definitions(nano_shark_defrag_tests PRIVATE
+  NANO_SHARK_TESTDATA="${nano_shark_dir}/testdata")
+add_test(NAME nano_shark_defrag_tests COMMAND nano_shark_defrag_tests)
+
 # ---- robustness fuzzer (self-contained; also a ctest) ---------------------
 nanom_exe(nm_self_fuzz fuzz/self_fuzz.cpp)
 add_test(NAME self_fuzz COMMAND nm_self_fuzz)
