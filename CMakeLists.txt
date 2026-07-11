@@ -236,6 +236,18 @@ add_test(NAME parity_lldp
     "-DARGS=${td}/lldp_rules.txt;${td}/dpar_sample.pcap"
     -DGOLDEN=${td}/lldp_sample.ndjson -P ${parity_dir}/diff_test.cmake)
 
+# ---- nano_shark: the textbook mega example (Phase 1: core walk + JSON sink) ----------------
+# Dependency-free (nanom only). Reuses nanotins_parity's pcap scanner + protocol structs verbatim
+# (parity_dir on the include path) rather than duplicating them.
+set(nano_shark_dir ${CMAKE_CURRENT_SOURCE_DIR}/examples/nano_shark)
+nanom_exe(nano_shark ${nano_shark_dir}/src/nano_shark_main.cpp)
+target_include_directories(nano_shark PRIVATE ${parity_dir} ${nano_shark_dir}/core)
+
+nanom_exe(nano_shark_tests ${nano_shark_dir}/tests/test_json_tree.cpp)
+target_include_directories(nano_shark_tests PRIVATE ${parity_dir} ${nano_shark_dir}/core)
+target_compile_definitions(nano_shark_tests PRIVATE NANO_SHARK_TESTDATA="${td}")
+add_test(NAME nano_shark_tests COMMAND nano_shark_tests)
+
 # ---- robustness fuzzer (self-contained; also a ctest) ---------------------
 nanom_exe(nm_self_fuzz fuzz/self_fuzz.cpp)
 add_test(NAME self_fuzz COMMAND nm_self_fuzz)
