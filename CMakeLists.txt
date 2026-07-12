@@ -128,6 +128,12 @@ set(td ${parity_dir}/testdata)
 nanom_exe(nanom_tests tests/test_nanom.cpp)
 add_test(NAME nanom_tests COMMAND nanom_tests)
 
+# Segmented (scatter-gather) input: exhaustive boundary property (cursor primitives agree with
+# the contiguous cursor over every split) + strct_seg/overlay_seg differential parity.
+nanom_exe(nanom_segmented_tests tests/test_segmented.cpp)
+target_include_directories(nanom_segmented_tests PRIVATE ${parity_dir})
+add_test(NAME nanom_segmented_tests COMMAND nanom_segmented_tests)
+
 # Memory-safety regression suite: enforced guards (must pass).
 nanom_exe(nanom_memory_safety_tests tests/test_memory_safety.cpp)
 add_test(NAME nanom_memory_safety_tests COMMAND nanom_memory_safety_tests)
