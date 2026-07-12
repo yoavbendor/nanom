@@ -24,13 +24,15 @@ jobs:
         run: |
           cmake -B build -DCMAKE_CXX_COMPILER=clang++-18 -DNANOM_BUILD_FUZZERS=ON \
             -DNANOM_GUARD_VIEWS=ON -DNANOM_GENERATION=ON
-          cmake --build build --target fuzz_scan_walk fuzz_streaming_pcapng -j
+          cmake --build build --target fuzz_scan_walk fuzz_streaming_pcapng fuzz_defrag -j
 
       - name: seed corpus from the pcap fixtures
         run: |
-          mkdir -p corpus corpus_streaming
+          mkdir -p corpus corpus_streaming corpus_defrag
           cp examples/nanotins_parity/testdata/*.pcap examples/nanotins_parity/testdata/*.pcapng corpus/ || true
           cp examples/nanotins_parity/testdata/*.pcapng corpus_streaming/ || true
+          # fuzz_defrag's input is its own small byte-command-stream format (see fuzz/fuzz_defrag.cpp),
+          # not pcap bytes, so it starts from an empty corpus and lets libFuzzer discover the shape.
 
       # short on PRs/pushes, long on the nightly schedule
       - name: run scan_walk
@@ -44,6 +46,12 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then T=600; else T=90; fi
           ./build/fuzz_streaming_pcapng -max_total_time=$T -rss_limit_mb=4096 \
             -print_final_stats=1 -artifact_prefix=crash-streaming- corpus_streaming/
+
+      - name: run defrag
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then T=600; else T=90; fi
+          ./build/fuzz_defrag -max_total_time=$T -rss_limit_mb=4096 \
+            -print_final_stats=1 -artifact_prefix=crash-defrag- corpus_defrag/
 
       - name: upload crashes (if any)
         if: failure()

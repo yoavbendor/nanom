@@ -272,6 +272,29 @@ target_compile_definitions(nano_shark_protocols3_tests PRIVATE
   NANO_SHARK_TESTDATA="${nano_shark_dir}/testdata")
 add_test(NAME nano_shark_protocols3_tests COMMAND nano_shark_protocols3_tests)
 
+# Phase 8: golden-diff regression tests for nano_shark's own JSON output on the defrag/SOME-IP/
+# gPTP/LLDP fixtures -- these were previously checked only programmatically (CHECK() assertions on
+# individual field values); this pins the exact NDJSON shape too, via the same diff_test.cmake
+# helper nanotins_parity's own golden tests already use.
+foreach(fx ipv4_fragments_sample ipv6_fragments_sample someip_fixture)
+  add_test(NAME nano_shark_golden_${fx}
+    COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nano_shark>
+      -DARGS=${nano_shark_dir}/testdata/${fx}.pcap -DGOLDEN=${nano_shark_dir}/testdata/${fx}.ndjson
+      -P ${parity_dir}/diff_test.cmake)
+endforeach()
+add_test(NAME nano_shark_golden_gptp_fixture
+  COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nano_shark>
+    -DARGS=${nano_shark_dir}/testdata/gptp_fixture.pcapng
+    -DGOLDEN=${nano_shark_dir}/testdata/gptp_fixture.ndjson
+    -P ${parity_dir}/diff_test.cmake)
+# LLDP reuses nanotins_parity's already-golden-tested dpar_sample.pcap fixture (see parity_lldp)
+# rather than a new one -- same fixture test_protocols3.cpp's test_lldp_dpar_sample() decodes.
+add_test(NAME nano_shark_golden_lldp_dpar_sample
+  COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nano_shark>
+    -DARGS=${parity_dir}/testdata/dpar_sample.pcap
+    -DGOLDEN=${nano_shark_dir}/testdata/dpar_sample_lldp.ndjson
+    -P ${parity_dir}/diff_test.cmake)
+
 # Phase 4: the Avro Object Container File sink.
 nanom_exe(nano_shark_avro_tests ${nano_shark_dir}/tests/test_avro.cpp)
 target_include_directories(nano_shark_avro_tests PRIVATE ${nano_shark_dir}/core)
