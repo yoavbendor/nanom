@@ -432,6 +432,63 @@ constexpr auto strct_seg(std::endian dflt = std::endian::native) {
   };
 }
 
+// ---------------------------------------------------------------------------
+// cursor kit — scalar reads for hand-rolled walkers (SOME/IP-style TLV cursors)
+// ---------------------------------------------------------------------------
+// Each is a thin wrapper over gather<N>/advance, replacing `rd_be16(p + off)`-style raw pointer
+// arithmetic in consumer code. All return seg_result so short input reports exactly like the
+// struct parsers (incomplete on a live cursor, recoverable err otherwise).
+
+namespace detail_seg {
+template <std::size_t N, std::endian E>
+constexpr seg_result<detail::uint_for_bytes<N>> seg_uint(seg_input in) {
+  seg_window<N> w;
+  if (!in.gather(w)) return seg_make_incomplete(in, N - in.size());
+  using U = detail::uint_for_bytes<N>;
+  U u = 0;
+  const std::byte* p = w.data();
+  if constexpr (E == std::endian::big)
+    for (std::size_t i = 0; i < N; ++i) u = U(U(u << 8) | std::uint8_t(p[i]));
+  else
+    for (std::size_t i = 0; i < N; ++i) u |= U(U(std::uint8_t(p[i])) << (8 * i));
+  return seg_done{u, in.advance(N)};
+}
+}  // namespace detail_seg
+
+constexpr seg_result<std::uint8_t> seg_u8(seg_input in) {
+  return detail_seg::seg_uint<1, std::endian::big>(in);
+}
+constexpr seg_result<std::uint16_t> seg_be16(seg_input in) {
+  return detail_seg::seg_uint<2, std::endian::big>(in);
+}
+constexpr seg_result<std::uint32_t> seg_be32(seg_input in) {
+  return detail_seg::seg_uint<4, std::endian::big>(in);
+}
+constexpr seg_result<std::uint64_t> seg_be64(seg_input in) {
+  return detail_seg::seg_uint<8, std::endian::big>(in);
+}
+constexpr seg_result<std::uint16_t> seg_le16(seg_input in) {
+  return detail_seg::seg_uint<2, std::endian::little>(in);
+}
+constexpr seg_result<std::uint32_t> seg_le32(seg_input in) {
+  return detail_seg::seg_uint<4, std::endian::little>(in);
+}
+constexpr seg_result<std::uint64_t> seg_le64(seg_input in) {
+  return detail_seg::seg_uint<8, std::endian::little>(in);
+}
+
+/// Skip n bytes (bounds-checked take-nothing).
+constexpr seg_result<unit> seg_skip(seg_input in, std::size_t n) {
+  if (in.size() < n) return seg_make_incomplete(in, n - in.size());
+  return seg_done{unit{}, in.advance(n)};
+}
+
+/// Gathering take: copy the next n bytes into caller storage (dst.size() == n).
+constexpr seg_result<unit> seg_take(seg_input in, std::span<std::byte> dst) {
+  if (!in.gather(dst)) return seg_make_incomplete(in, dst.size() - in.size());
+  return seg_done{unit{}, in.advance(dst.size())};
+}
+
 /// overlay<T>'s segmented twin: ZERO-COPY OR ERROR, never a hidden copy. When the struct's window
 /// lies inside the current part, the returned view<T> points straight at segment memory (arena/gen
 /// threaded through when generation tracking is on). When it straddles a boundary, a view would

@@ -222,6 +222,58 @@ void test_strct_overlay_parity() {
   check_strct_parity<nmproto::Tcp>(w);
 }
 
+// ---- cursor kit: scalar reads vs the contiguous number parsers, across every split ------------
+
+void test_cursor_kit() {
+  std::vector<std::byte> wire(16);
+  for (std::size_t i = 0; i < wire.size(); ++i) wire[i] = std::byte((i * 41 + 7) & 0xFF);
+  const std::span<const std::byte> w(wire.data(), wire.size());
+
+  const auto want16 = nm::be_u16(nm::from(w));
+  const auto want32 = nm::be_u32(nm::from(w));
+  const auto want64 = nm::be_u64(nm::from(w));
+  const auto wantl32 = nm::le_u32(nm::from(w));
+  CHECK(want16 && want32 && want64 && wantl32);
+
+  for (std::size_t cut = 0; cut <= wire.size(); ++cut) {
+    const auto parts = split(w, {cut});
+    const nm::segments segs{
+        std::span<const std::span<const std::byte>>(parts.data(), parts.size())};
+    const nm::seg_input in = nm::from(segs);
+
+    const auto g8 = nm::seg_u8(in);
+    CHECK(g8 && g8->value == std::uint8_t(wire[0]) && g8->rest.offset() == 1);
+    const auto g16 = nm::seg_be16(in);
+    CHECK(g16 && g16->value == want16->value);
+    const auto g32 = nm::seg_be32(in);
+    CHECK(g32 && g32->value == want32->value);
+    const auto g64 = nm::seg_be64(in);
+    CHECK(g64 && g64->value == want64->value);
+    const auto l32 = nm::seg_le32(in);
+    CHECK(l32 && l32->value == wantl32->value);
+
+    // skip + take compose: skip 3, take 5, bytes must match the flat buffer
+    const auto sk = nm::seg_skip(in, 3);
+    CHECK(sk && sk->rest.offset() == 3);
+    if (sk) {
+      std::array<std::byte, 5> dst{};
+      const auto tk = nm::seg_take(sk->rest, std::span<std::byte>(dst));
+      CHECK(tk && tk->rest.offset() == 8);
+      CHECK(std::memcmp(dst.data(), wire.data() + 3, 5) == 0);
+    }
+  }
+
+  // short reads report incomplete parity
+  const auto parts = split(w.subspan(0, 3), {1});
+  const nm::segments segs{std::span<const std::span<const std::byte>>(parts.data(), parts.size())};
+  const auto g32 = nm::seg_be32(nm::from(segs));
+  CHECK(!g32);
+  if (!g32) CHECK(g32.error().kind == nm::errk::err);
+  const auto g32s = nm::seg_be32(nm::streaming(nm::from(segs)));
+  CHECK(!g32s);
+  if (!g32s) CHECK(g32s.error().kind == nm::errk::incomplete);
+}
+
 void test_streaming_and_render() {
   const auto buf = golden(4);
   const auto parts = split({buf.data(), buf.size()}, {2});
@@ -250,6 +302,7 @@ int main() {
   test_empty_and_tiny();
   test_zero_copy_fastpath();
   test_strct_overlay_parity();
+  test_cursor_kit();
   test_streaming_and_render();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
