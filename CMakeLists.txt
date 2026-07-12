@@ -243,6 +243,14 @@ set(nano_shark_dir ${CMAKE_CURRENT_SOURCE_DIR}/examples/nano_shark)
 nanom_exe(nano_shark ${nano_shark_dir}/src/nano_shark_main.cpp)
 target_include_directories(nano_shark PRIVATE ${parity_dir} ${nano_shark_dir}/core)
 
+# CLI-level regression test: with NO sink flag at all, the documented default ("--json is written to
+# stdout") must actually happen -- catches a real bug where json_to_stdout was computed before the
+# "default to JSON" fallback ran, so this exact no-flags invocation tried to fopen(nullptr, "wb").
+add_test(NAME nano_shark_cli_default_stdout
+         COMMAND bash -c
+             "$<TARGET_FILE:nano_shark> ${nano_shark_dir}/testdata/ipv4_fragments_sample.pcap | \
+              grep -q '\"_index\":0'")
+
 nanom_exe(nano_shark_tests ${nano_shark_dir}/tests/test_json_tree.cpp)
 target_include_directories(nano_shark_tests PRIVATE ${parity_dir} ${nano_shark_dir}/core)
 target_compile_definitions(nano_shark_tests PRIVATE NANO_SHARK_TESTDATA="${td}")
