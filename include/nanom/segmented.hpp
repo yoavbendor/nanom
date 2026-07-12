@@ -122,9 +122,11 @@ class seg_subrange;  // fwd (zero-copy narrowing, defined after seg_input)
 /// Mirrors input's member API (size/empty/offset/operator[]/safe_at/advance/checked_advance) so
 /// cursor-generic helper code can be written against either. Hot fields are raw pointers into the
 /// CURRENT part, so within-segment reads are a pointer compare + deref, exactly like `input`.
+/// The segments descriptor travels BY VALUE inside the cursor, so only the part-descriptor ARRAY
+/// (and the bytes) must outlive it -- from(owner.view()) with a temporary `segments` is safe.
 /// Invariant: cur == nullptr  <=>  the cursor is exhausted (empty parts are always skipped over).
 struct seg_input {
-  const segments*  src     = nullptr;
+  segments         src{};              ///< the part list, by value
   std::size_t      seg_i   = 0;        ///< current part index
   const std::byte* cur     = nullptr;  ///< cursor within the current part
   const std::byte* seg_end = nullptr;  ///< current part's end
@@ -132,9 +134,9 @@ struct seg_input {
   bool             live    = false;    ///< streaming flag; same error-kind contract as input
 
   constexpr seg_input() = default;
-  explicit constexpr seg_input(const segments& s NANOM_LIFETIMEBOUND) : src(&s) { enter(0); }
+  explicit constexpr seg_input(segments s) : src(s) { enter(0); }
 
-  [[nodiscard]] constexpr std::size_t size() const { return src ? src->size() - abs : 0; }
+  [[nodiscard]] constexpr std::size_t size() const { return src.size() - abs; }
   [[nodiscard]] constexpr bool        empty() const { return cur == nullptr; }
   [[nodiscard]] constexpr std::size_t offset() const { return abs; }
 
@@ -153,8 +155,8 @@ struct seg_input {
       const std::size_t here = std::size_t(e - c);
       if (i < here) return std::uint8_t(c[i]);
       i -= here;
-      do { ++si; } while (src->part(si).empty());  // precondition guarantees a next byte exists
-      const auto p = src->part(si);
+      do { ++si; } while (src.part(si).empty());  // precondition guarantees a next byte exists
+      const auto p = src.part(si);
       c = p.data();
       e = p.data() + p.size();
     }
@@ -181,7 +183,7 @@ struct seg_input {
       o.enter(o.seg_i + 1);
       if (n == 0) return o;
     }
-    o.abs = src ? src->size() : 0;  // clamped
+    o.abs = src.size();  // clamped
     return o;
   }
 
@@ -211,8 +213,8 @@ struct seg_input {
       for (std::size_t k = 0; k < here; ++k) w.buf_[got + k] = c[k];  // -O2 lowers to memcpy
       got += here;
       if (got == N) break;
-      do { ++si; } while (src->part(si).empty());  // size() >= N guarantees a next part
-      const auto p = src->part(si);
+      do { ++si; } while (src.part(si).empty());  // size() >= N guarantees a next part
+      const auto p = src.part(si);
       c = p.data();
       e = p.data() + p.size();
     }
@@ -239,8 +241,8 @@ struct seg_input {
       for (std::size_t k = 0; k < here; ++k) dst[got + k] = c[k];
       got += here;
       if (got == dst.size()) break;
-      do { ++si; } while (src->part(si).empty());
-      const auto p = src->part(si);
+      do { ++si; } while (src.part(si).empty());
+      const auto p = src.part(si);
       c = p.data();
       e = p.data() + p.size();
     }
@@ -252,16 +254,16 @@ struct seg_input {
   [[nodiscard]] constexpr std::optional<seg_subrange> subrange(std::size_t n) const;
 
 #if NANOM_GENERATION
-  [[nodiscard]] constexpr const wire_arena* arena() const { return src ? src->arena() : nullptr; }
-  [[nodiscard]] constexpr std::uint64_t     gen() const { return src ? src->gen() : 0; }
+  [[nodiscard]] constexpr const wire_arena* arena() const { return src.arena(); }
+  [[nodiscard]] constexpr std::uint64_t     gen() const { return src.gen(); }
 #endif
 
  private:
   /// Position at the start of part i, skipping empty parts; null cursor once exhausted.
   constexpr void enter(std::size_t i) {
     seg_i = i;
-    while (src && seg_i < src->parts()) {
-      const auto p = src->part(seg_i);
+    while (seg_i < src.parts()) {
+      const auto p = src.part(seg_i);
       if (!p.empty()) {
         cur     = p.data();
         seg_end = p.data() + p.size();
@@ -273,11 +275,44 @@ struct seg_input {
   }
 };
 
-constexpr seg_input from(const segments& s NANOM_LIFETIMEBOUND) { return seg_input(s); }
+constexpr seg_input from(segments s) { return seg_input(s); }
 constexpr seg_input streaming(seg_input in) {
   in.live = true;
   return in;
 }
+
+/// Owner for the common single-part case: keeps the one part descriptor inline so callers can
+/// wrap a contiguous payload as segmented input without managing a separate descriptor array.
+/// Must outlive any cursor made from view() (the cursor copies the `segments` value, but that
+/// value points at THIS object's descriptor).
+class single_segment {
+ public:
+  explicit constexpr single_segment(std::span<const std::byte> s NANOM_LIFETIMEBOUND) : part_(s) {}
+#if NANOM_GENERATION
+  constexpr single_segment(std::span<const std::byte> s NANOM_LIFETIMEBOUND,
+                           const wire_arena* arena, std::uint64_t gen)
+      : part_(s), arena_(arena), gen_(gen) {}
+  /// From attested bytes: carry the arena/gen through so overlay_seg<T> views over this segment
+  /// stay generation-checked, exactly as from(bytes) does for the contiguous cursor. (Under
+  /// NANOM_GENERATION, nanom::bytes IS attested_bytes, so `single_segment{payload}` selects this.)
+  explicit single_segment(const attested_bytes& b)
+      : part_(b.unchecked_span()), arena_(b.arena_), gen_(b.gen_) {}
+#endif
+  [[nodiscard]] constexpr segments view() const NANOM_LIFETIMEBOUND {
+#if NANOM_GENERATION
+    return segments{std::span<const std::span<const std::byte>>(&part_, 1), arena_, gen_};
+#else
+    return segments{std::span<const std::span<const std::byte>>(&part_, 1)};
+#endif
+  }
+
+ private:
+  std::span<const std::byte> part_;
+#if NANOM_GENERATION
+  const wire_arena* arena_ = nullptr;
+  std::uint64_t     gen_   = 0;
+#endif
+};
 
 // ---------------------------------------------------------------------------
 // seg_subrange — zero-copy narrowing (owns its part descriptors inline)
@@ -329,8 +364,8 @@ constexpr std::optional<seg_subrange> seg_input::subrange(std::size_t n) const {
     out.parts_[out.count_++] = std::span<const std::byte>(c, here);
     n -= here;
     if (n == 0) break;
-    do { ++si; } while (src->part(si).empty());
-    const auto p = src->part(si);
+    do { ++si; } while (src.part(si).empty());
+    const auto p = src.part(si);
     c = p.data();
     e = p.data() + p.size();
   }

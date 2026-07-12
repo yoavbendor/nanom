@@ -34,8 +34,10 @@ inline void push_udp_row(const nmproto::Udp& v, packet_id_t pid, std::uint32_t d
 }
 
 // Shared by both the normal (decode_pass.hpp's on_udp) and reassembled (dispatch_l4 below) UDP
-// paths so port-matching can't disagree between them. `payload` is the bytes after the UDP header.
-inline void maybe_dispatch_someip_from_udp(const nmproto::Udp& udp, nanom::bytes payload, packet_id_t pid,
+// paths so port-matching can't disagree between them. `payload` is a seg_input over the bytes
+// after the UDP header -- a 1-part segment on the normal path (contiguous, so seg_input's fast
+// path keeps it pointer-based) and the multi-part reassembled datagram on the defrag path.
+inline void maybe_dispatch_someip_from_udp(const nmproto::Udp& udp, nanom::seg_input payload, packet_id_t pid,
                                            AllTables& tables, PacketJson* json, const DecodeOptions& opts) {
   const std::uint16_t sport = udp.src_port, dport = udp.dst_port;
   const auto& ports = opts.someip_ports;
@@ -51,19 +53,21 @@ inline void maybe_dispatch_someip_from_udp(const nmproto::Udp& udp, nanom::bytes
                          tables.someip_sd_option, tables.someip_tlv, json);
 }
 
-// Parses the L4 header directly from raw bytes (`after_l3`) and pushes its row -- the shape defrag's
-// completion callback needs, since it only has a reassembled byte buffer, not a decoded value.
-inline void dispatch_l4(std::uint8_t ip_proto, nanom::input after_l3, packet_id_t pid,
+// Parses the L4 header directly from `after_l3` (a seg_input) and pushes its row -- the shape
+// defrag's completion callback needs, since it only has a reassembled datagram (now a zero-copy
+// segment list, nanom::from(result.parts)), not a decoded value. The normal per-packet path wraps
+// its own contiguous payload as a 1-part seg_input, so there is exactly one L4-dispatch code path.
+inline void dispatch_l4(std::uint8_t ip_proto, nanom::seg_input after_l3, packet_id_t pid,
                         std::uint32_t datagram_id, bool is_reassembled, AllTables& tables,
                         PacketJson* json, const DecodeOptions& opts) {
   if (ip_proto == nmproto::kIpProtoTcp) {
-    auto tcp = nanom::strct<nmproto::Tcp>()(after_l3);
+    auto tcp = nanom::strct_seg<nmproto::Tcp>()(after_l3);
     if (tcp) push_tcp_row(tcp->value, pid, datagram_id, is_reassembled, tables, json);
   } else if (ip_proto == nmproto::kIpProtoUdp) {
-    auto udp = nanom::strct<nmproto::Udp>()(after_l3);
+    auto udp = nanom::strct_seg<nmproto::Udp>()(after_l3);
     if (udp) {
       push_udp_row(udp->value, pid, datagram_id, is_reassembled, tables, json);
-      maybe_dispatch_someip_from_udp(udp->value, udp->rest.span(), pid, tables, json, opts);
+      maybe_dispatch_someip_from_udp(udp->value, udp->rest, pid, tables, json, opts);
     }
   }
 }

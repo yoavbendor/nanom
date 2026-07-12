@@ -113,8 +113,32 @@ struct Reassembly {
   packet_id_t                first_packet_id = kNoPacket;
   packet_id_t                last_packet_id  = kNoPacket;
   bool                       completed = false;
-  std::vector<std::byte>     assembled;          // filled only once complete
+  // Once complete: the datagram as an ordered, overlap-trimmed list of VIEWS into the source
+  // buffer -- zero-copy (see nanom/segmented.hpp). Consumers parse straight over these via
+  // seg_input; nothing is ever stitched unless materialize() is explicitly called.
+  std::vector<std::span<const std::byte>> parts;
+  std::vector<std::byte>                  materialized;  // lazy; see ReassemblyTable::materialize
 };
+
+// Compare `want` against the datagram content already emitted in `parts` at logical offset
+// `at` (parts are contiguous from 0, in order). Used for overlap conflict detection -- the
+// segmented equivalent of comparing against the stitched buffer's bytes.
+inline bool range_equals(const std::vector<std::span<const std::byte>>& parts, std::size_t at,
+                         std::span<const std::byte> want) {
+  std::size_t skip = at, wi = 0;
+  for (const auto& p : parts) {
+    if (skip >= p.size()) {
+      skip -= p.size();
+      continue;
+    }
+    const std::size_t here = std::min(p.size() - skip, want.size() - wi);
+    if (std::memcmp(p.data() + skip, want.data() + wi, here) != 0) return false;
+    wi += here;
+    skip = 0;
+    if (wi == want.size()) return true;
+  }
+  return wi == want.size();
+}
 
 }  // namespace detail
 
@@ -129,12 +153,16 @@ class ReassemblyTable {
   explicit ReassemblyTable(Config cfg = {}) : cfg_(cfg) {}
 
   // The datagram_id is always returned (even mid-reassembly, so the caller can attach it to a
-  // per-fragment forensic row) -- only `completed`/`assembled` depend on whether this call finished
+  // per-fragment forensic row) -- only `completed`/`parts` depend on whether this call finished
   // reassembly (no gaps in [0,total_length), a terminal fragment seen, no content conflict).
   struct Result {
-    std::uint32_t               datagram_id = 0;
-    bool                        completed   = false;
-    std::span<const std::byte>  assembled;   // valid only when completed
+    std::uint32_t   datagram_id = 0;
+    bool            completed   = false;
+    // The completed datagram as ZERO-COPY segments: ordered, overlap-trimmed views into the
+    // source buffer, ready for nanom::from(parts) -> strct_seg/seg_* parsing (see segmented.hpp).
+    // The part descriptors live in this table's Reassembly entry: valid until that entry is
+    // evicted (the same lifetime the old stitched-buffer span had). Empty unless completed.
+    nanom::segments parts;
   };
 
   // Feed one fragment (already offset/MF-decoded by the caller from Ipv4/Ipv6Fragment).
@@ -178,32 +206,62 @@ class ReassemblyTable {
                                                  : a->packet_id < b->packet_id;
     });
 
-    std::vector<std::byte> assembled(r.total_length);
-    std::vector<bool>      written(r.total_length, false);
-    std::uint32_t          covered = 0;
+    // ZERO-COPY completion: build an ordered, overlap-trimmed list of views into the source
+    // buffer instead of stitching an owned copy (nanom's segmented input -- see segmented.hpp --
+    // parses straight over the list). Semantics preserved from the old stitch loop exactly:
+    //   * gap (a fragment starting past the covered prefix)     -> still incomplete;
+    //   * overlap whose bytes AGREE with what's already covered -> trimmed away (content is
+    //     byte-identical to the old last-writer-wins overwrite, since equal);
+    //   * overlap whose bytes DISAGREE                          -> conflict, never completes
+    //     (evict_stale reports it as status 3);
+    //   * bytes extending past the declared total_length        -> clamped (old code: ignored);
+    //   * completeness check uses the UNCLAMPED end             -> same as the old `covered`.
+    std::vector<std::span<const std::byte>> parts;
+    parts.reserve(ordered.size());
+    std::uint32_t covered = 0;  // unclamped high-water mark, matching the old loop's `covered`
     for (const detail::FragmentSpan* f : ordered) {
       if (f->offset_bytes > covered) return out;  // gap: still incomplete
+      const std::uint32_t clamped_covered = std::min(covered, r.total_length);
       const std::uint32_t end = f->offset_bytes + std::uint32_t(f->data.size());
-      for (std::uint32_t i = 0; i < f->data.size(); ++i) {
-        const std::uint32_t at = f->offset_bytes + i;
-        if (at >= r.total_length) break;  // a fragment extending past the declared total is ignored
-        if (written[at] && assembled[at] != f->data[i]) {
+      // overlap with already-covered content: verify byte equality (conflict detection)
+      if (f->offset_bytes < clamped_covered) {
+        const std::size_t ov =
+            std::min<std::size_t>(clamped_covered - f->offset_bytes, f->data.size());
+        if (!detail::range_equals(parts, f->offset_bytes, f->data.first(ov))) {
           r.conflict = true;  // two fragments disagree on an overlapping byte
+          return out;         // never completes; evict_stale reports it as a conflict
         }
-        assembled[at] = f->data[i];
-        written[at] = true;
       }
+      // emit the new tail, clamped to the declared total
+      const std::uint32_t emit_from = std::max(f->offset_bytes, clamped_covered);
+      const std::uint32_t emit_to   = std::min(end, r.total_length);
+      if (emit_from < emit_to)
+        parts.push_back(f->data.subspan(emit_from - f->offset_bytes, emit_to - emit_from));
       if (end > covered) covered = end;
     }
-    if (r.conflict) return out;             // never completes; evict_stale reports it as a conflict
     if (covered < r.total_length) return out;  // still missing bytes
 
-    r.assembled = std::move(assembled);
+    r.parts = std::move(parts);
     r.completed = true;
     key_to_id_.erase(key);  // free the 4-tuple so a NEW datagram reusing it starts fresh
     out.completed = true;
-    out.assembled = std::span<const std::byte>(r.assembled.data(), r.assembled.size());
+    out.parts = nanom::segments{
+        std::span<const std::span<const std::byte>>(r.parts.data(), r.parts.size())};
     return out;
+  }
+
+  /// Escape hatch for a consumer that genuinely needs the completed datagram as ONE contiguous
+  /// buffer: stitches lazily on first call (the copy the segmented path exists to avoid) and
+  /// caches. Returns nullptr for an unknown/incomplete datagram. Valid until eviction.
+  const std::vector<std::byte>* materialize(std::uint32_t datagram_id) {
+    auto it = by_id_.find(datagram_id);
+    if (it == by_id_.end() || !it->second.completed) return nullptr;
+    detail::Reassembly& r = it->second;
+    if (r.materialized.empty() && r.total_length > 0) {
+      r.materialized.reserve(r.total_length);
+      for (const auto& p : r.parts) r.materialized.insert(r.materialized.end(), p.begin(), p.end());
+    }
+    return &r.materialized;
   }
 
   // Evicts every entry last touched more than timeout_ticks packets ago (whether complete or not)
