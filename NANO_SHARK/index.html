@@ -10,13 +10,13 @@
       
       
       
-        <link rel="canonical" href="https://yoavbendor.github.io/nanom/COMPILE_TIME_SAFETY/">
+        <link rel="canonical" href="https://yoavbendor.github.io/nanom/NANO_SHARK/">
       
       
-        <link rel="prev" href="../MEMORY_SAFETY/">
+        <link rel="prev" href="../P2996_COMPAT/">
       
       
-        <link rel="next" href="../THREAT_MODEL/">
+        <link rel="next" href="../BENCH_RUST_NOM/">
       
       
         
@@ -27,7 +27,7 @@
     
     
       
-        <title>Compile-time safety (strict profile) - nanom</title>
+        <title>nano_shark tutorial - nanom</title>
       
     
     
@@ -97,7 +97,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#compile-time-safety-and-the-strict-profile" class="md-skip">
+        <a href="#nano_shark-a-textbook-network-analyzer" class="md-skip">
           Skip to content
         </a>
       
@@ -133,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Compile-time safety (strict profile)
+              nano_shark tutorial
             
           </span>
         </div>
@@ -359,37 +359,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    Compile-time safety (strict profile)
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../COMPILE_TIME_SAFETY/" class="md-nav__link">
         
   
   
@@ -405,120 +378,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#the-three-profiles" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        The three profiles
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-strict-enforces-at-compile-time" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What strict enforces at compile time
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#what-strict-buys-at-runtime" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What strict buys at runtime
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#performance-proof" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Performance proof
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#using-it" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Using it
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Using it">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#safe-routes-what-you-write-under-strict" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Safe routes (what you write under strict)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tests-and-ci" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tests and CI
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#related" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Related
-      
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -689,10 +548,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../NANO_SHARK/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    nano_shark tutorial
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -708,6 +594,114 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#the-core-idea-reuse-dont-re-type" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The core idea: reuse, don't re-type
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-decode-pass" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The decode pass
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#fragment-reassembly" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Fragment reassembly
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-json-sink" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The JSON sink
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-avro-sink" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The Avro sink
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#the-heavier-sinks-nanoshark" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The heavier sinks: nanoshark
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-new-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a new protocol
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -936,10 +930,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#the-three-profiles" class="md-nav__link">
+  <a href="#the-core-idea-reuse-dont-re-type" class="md-nav__link">
     <span class="md-ellipsis">
       
-        The three profiles
+        The core idea: reuse, don't re-type
       
     </span>
   </a>
@@ -947,10 +941,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-strict-enforces-at-compile-time" class="md-nav__link">
+  <a href="#the-decode-pass" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What strict enforces at compile time
+        The decode pass
       
     </span>
   </a>
@@ -958,10 +952,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#what-strict-buys-at-runtime" class="md-nav__link">
+  <a href="#fragment-reassembly" class="md-nav__link">
     <span class="md-ellipsis">
       
-        What strict buys at runtime
+        Fragment reassembly
       
     </span>
   </a>
@@ -969,10 +963,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#performance-proof" class="md-nav__link">
+  <a href="#the-json-sink" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Performance proof
+        The JSON sink
       
     </span>
   </a>
@@ -980,38 +974,10 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#using-it" class="md-nav__link">
+  <a href="#the-avro-sink" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Using it
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Using it">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#safe-routes-what-you-write-under-strict" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Safe routes (what you write under strict)
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#tests-and-ci" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Tests and CI
+        The Avro sink
       
     </span>
   </a>
@@ -1019,10 +985,32 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#related" class="md-nav__link">
+  <a href="#the-heavier-sinks-nanoshark" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Related
+        The heavier sinks: nanoshark
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#adding-a-new-protocol" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Adding a new protocol
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#see-also" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        See also
       
     </span>
   </a>
@@ -1049,200 +1037,153 @@
   
 
 
-<h1 id="compile-time-safety-and-the-strict-profile">Compile-time safety and the strict profile<a class="headerlink" href="#compile-time-safety-and-the-strict-profile" title="Permanent link">&para;</a></h1>
-<p>nanom's default safety model is <strong>runtime</strong> (bounds checks, <code>wire_arena</code>
-generation tracking, view guards). The <strong>strict profile</strong> (<code>NANOM_STRICT=1</code>) is
-for users who want the opposite trade: <strong>narrow the API at compile time so the
-runtime can drop the checks those APIs made necessary</strong> — memory safety enforced
-by the compiler, at the speed of the unchecked build.</p>
-<p>It is the <em>sweetened pill</em>: you accept compile-time restrictions, and in return
-nanom compiles <strong>out</strong> the runtime safety machinery, giving a leaner, faster data
-model with no loss of safety on the routes that remain.</p>
-<h2 id="the-three-profiles">The three profiles<a class="headerlink" href="#the-three-profiles" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th></th>
-<th>compile-time</th>
-<th>runtime</th>
-<th>for</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>default / safety-first</strong></td>
-<td>permissive API</td>
-<td><code>NANOM_GENERATION=1</code>, <code>NANOM_GUARD_VIEWS=1</code></td>
-<td>ergonomic zero-copy, unknown caller discipline</td>
-</tr>
-<tr>
-<td><strong>minimal</strong></td>
-<td>permissive API</td>
-<td>both off</td>
-<td>max speed, no safety net, footguns available</td>
-</tr>
-<tr>
-<td><strong>strict</strong> (<code>NANOM_STRICT=1</code>)</td>
-<td><strong>narrowed API + deleted footguns + compile-time lifetime diagnostics</strong></td>
-<td>both off (lean)</td>
-<td>safety- <strong>and</strong> speed-obsessed C++</td>
-</tr>
-</tbody>
-</table>
-<p>Strict = minimal's runtime speed <strong>plus</strong> compile-time-enforced safety that plain
-minimal lacks.</p>
-<h2 id="what-strict-enforces-at-compile-time">What strict enforces at compile time<a class="headerlink" href="#what-strict-enforces-at-compile-time" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Restriction</th>
-<th>Mechanism</th>
-<th>Why</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>No raw <code>from(const void*, size_t)</code></td>
-<td>overload removed under strict</td>
-<td>provenance is always a <strong>sized</strong> span/array/string_view, never a <code>(ptr, len)</code> pair a caller can get wrong</td>
-</tr>
-<tr>
-<td>No <code>from(std::string&amp;&amp;)</code> / owning temporaries</td>
-<td><code>= delete</code></td>
-<td>parsing a temporary you don't keep is a <strong>compile error</strong>, not a runtime use-after-free</td>
-</tr>
-<tr>
-<td>No GPU/bulk raw-pointer scatter</td>
-<td><code>#error</code> in <code>&lt;nanom/bulk.hpp&gt;</code></td>
-<td>the device/bulk path is deliberately <strong>outside</strong> the bounds-checked combinator model; pick one</td>
-</tr>
-<tr>
-<td>Dangling-view diagnostics</td>
-<td><code>[[clang::lifetimebound]]</code> on <code>from()</code>/<code>as_str()</code></td>
-<td>Clang warns when a view/span is bound to a temporary buffer (zero runtime cost)</td>
-</tr>
-</tbody>
-</table>
-<p>Combinator bounds checks (<code>take</code>, <code>overlay</code>, <code>strct</code>, …) are <strong>kept</strong> — defense
-against hostile input is not a caller-discipline question — and the library stays
-continuously fuzzed.</p>
-<p>To override the GPU/bulk ban after auditing your kernel, define
-<code>NANOM_ALLOW_BULK_IN_STRICT</code>.</p>
-<h2 id="what-strict-buys-at-runtime">What strict buys at runtime<a class="headerlink" href="#what-strict-buys-at-runtime" title="Permanent link">&para;</a></h2>
+<h1 id="nano_shark-a-textbook-network-analyzer">nano_shark: a textbook network analyzer<a class="headerlink" href="#nano_shark-a-textbook-network-analyzer" title="Permanent link">&para;</a></h1>
+<p><code>examples/nano_shark/</code> is nanom's flagship example: a single pcap/pcapng decode pass — Ethernet,
+VLAN 802.1Q/QinQ, IPv4/IPv6 (with fragment reassembly and the full IPv6 extension-header chain
+incl. SRv6), TCP/UDP, SOME/IP (incl. Service Discovery), all 8 gPTP message types, and LLDP — that
+drains into whichever sinks you ask for: a tshark-<code>-T json</code>-shaped NDJSON dump and a real Avro
+Object Container File, both dependency-free. (Parquet and Lance sinks live in a companion repo,
+<a href="https://github.com/yoavbendor/nanoshark">nanoshark</a> — see <a href="#the-heavier-sinks-nanoshark">below</a>.)</p>
+<p>This page walks the architecture end to end. If you just want to run it:</p>
+<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"> </span>--target<span class="w"> </span>nano_shark<span class="w"> </span>-j
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>./build/nano_shark<span class="w"> </span>capture.pcapng<span class="w"> </span>--json<span class="w"> </span>out.ndjson
+</code></pre></div>
+<h2 id="the-core-idea-reuse-dont-re-type">The core idea: reuse, don't re-type<a class="headerlink" href="#the-core-idea-reuse-dont-re-type" title="Permanent link">&para;</a></h2>
+<p>Every other pcap-to-columns tool in this space hand-writes a parallel "row" struct per protocol,
+duplicating every field name a wire struct already has. nano_shark doesn't: <code>Node&lt;Body&gt;</code> wraps an
+<strong>existing</strong> <code>NANOM_DESCRIBE</code>d wire struct as a nested field, and <code>nanom::soa&lt;T&gt;</code>'s dotted-name
+flattening already knows how to turn that nesting into <code>body.&lt;field&gt;</code> columns with no extra code:</p>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// core/node_row.hpp</span>
+<a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">class</span><span class="w"> </span><span class="nc">Body</span><span class="o">&gt;</span>
+<a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">struct</span><span class="w"> </span><span class="nc">Node</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="n">packet_id_t</span><span class="w">   </span><span class="n">packet_id</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="n">kNoPacket</span><span class="p">;</span>
+<a id="__codelineno-1-5" name="__codelineno-1-5" href="#__codelineno-1-5"></a><span class="w">  </span><span class="n">std</span><span class="o">::</span><span class="kt">uint32_t</span><span class="w"> </span><span class="n">datagram_id</span><span class="w">    </span><span class="o">=</span><span class="w"> </span><span class="mi">0</span><span class="p">;</span><span class="w">      </span><span class="c1">// non-zero only for a fragment-reassembled row</span>
+<a id="__codelineno-1-6" name="__codelineno-1-6" href="#__codelineno-1-6"></a><span class="w">  </span><span class="kt">bool</span><span class="w">          </span><span class="n">is_reassembled</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nb">false</span><span class="p">;</span>
+<a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="n">Body</span><span class="w">          </span><span class="n">body</span><span class="p">;</span><span class="w">                    </span><span class="c1">// an EXISTING wire struct, reused verbatim</span>
+<a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">};</span>
+</code></pre></div>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// core/l2l3_nodes.hpp — the entire per-protocol registration is one line:</span>
+<a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">using</span><span class="w"> </span><span class="n">EthNode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Node</span><span class="o">&lt;</span><span class="n">nmproto</span><span class="o">::</span><span class="n">Ethernet</span><span class="o">&gt;</span><span class="p">;</span>
+</code></pre></div>
+<p>A single shared partial specialization (<code>nanom::describe&lt;Node&lt;Body&gt;&gt;</code>, in <code>node_row.hpp</code>) registers
+every <code>Node&lt;...&gt;</code> instantiation at once — <code>Node&lt;Body&gt;</code> is a class-template instantiation, and
+nanom's C++26 reflection provider <a href="../P2996_COMPAT/">categorically excludes those</a>, so this is
+written as a plain partial specialization rather than through <code>NANOM_DESCRIBE</code>, and it compiles
+identically whether nanom itself is built in C++23 macro mode or C++26 reflection mode.</p>
+<p><code>node_table&lt;Row&gt;</code> is the columnar accumulator each protocol table uses — a name (the JSON layer
+key) plus the existing <code>nanom::soa&lt;Row&gt;</code>:</p>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">AllTables</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="n">node_table</span><span class="o">&lt;</span><span class="n">PacketRow</span><span class="o">&gt;</span><span class="w"> </span><span class="n">packets</span><span class="p">{</span><span class="s">&quot;packets&quot;</span><span class="p">};</span><span class="w">  </span><span class="c1">// one row per captured frame, decode-outcome-agnostic</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="n">node_table</span><span class="o">&lt;</span><span class="n">EthNode</span><span class="o">&gt;</span><span class="w">   </span><span class="n">eth</span><span class="p">{</span><span class="s">&quot;eth&quot;</span><span class="p">};</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="n">node_table</span><span class="o">&lt;</span><span class="n">VlanNode</span><span class="o">&gt;</span><span class="w">  </span><span class="n">vlan</span><span class="p">{</span><span class="s">&quot;vlan&quot;</span><span class="p">};</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="n">node_table</span><span class="o">&lt;</span><span class="n">Ipv4Node</span><span class="o">&gt;</span><span class="w">  </span><span class="n">ipv4</span><span class="p">{</span><span class="s">&quot;ipv4&quot;</span><span class="p">};</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="c1">// ... ipv6, udp, tcp, defrag/datagram tables, someip*, gptp, lldp</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">};</span>
+</code></pre></div>
+<h2 id="the-decode-pass">The decode pass<a class="headerlink" href="#the-decode-pass" title="Permanent link">&para;</a></h2>
+<p><code>run_decode_pass()</code> (<code>core/decode_pass.hpp</code>) is the one entry point every sink drains from:</p>
+<ol>
+<li><code>nmpcap::scan_blocks()</code> walks the pcap/pcapng container structure (SHB/IDB/EPB or legacy pcap
+   records) — reused verbatim from <code>examples/nanotins_parity/</code>.</li>
+<li>For each packet, <code>PacketRow{packet_id, file_offset, caplen, origlen}</code> is pushed unconditionally
+   (regardless of decode outcome) — this is the table a byte-level sink anchors back to raw file
+   bytes with (see <a href="#the-heavier-sinks-nanoshark">below</a>).</li>
+<li><code>nmproto::walk_packet_ext()</code> — nanom's extended walk, which (unlike the base <code>walk_packet</code>)
+   descends the full IPv6 extension-header chain (Hop-by-Hop, Routing/SRv6, Fragment, Destination
+   Options, AH) — decodes Ethernet → VLAN → IPv4/IPv6 → TCP/UDP, zero-copy over the packet's own
+   bytes throughout.</li>
+<li>A fragment-eligible IPv4/IPv6 packet is diverted into <code>defrag::ReassemblyTable&lt;Key&gt;</code> instead of
+   falling through to L4 (see <a href="#fragment-reassembly">Fragment reassembly</a>).</li>
+<li>UDP/TCP payloads reach <code>l4_dispatch.hpp</code>'s <code>dispatch_l4()</code> — the single L4 entry point used by
+   <em>both</em> the normal per-packet path and defrag's reassembly-completion re-entry, so there is never
+   a second, divergent copy of the UDP/TCP handling logic.</li>
+<li><code>dispatch_l4()</code> additionally tries SOME/IP (Service Discovery is always attempted once a
+   <code>SomeipHeader</code> parses; port-gated for plain/TLV payloads via <code>DecodeOptions::someip_ports</code> /
+   <code>someip_tlv_ports</code>, since SOME/IP has no EtherType/magic-number tag of its own).</li>
+<li>Ethernet's ethertype also dispatches gPTP (<code>0x88F7</code>) and LLDP (<code>0x88CC</code>) directly, since both are
+   L2-terminal protocols with no IP layer underneath.</li>
+<li>Every row lands in <code>AllTables</code> always; when a JSON sink is attached, each layer <em>additionally</em>
+   renders straight into that packet's <code>PacketJson</code> at the same callback site.</li>
+</ol>
+<p>A malformed layer stops <strong>that packet's</strong> walk only (nanom's existing <code>walk_packet</code> contract) —
+<code>run_decode_pass()</code> itself returns <code>false</code> only when the pcap/pcapng container scan fails outright
+(a corrupt file, not a corrupt packet).</p>
+<h2 id="fragment-reassembly">Fragment reassembly<a class="headerlink" href="#fragment-reassembly" title="Permanent link">&para;</a></h2>
+<p><code>core/defrag.hpp</code> is the one deliberate, narrowly-scoped departure from nanom's zero-copy pledge —
+and the first heap-owning, cross-packet <strong>stateful</strong> table anywhere in the nano-family. Every
+individual fragment's IP header is still decoded zero-copy over the file's own bytes; fragments are
+buffered as non-owning <code>std::span</code>s into that same source buffer (valid for the whole decode pass),
+and only the final cross-fragment stitch — built once a datagram completes — is an owned copy: one
+<code>memcpy</code>-shaped copy per completed datagram, not one per fragment plus another at the end.</p>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">ReassemblyTable</span><span class="o">&lt;</span><span class="n">Ipv4Key</span><span class="o">&gt;</span><span class="w"> </span><span class="n">table</span><span class="p">;</span>
+<a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">auto</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">table</span><span class="p">.</span><span class="n">add_fragment</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="n">packet_id</span><span class="p">,</span><span class="w"> </span><span class="n">offset_bytes</span><span class="p">,</span><span class="w"> </span><span class="n">more_fragments</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">);</span>
+<a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">r</span><span class="p">.</span><span class="n">completed</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="c1">// r.assembled is a std::span&lt;const std::byte&gt; over the owned, stitched buffer</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="p">}</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">table</span><span class="p">.</span><span class="n">evict_stale</span><span class="p">(</span><span class="n">now_packet_id</span><span class="p">);</span><span class="w">  </span><span class="c1">// ages out timed-out / stuck-in-conflict reassemblies</span>
+</code></pre></div>
+<p>A genuinely zero-copy reassembly (fragments joined lazily via <code>std::views::join</code>, never
+materializing a contiguous buffer) isn't practical here: nanom's parsing surface (<code>nom.hpp</code>'s
+<code>input</code>, <code>strct&lt;T&gt;()</code>, <code>overlay&lt;T&gt;()</code>) is built on a contiguous <code>[first,last)</code> pointer pair, not a
+generalized range — a <code>join_view</code> over disjoint spans is only a <code>forward_range</code>, so it can't yield
+the pointer+length pair the parser needs. Teaching the core cursor to understand segmented input
+would be a change to the <em>library</em>, out of scope for an example.</p>
+<p><code>fuzz/fuzz_defrag.cpp</code> is a dedicated libFuzzer harness for this table (out-of-order fragments,
+overlapping/conflicting fragments, capacity/timeout eviction) — within its first run it found a
+real bug (a stale key-to-id mapping surviving eviction, causing a crash on key reuse), now fixed and
+regression-tested.</p>
+<h2 id="the-json-sink">The JSON sink<a class="headerlink" href="#the-json-sink" title="Permanent link">&para;</a></h2>
+<p><code>core/json_tree.hpp</code>'s <code>PacketJson</code> builds the tshark-shaped <code>{"_index":N,"_source":{"layers":{...}}}</code>
+tree at runtime. <code>add_layer_json(name, json)</code> inserts a layer; a <strong>second</strong> call with the same name
+promotes it to a JSON array — this is what makes VLAN stacking, the IPv6 extension-header chain,
+LLDP TLVs, and SOME/IP SD entries render as repeated-field arrays, matching tshark's own shape,
+without the caller needing to know in advance how many of a given layer a packet will have.</p>
+<h2 id="the-avro-sink">The Avro sink<a class="headerlink" href="#the-avro-sink" title="Permanent link">&para;</a></h2>
+<p><code>core/avro_ocf.hpp</code> is a real Avro Object Container File writer — <code>"Obj\x01"</code> magic, a metadata map
+(<code>avro.schema</code> = <code>nanom::avro_schema&lt;T&gt;()</code>, reused verbatim from <code>schema.hpp</code>; <code>avro.codec</code> =
+<code>"null"</code>), a random 16-byte sync marker, then one block per <code>nanom::soa&lt;T&gt;</code> chunk. The binary
+encoding itself is zigzag varints + raw IEEE-754 bytes + length-prefixed byte strings — no external
+Avro library needed for the <code>"null"</code> codec. <code>write_chunk()</code> reads each row's fields directly out of
+the chunk's own column buffers (<code>nanom::soa&lt;T&gt;::chunk::as&lt;V&gt;(i)</code>) rather than reconstructing a <code>T</code>
+value first, since <code>soa&lt;T&gt;</code> never stores rows any other way.</p>
+<h2 id="the-heavier-sinks-nanoshark">The heavier sinks: nanoshark<a class="headerlink" href="#the-heavier-sinks-nanoshark" title="Permanent link">&para;</a></h2>
+<p>Parquet and Lance both need external libraries nanom itself never depends on, so they live in a
+sibling repo, <a href="https://github.com/yoavbendor/nanoshark">nanoshark</a>, which vendors nanom (plus
+<a href="https://github.com/yoavbendor/nanoarrow2parquet">nanoarrow2parquet</a> and
+<a href="https://github.com/yoavbendor/nanolance">nanolance</a>) as read-only git submodules. The bridge
+between nanom's columnar storage and either target schema is <code>core/soa_columns.hpp</code>'s
+<code>columns_of&lt;T&gt;</code> — a compile-time leaf-column <strong>type list</strong> that mirrors <code>nanom::soa&lt;T&gt;::columns()</code>'s
+own dotted-name flattening exactly (same names, same order, same per-row size — proven by
+<code>tests/test_soa_columns.cpp</code> across every current row shape), so nanoshark's Parquet and Lance
+writers both fold it into their own <code>Field&lt;Name, T&gt;...</code>/<code>column&lt;T, Name&gt;...</code> packs once and feed
+<code>nanom::soa&lt;T&gt;::chunk::as&lt;Type&gt;(i)</code> spans straight into <code>write_chunk()</code>/<code>write_batch()</code> — zero-copy
+for every fixed-width column, including MAC/IP-shaped <code>fixed_size_binary</code> columns.</p>
+<p>nanoshark's <code>packets</code> table (mirroring nanom's own <code>PacketRow</code>) additionally carries a
+<code>lance.blob.v2 payload_ref</code> column resolving each packet's raw bytes back to the source capture file
+(<code>uri</code> = the file, <code>position</code>/<code>size</code> = that packet's <code>file_offset</code>/<code>caplen</code>) — every other table
+joins back to it by <code>packet_id</code> alone, never touching raw file bytes itself.</p>
+<h2 id="adding-a-new-protocol">Adding a new protocol<a class="headerlink" href="#adding-a-new-protocol" title="Permanent link">&para;</a></h2>
+<p>Every step above composes the same way for a new protocol:</p>
+<ol>
+<li>A <code>NANOM_DESCRIBE</code>d (or, under C++26, plain) wire struct for its fixed header.</li>
+<li><code>using FooNode = Node&lt;Foo&gt;;</code> if it fits the generic envelope, or a small synthesized row (with
+   its own <code>packet_id</code> field) if it doesn't — SOME/IP's SD entries/options and LLDP's per-TLV row
+   are both examples of the latter, since their shape varies by sub-type in a way <code>Node&lt;Body&gt;</code>
+   doesn't model.</li>
+<li>One <code>node_table&lt;FooNode&gt; foo{"foo"};</code> member on <code>AllTables</code>.</li>
+<li>A dispatch call from wherever the protocol is identifiable (an ethertype, an IP protocol number,
+   a UDP/TCP port, or a signature check on the payload itself) in <code>decode_pass.hpp</code> / <code>l4_dispatch.hpp</code>.</li>
+</ol>
+<p>Nothing else changes: the JSON sink renders it via the same <code>add_layer_json</code> call every other
+protocol uses, the Avro sink and <code>columns_of&lt;T&gt;</code> see it automatically (any <code>nanom::Described</code> type
+qualifies), and — once vendored via nanoshark — so do the Parquet and Lance sinks, with no changes
+needed in that repo at all.</p>
+<h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><code>NANOM_GENERATION=0</code>, <code>NANOM_GUARD_VIEWS=0</code> by default (no per-access generation branch).</li>
-<li>A <strong>leaner data model</strong> — measured with <code>sizeof</code>:</li>
-</ul>
-<table>
-<thead>
-<tr>
-<th>type</th>
-<th style="text-align: right;">default (full)</th>
-<th style="text-align: right;">strict / minimal</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><code>nanom::input</code></td>
-<td style="text-align: right;">48 B</td>
-<td style="text-align: right;"><strong>32 B</strong></td>
-</tr>
-<tr>
-<td><code>nanom::bytes</code></td>
-<td style="text-align: right;">32 B (<code>attested_bytes</code>)</td>
-<td style="text-align: right;"><strong>16 B</strong> (<code>std::span</code>)</td>
-</tr>
-</tbody>
-</table>
-<p>Smaller cursors mean less register pressure and copying on the hot path.</p>
-<h2 id="performance-proof">Performance proof<a class="headerlink" href="#performance-proof" title="Permanent link">&para;</a></h2>
-<p>Streaming pcapng, verified byte-identical output, <code>g++-13 -O3 -march=native</code>,
-best-of-5 (reproduce with <code>python3 bench/compare_rust.py --build --safety all</code>):</p>
-<table>
-<thead>
-<tr>
-<th>profile</th>
-<th style="text-align: right;">ns/packet</th>
-<th style="text-align: right;">throughput</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>minimal</td>
-<td style="text-align: right;">84</td>
-<td style="text-align: right;">17.5 GiB/s</td>
-</tr>
-<tr>
-<td>full (safety-first)</td>
-<td style="text-align: right;">82</td>
-<td style="text-align: right;">17.8 GiB/s</td>
-</tr>
-<tr>
-<td><strong>strict</strong></td>
-<td style="text-align: right;"><strong>83</strong></td>
-<td style="text-align: right;">17.5 GiB/s</td>
-</tr>
-<tr>
-<td>Rust nom (hand-written)</td>
-<td style="text-align: right;">83</td>
-<td style="text-align: right;">17.7 GiB/s</td>
-</tr>
-</tbody>
-</table>
-<p>All three nanom profiles are at parity (within best-of-5 noise): on this workload
-generation tracking is already essentially free, so strict's win is the
-<strong>compile-time guarantees + leaner data model</strong>, not a throughput bump. The honest
-claim is <em>"compile-time-enforced memory safety at the unchecked profile's speed."</em></p>
-<h2 id="using-it">Using it<a class="headerlink" href="#using-it" title="Permanent link">&para;</a></h2>
-<div class="tabbed-set tabbed-alternate" data-tabs="1:2"><input checked="checked" id="__tabbed_1_1" name="__tabbed_1" type="radio" /><input id="__tabbed_1_2" name="__tabbed_1" type="radio" /><div class="tabbed-labels"><label for="__tabbed_1_1">CMake</label><label for="__tabbed_1_2">Compile flag</label></div>
-<div class="tabbed-content">
-<div class="tabbed-block">
-<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span>-DNANOM_STRICT<span class="o">=</span>ON
-</code></pre></div>
-</div>
-<div class="tabbed-block">
-<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a>g++<span class="w"> </span>-std<span class="o">=</span>c++23<span class="w"> </span>-DNANOM_STRICT<span class="o">=</span><span class="m">1</span><span class="w"> </span>-I<span class="w"> </span>include<span class="w"> </span>my_parser.cpp
-</code></pre></div>
-</div>
-</div>
-</div>
-<p>Belt-and-suspenders: combine strict compile-time restrictions <strong>with</strong> runtime
-tracking by re-enabling generation explicitly:</p>
-<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a>-DNANOM_STRICT<span class="o">=</span><span class="m">1</span><span class="w"> </span>-DNANOM_GENERATION<span class="o">=</span><span class="m">1</span>
-</code></pre></div>
-<h3 id="safe-routes-what-you-write-under-strict">Safe routes (what you write under strict)<a class="headerlink" href="#safe-routes-what-you-write-under-strict" title="Permanent link">&para;</a></h3>
-<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="cp">#include</span><span class="w"> </span><span class="cpf">&lt;nanom/nanom.hpp&gt;</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="k">namespace</span><span class="w"> </span><span class="nn">nm</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="nn">nanom</span><span class="p">;</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="n">std</span><span class="o">::</span><span class="n">vector</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">&gt;</span><span class="w"> </span><span class="n">buf</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">load</span><span class="p">();</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="k">auto</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">std</span><span class="o">::</span><span class="n">span</span><span class="o">&lt;</span><span class="k">const</span><span class="w"> </span><span class="n">std</span><span class="o">::</span><span class="n">byte</span><span class="o">&gt;</span><span class="p">(</span><span class="n">buf</span><span class="p">.</span><span class="n">data</span><span class="p">(),</span><span class="w"> </span><span class="n">buf</span><span class="p">.</span><span class="n">size</span><span class="p">()));</span><span class="w">  </span><span class="c1">// sized</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="k">auto</span><span class="w"> </span><span class="n">r</span><span class="w">  </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">strct</span><span class="o">&lt;</span><span class="n">my_hdr</span><span class="o">&gt;</span><span class="p">()(</span><span class="n">in</span><span class="p">);</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a>
-<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="n">std</span><span class="o">::</span><span class="n">string</span><span class="w"> </span><span class="n">body</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">read_body</span><span class="p">();</span><span class="w">          </span><span class="c1">// named, not a temporary</span>
-<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a><span class="k">auto</span><span class="w"> </span><span class="n">t</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">tag</span><span class="p">(</span><span class="s">&quot;GET&quot;</span><span class="p">)(</span><span class="n">nm</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">body</span><span class="p">));</span>
-<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a>
-<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="c1">// nm::from(load_string());               // COMPILE ERROR under strict (dangles)</span>
-<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a><span class="c1">// nm::from(buf.data(), buf.size());       // COMPILE ERROR under strict (raw ptr+len)</span>
-<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="c1">// #include &lt;nanom/bulk.hpp&gt;               // COMPILE ERROR under strict (GPU/bulk)</span>
-</code></pre></div>
-<h2 id="tests-and-ci">Tests and CI<a class="headerlink" href="#tests-and-ci" title="Permanent link">&para;</a></h2>
-<ul>
-<li><code>tests/test_strict_profile.cpp</code> (<code>nanom_strict_profile_tests</code>) — <code>static_assert</code>s
-  the compile-time contract (raw entry removed, owning temporaries deleted,
-  <code>bytes == std::span</code>, lean flags), then parses through the safe routes.</li>
-<li><code>nanom_strict_rejects_raw_ptr</code>, <code>nanom_strict_rejects_string_temp</code>,
-  <code>nanom_strict_rejects_bulk</code> — <strong>negative compile tests</strong> (<code>WILL_FAIL</code>): a
-  regression that re-enables an unsafe route turns them red.</li>
-<li>The <code>strict-profile</code> CI job builds the tree, runs those tests, compiles the
-  strict suite clang-clean (to exercise <code>lifetimebound</code>), and benchmarks
-  strict vs minimal vs full.</li>
-</ul>
-<h2 id="related">Related<a class="headerlink" href="#related" title="Permanent link">&para;</a></h2>
-<ul>
-<li><a href="../MEMORY_SAFETY/">Memory safety model</a> — the runtime enforcement matrix</li>
-<li><a href="../RUST_SAFETY_REVIEW/">Safety for Rust reviewers</a> — lifetime/UB/overflow answers</li>
-<li><a href="../THREAT_MODEL/">Threat model + reviewer checklist</a></li>
-<li><a href="../BENCH_RUST_NOM/">vs Rust nom (streaming pcapng)</a> — benchmark methodology</li>
+<li><a href="../design/">Design</a> — the <code>describe&lt;T&gt;</code> seam, zero-copy views, error model (the ideas nano_shark
+  builds on).</li>
+<li><a href="../MEMORY_SAFETY/">Memory safety</a> — <code>NANOM_GENERATION</code>/<code>NANOM_GUARD_VIEWS</code> and what they catch.</li>
+<li><a href="https://github.com/yoavbendor/nanoshark">nanoshark</a> — the Parquet/Lance integration repo.</li>
 </ul>
 
 
@@ -1279,7 +1220,7 @@ tracking by re-enabling generation explicitly:</p>
       <nav class="md-footer__inner md-grid" aria-label="Footer" >
         
           
-          <a href="../MEMORY_SAFETY/" class="md-footer__link md-footer__link--prev" aria-label="Previous: Memory safety">
+          <a href="../P2996_COMPAT/" class="md-footer__link md-footer__link--prev" aria-label="Previous: C++26 reflection">
             <div class="md-footer__button md-icon">
               
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"><path d="M20 11v2H8l5.5 5.5-1.42 1.42L4.16 12l7.92-7.92L13.5 5.5 8 11z"/></svg>
@@ -1289,20 +1230,20 @@ tracking by re-enabling generation explicitly:</p>
                 Previous
               </span>
               <div class="md-ellipsis">
-                Memory safety
+                C++26 reflection
               </div>
             </div>
           </a>
         
         
           
-          <a href="../THREAT_MODEL/" class="md-footer__link md-footer__link--next" aria-label="Next: Threat model">
+          <a href="../BENCH_RUST_NOM/" class="md-footer__link md-footer__link--next" aria-label="Next: vs Rust nom (streaming pcapng)">
             <div class="md-footer__title">
               <span class="md-footer__direction">
                 Next
               </span>
               <div class="md-ellipsis">
-                Threat model
+                vs Rust nom (streaming pcapng)
               </div>
             </div>
             <div class="md-footer__button md-icon">
