@@ -60,6 +60,7 @@ static_assert(std::tuple_element_t<0, FragCols>::name.sv() == "packet_id");
 static_assert(std::tuple_element_t<2, FragCols>::name.sv() == "frag_offset_bytes");
 
 int main() {
+  check_matches_soa<PacketRow>();
   check_matches_soa<EthNode>();
   check_matches_soa<VlanNode>();
   check_matches_soa<Ipv4Node>();

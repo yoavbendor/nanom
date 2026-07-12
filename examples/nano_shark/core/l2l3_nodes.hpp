@@ -8,6 +8,7 @@
 #include "gptp.hpp"
 #include "lldp_rows.hpp"
 #include "node_row.hpp"
+#include "packet_row.hpp"
 #include "someip_rows.hpp"
 
 #include "nm_protocols.hpp"  // nmproto::{Ethernet,VlanTag,Ipv4,Ipv6,Udp,Tcp}; include path set by CMake
@@ -35,6 +36,10 @@ namespace nano_shark {
 // site / dispatch call, see core/decode_pass.hpp). Grows further with the IPv6 ext-header/SRv6
 // detail tables a later sink (Parquet/Lance) needs.
 struct AllTables {
+  // One row per captured packet, regardless of decode outcome -- see packet_row.hpp. Anchors
+  // byte-level sinks (e.g. the sibling `nanoshark` repo's Lance bridge) back to the source file.
+  node_table<PacketRow> packets{"packets"};
+
   node_table<EthNode>  eth{"eth"};
   node_table<VlanNode> vlan{"vlan"};
   node_table<Ipv4Node> ipv4{"ipv4"};
