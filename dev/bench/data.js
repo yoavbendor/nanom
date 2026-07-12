@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1783804243163,
+  "lastUpdate": 1783836309635,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -923,6 +923,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 20.4,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "e9cd78a7fb3ea0ad5d010752c06dcdf5582a9dd0",
+          "message": "Merge pull request #24 from yoavbendor/claude/pcap-network-parser-zr8kf4\n\nnano_shark: Phases 6-8 — packet table, soa_columns bridge, defrag fuzzer + fix, golden tests, tutorial",
+          "timestamp": "2026-07-12T09:04:09+03:00",
+          "tree_id": "3a4b5ee8e566e77f97760ef5b412c0a259e52758",
+          "url": "https://github.com/yoavbendor/nanom/commit/e9cd78a7fb3ea0ad5d010752c06dcdf5582a9dd0"
+        },
+        "date": 1783836308954,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 28.6,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 112.4,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 38.5,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 20.2,
             "unit": "ns/pkt"
           }
         ]
