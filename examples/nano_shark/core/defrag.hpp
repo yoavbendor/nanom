@@ -4,29 +4,30 @@
 // nano_shark/core/defrag.hpp — IPv4/IPv6 fragment reassembly. New: no precedent anywhere in the
 // nano-family (nanom/nanotins detect fragmentation and stop the walk; nothing reassembles).
 //
-// This is the ONE deliberate, narrowly-scoped departure from nanom's zero-copy pledge: fragments
-// arrive non-contiguously in the source file, so reconstructing "the datagram" requires an owned,
-// stitched-together buffer. Every individual fragment's own IP header is still decoded zero-copy
-// over the original file bytes (see core/decode_pass.hpp). Fragments are BUFFERED as non-owning
-// spans into that same source buffer (valid for the whole decode pass -- the caller's `file` bytes
-// outlive every ReassemblyTable, which is local to one run_decode_pass call); only the final
-// cross-fragment stitch (Reassembly::assembled, built once a datagram completes) is an owned copy
-// -- exactly one copy per completed datagram, not one per fragment plus one more at the end.
+// Fragments arrive non-contiguously in the source file, so "the datagram" is a set of disjoint
+// byte ranges. Reassembly is now FULLY ZERO-COPY: on completion, add_fragment returns an ordered,
+// overlap-trimmed list of VIEWS into the source buffer (Result::parts, a nanom::segments), and the
+// L4 re-entry parses straight over it with strct_seg -- no stitched buffer is ever built. This is
+// what nanom/segmented.hpp exists for: it teaches nanom to parse a logical buffer split across
+// disjoint spans, decoding each struct off the segment it lies in (a bounded, stack-only gather
+// only when a struct straddles a fragment seam -- never a whole-datagram copy). The earlier design
+// (an owned std::vector<std::byte> stitched once per completed datagram) is gone; a lazy
+// materialize() escape hatch remains for the rare consumer that genuinely needs one contiguous
+// buffer, and it is the only place a copy can still happen -- and only if asked.
 //
-// A fully zero-copy reassembly (fragments kept as spans, joined lazily via std::views::join
-// instead of ever stitching) isn't practical here: nanom's parsing surface (nom.hpp's `input`,
-// strct<T>(), overlay<T>()) is built on a contiguous [first,last) pointer pair, not a generalized
-// range. A join_view over disjoint spans is only a forward_range -- its elements aren't adjacent
-// in memory, so it can't yield the pointer+length pair nanom's parser needs; feeding it in would
-// still require materializing (copying) at the parse call site, likely losing nanom's
-// pointer-arithmetic fast paths in the process. Teaching nanom's core cursor to understand
-// segmented input would be a real change to the LIBRARY itself, out of scope for this example.
+// (Historical note: this file once documented segmented parsing as impractical -- "a join_view
+// over disjoint spans is only a forward_range, can't yield the pointer+length pair the parser
+// needs, so teaching the core cursor to understand segmented input would be a real change to the
+// LIBRARY, out of scope." That library change is exactly what nanom/segmented.hpp is. The insight
+// that made it cheap: nanom's field decode (detail::decode_field/assign_field) already takes a raw
+// pointer, so segmentation is solved by WINDOWING one level above it -- the ~124 core combinators
+// never had to change at all.)
 //
-// Known scope trim: decode_pass.hpp re-enters L4 parsing over the reassembled buffer via a plain
-// nanom::from() (an "unattested" span), not a dedicated NANOM_GENERATION wire_arena scoped to the
-// Reassembly's lifetime. Functionally complete either way; wiring a per-datagram arena would add
-// use-after-evict detection on TOP of that (catching a stale view<T> that outlives evict_stale())
-// as a follow-up hardening pass, not a correctness requirement for reassembly itself.
+// Known scope trim: decode_pass.hpp re-enters L4 parsing over the reassembled segments via a plain
+// nanom::from(result.parts) (an "unattested" segments), not a dedicated NANOM_GENERATION wire_arena
+// scoped to the Reassembly's lifetime. Functionally complete either way; wiring a per-datagram
+// arena would add use-after-evict detection on TOP of that (catching a stale view<T> that outlives
+// evict_stale()) as a follow-up hardening pass, not a correctness requirement for reassembly.
 
 #include <nanom/nanom.hpp>
 

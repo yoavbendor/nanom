@@ -322,9 +322,12 @@ add_test(NAME self_fuzz COMMAND nm_self_fuzz)
 nanom_exe(nm_parse_bench bench/parse_bench.cpp)
 nanom_exe(nm_safety_microbench bench/safety_microbench.cpp)
 nanom_exe(nm_bulk_bench  examples/nanotins_parity/pcap_bulk.cpp)  # reuse as bulk bench
+nanom_exe(nm_segmented_bench bench/segmented_bench.cpp)  # stitch-vs-segments + per-wrap overhead
+target_include_directories(nm_segmented_bench PRIVATE ${parity_dir})
 add_test(NAME bench_smoke_parse COMMAND nm_parse_bench ${td}/srv6_sample.pcap 2)
 add_test(NAME bench_smoke_safety COMMAND nm_safety_microbench 2)
 add_test(NAME bench_smoke_bulk  COMMAND nm_bulk_bench  ${td}/srv6_sample.pcap 50 2)
+add_test(NAME bench_smoke_segmented COMMAND nm_segmented_bench 2)
 
 # ---- libFuzzer coverage-guided targets (Clang only, opt-in) ---------------
 if(NANOM_BUILD_FUZZERS)
