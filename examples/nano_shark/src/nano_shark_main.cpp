@@ -81,8 +81,8 @@ int main(int argc, char** argv) {
     usage(argv[0]);
     return 2;
   }
-  const bool json_to_stdout = json_requested && !json_path;
   if (!json_requested && !avro_stem) json_requested = true;  // default sink when nothing was requested
+  const bool json_to_stdout = json_requested && !json_path;
 
   std::vector<std::uint8_t> bytes;
   if (!read_file(input_path, bytes)) {

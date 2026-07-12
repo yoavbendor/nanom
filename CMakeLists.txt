@@ -243,6 +243,14 @@ set(nano_shark_dir ${CMAKE_CURRENT_SOURCE_DIR}/examples/nano_shark)
 nanom_exe(nano_shark ${nano_shark_dir}/src/nano_shark_main.cpp)
 target_include_directories(nano_shark PRIVATE ${parity_dir} ${nano_shark_dir}/core)
 
+# CLI-level regression test: with NO sink flag at all, the documented default ("--json is written to
+# stdout") must actually happen -- catches a real bug where json_to_stdout was computed before the
+# "default to JSON" fallback ran, so this exact no-flags invocation tried to fopen(nullptr, "wb").
+add_test(NAME nano_shark_cli_default_stdout
+         COMMAND bash -c
+             "$<TARGET_FILE:nano_shark> ${nano_shark_dir}/testdata/ipv4_fragments_sample.pcap | \
+              grep -q '\"_index\":0'")
+
 nanom_exe(nano_shark_tests ${nano_shark_dir}/tests/test_json_tree.cpp)
 target_include_directories(nano_shark_tests PRIVATE ${parity_dir} ${nano_shark_dir}/core)
 target_compile_definitions(nano_shark_tests PRIVATE NANO_SHARK_TESTDATA="${td}")
@@ -264,10 +272,40 @@ target_compile_definitions(nano_shark_protocols3_tests PRIVATE
   NANO_SHARK_TESTDATA="${nano_shark_dir}/testdata")
 add_test(NAME nano_shark_protocols3_tests COMMAND nano_shark_protocols3_tests)
 
+# Phase 8: golden-diff regression tests for nano_shark's own JSON output on the defrag/SOME-IP/
+# gPTP/LLDP fixtures -- these were previously checked only programmatically (CHECK() assertions on
+# individual field values); this pins the exact NDJSON shape too, via the same diff_test.cmake
+# helper nanotins_parity's own golden tests already use.
+foreach(fx ipv4_fragments_sample ipv6_fragments_sample someip_fixture)
+  add_test(NAME nano_shark_golden_${fx}
+    COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nano_shark>
+      -DARGS=${nano_shark_dir}/testdata/${fx}.pcap -DGOLDEN=${nano_shark_dir}/testdata/${fx}.ndjson
+      -P ${parity_dir}/diff_test.cmake)
+endforeach()
+add_test(NAME nano_shark_golden_gptp_fixture
+  COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nano_shark>
+    -DARGS=${nano_shark_dir}/testdata/gptp_fixture.pcapng
+    -DGOLDEN=${nano_shark_dir}/testdata/gptp_fixture.ndjson
+    -P ${parity_dir}/diff_test.cmake)
+# LLDP reuses nanotins_parity's already-golden-tested dpar_sample.pcap fixture (see parity_lldp)
+# rather than a new one -- same fixture test_protocols3.cpp's test_lldp_dpar_sample() decodes.
+add_test(NAME nano_shark_golden_lldp_dpar_sample
+  COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nano_shark>
+    -DARGS=${parity_dir}/testdata/dpar_sample.pcap
+    -DGOLDEN=${nano_shark_dir}/testdata/dpar_sample_lldp.ndjson
+    -P ${parity_dir}/diff_test.cmake)
+
 # Phase 4: the Avro Object Container File sink.
 nanom_exe(nano_shark_avro_tests ${nano_shark_dir}/tests/test_avro.cpp)
 target_include_directories(nano_shark_avro_tests PRIVATE ${nano_shark_dir}/core)
 add_test(NAME nano_shark_avro_tests COMMAND nano_shark_avro_tests)
+
+# Phase 5: soa_columns.hpp's columns_of<T> -- the compile-time leaf-column type list the sibling
+# `nanoshark` repo's Parquet/Lance sink bridges fold into their own column packs. Proves it agrees
+# with nanom::soa<T>::columns() (name, order, per-row size) for every current node/row shape.
+nanom_exe(nano_shark_soa_columns_tests ${nano_shark_dir}/tests/test_soa_columns.cpp)
+target_include_directories(nano_shark_soa_columns_tests PRIVATE ${parity_dir} ${nano_shark_dir}/core)
+add_test(NAME nano_shark_soa_columns_tests COMMAND nano_shark_soa_columns_tests)
 
 # ---- robustness fuzzer (self-contained; also a ctest) ---------------------
 nanom_exe(nm_self_fuzz fuzz/self_fuzz.cpp)
@@ -287,7 +325,7 @@ if(NANOM_BUILD_FUZZERS)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(FATAL_ERROR "NANOM_BUILD_FUZZERS requires Clang (libFuzzer)")
   endif()
-  foreach(fz scan_walk streaming_pcapng)
+  foreach(fz scan_walk streaming_pcapng defrag)
     add_executable(fuzz_${fz} fuzz/fuzz_${fz}.cpp)
     target_link_libraries(fuzz_${fz} PRIVATE nanom Threads::Threads)
     target_include_directories(fuzz_${fz} PRIVATE ${CMAKE_SOURCE_DIR}/bench ${parity_dir})

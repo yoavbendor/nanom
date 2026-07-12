@@ -73,6 +73,7 @@ nav:
   - nom parity audit: NOM_PARITY_AUDIT.md
   - Design: design.md
   - C++26 reflection: P2996_COMPAT.md
+  - nano_shark tutorial: NANO_SHARK.md
   - Benchmarks:
       - vs Rust nom (streaming pcapng): BENCH_RUST_NOM.md
       - vs nanotins (overlay decode): NANOTINS_COMPARISON.md

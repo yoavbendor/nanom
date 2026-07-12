@@ -22,6 +22,7 @@ inline void dump_avro_table(const std::string& path, const nanom::soa<Row>& soa)
 }
 
 inline void dump_all_tables_avro(const std::string& stem, const AllTables& t) {
+  dump_avro_table(stem + "_packets.avro", t.packets.soa());
   dump_avro_table(stem + "_eth.avro", t.eth.soa());
   dump_avro_table(stem + "_vlan.avro", t.vlan.soa());
   dump_avro_table(stem + "_ipv4.avro", t.ipv4.soa());

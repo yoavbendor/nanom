@@ -239,6 +239,18 @@ class ReassemblyTable {
       }
       s.gap_bytes = (r.have_last && r.total_length > covered) ? (r.total_length - covered) : 0;
       out.push_back(s);
+      // A completed reassembly already erased its own key_to_id_ entry in add_fragment(); a
+      // still-open one (timed out / evicted for capacity / stuck in conflict) has not, so its
+      // 4-tuple key would otherwise keep resolving to this about-to-be-freed id forever -- the next
+      // add_fragment() call reusing that key would call by_id_.at(stale_id) and throw. Reassembly
+      // doesn't carry its own key (it's Key-agnostic, shared by every ReassemblyTable<Key>
+      // instantiation), so find it by value instead; key_to_id_ is bounded by max_concurrent, so
+      // this scan is cheap and only runs for entries actually being evicted.
+      const std::uint32_t evicted_id = it->first;
+      for (auto kit = key_to_id_.begin(); kit != key_to_id_.end();) {
+        if (kit->second == evicted_id) kit = key_to_id_.erase(kit);
+        else ++kit;
+      }
       it = by_id_.erase(it);
     }
     return out;

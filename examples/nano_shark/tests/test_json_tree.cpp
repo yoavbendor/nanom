@@ -78,6 +78,27 @@ void test_ipv4_options_sample() {
   CHECK(tables.eth.rows() == 5);
   CHECK(tables.ipv4.rows() == 5);
 
+  // packets: one row per captured frame regardless of decode outcome, in file order (byte offsets
+  // strictly increasing) with a real (non-zero) captured length -- the anchor a byte-level sink
+  // (the sibling `nanoshark` repo's Lance bridge) needs to resolve raw file bytes per packet.
+  CHECK(tables.packets.rows() == 5);
+  {
+    std::uint64_t prev_offset = 0;
+    bool first = true, offsets_increasing = true, caplens_positive = true;
+    tables.packets.soa().for_each_chunk([&](const auto& c) {
+      auto file_offsets = c.template as<std::uint64_t>(1);
+      auto caplens = c.template as<std::uint32_t>(2);
+      for (std::size_t i = 0; i < c.rows; ++i) {
+        if (!first && file_offsets[i] <= prev_offset) offsets_increasing = false;
+        if (caplens[i] == 0) caplens_positive = false;
+        prev_offset = file_offsets[i];
+        first = false;
+      }
+    });
+    CHECK(offsets_increasing);
+    CHECK(caplens_positive);
+  }
+
   // packet 0: eth dst 02:00:00:00:00:02 (hex, no colons, per nm::to_json's byte-array rendering),
   // ethertype 0x0800 == 2048 decimal; ipv4 10.0.0.1 -> 10.0.0.2, protocol 17 (UDP), ttl 64,
   // total_length 32; udp 1111 -> 2222 -- all cross-checked against ipv4_options_sample.ndjson.

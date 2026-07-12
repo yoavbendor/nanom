@@ -362,6 +362,8 @@ inline bool run_decode_pass(nanom::bytes file, AllTables& tables, SinkHub sink,
     const std::uint16_t link_type =
         e.interface_id < iface_link.size() ? iface_link[e.interface_id] : std::uint16_t{0};
 
+    tables.packets.push(PacketRow{pid, e.payload_file_offset, e.caplen, e.origlen});
+
     PacketJson* pj = nullptr;
     if (sink.json_packets) {
       sink.json_packets->emplace_back(pid);
