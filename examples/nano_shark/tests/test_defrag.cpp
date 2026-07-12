@@ -146,11 +146,43 @@ void test_ipv6_defrag() {
   }
 }
 
+// Regression: a fuzzer (fuzz/fuzz_defrag.cpp) found that evict_stale() removed the timed-out entry
+// from by_id_ but never cleaned up the matching key_to_id_ entry, so the SAME 4-tuple key reused
+// after its previous reassembly aged out would resolve to the now-freed id and by_id_.at(id) would
+// throw std::out_of_range. Exercises ReassemblyTable directly (not through a full decode pass) since
+// this only needs one key, timed out once, then reused.
+void test_key_reuse_after_eviction() {
+  using nano_shark::defrag::Ipv4Key;
+  using nano_shark::defrag::ReassemblyTable;
+
+  ReassemblyTable<Ipv4Key>::Config cfg;
+  cfg.timeout_ticks = 2;
+  ReassemblyTable<Ipv4Key> table(cfg);
+  const Ipv4Key key{{1, 2, 3, 4}, {5, 6, 7, 8}, 17, 42};
+  const std::byte payload[4] = {};
+
+  // First attempt: only ever sees one (non-terminal) fragment, then ages out.
+  const auto r1 = table.add_fragment(key, /*pid=*/0, /*offset_bytes=*/0, /*more_fragments=*/true,
+                                     std::span<const std::byte>(payload, 4));
+  CHECK(!r1.completed);
+  const auto evicted = table.evict_stale(/*now_packet_id=*/10);  // well past timeout_ticks=2
+  CHECK(evicted.size() == 1);
+  CHECK(evicted[0].completion_status == 1);  // timed_out, not complete
+
+  // Second attempt, SAME key: must not throw, and must be treated as a brand-new reassembly (a
+  // fresh datagram_id, not the stale one from the first attempt).
+  const auto r2 = table.add_fragment(key, /*pid=*/11, /*offset_bytes=*/0, /*more_fragments=*/false,
+                                     std::span<const std::byte>(payload, 4));
+  CHECK(r2.completed);
+  CHECK(r2.datagram_id != evicted[0].datagram_id);
+}
+
 }  // namespace
 
 int main() {
   test_ipv4_defrag();
   test_ipv6_defrag();
+  test_key_reuse_after_eviction();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;
