@@ -177,12 +177,94 @@ void test_key_reuse_after_eviction() {
   CHECK(r2.datagram_id != evicted[0].datagram_id);
 }
 
+// Zero-copy proof: a completed reassembly's Result::parts must be VIEWS into the caller's source
+// buffer (fragment spans), not a fresh owned copy -- that's the whole point of the segmented
+// completion path. Also checks the overlap-trim semantics and that materialize() reconstructs the
+// same bytes lazily as the old eager stitch would have.
+void test_zero_copy_completion() {
+  using nano_shark::defrag::Ipv4Key;
+  using nano_shark::defrag::ReassemblyTable;
+
+  // A 24-byte "source file"; two fragments are non-overlapping views into it (offsets 0..12 and
+  // 12..24). Byte value == index so reconstruction is easy to verify.
+  std::array<std::byte, 24> src{};
+  for (std::size_t i = 0; i < src.size(); ++i) src[i] = std::byte(i);
+  const std::byte* base = src.data();
+
+  ReassemblyTable<Ipv4Key> table;
+  const Ipv4Key key{{10, 0, 0, 1}, {10, 0, 0, 2}, 17, 7};
+  const auto r1 = table.add_fragment(key, 0, /*offset=*/0, /*more=*/true,
+                                     std::span<const std::byte>(base, 12));
+  CHECK(!r1.completed);
+  const auto r2 = table.add_fragment(key, 1, /*offset=*/12, /*more=*/false,
+                                     std::span<const std::byte>(base + 12, 12));
+  CHECK(r2.completed);
+  CHECK(r2.parts.size() == 24);
+
+  // every returned part must alias the source buffer (zero-copy), never an owned copy
+  bool all_alias = true;
+  for (std::size_t i = 0; i < r2.parts.parts(); ++i) {
+    const auto p = r2.parts.part(i);
+    if (p.data() < base || p.data() + p.size() > base + src.size()) all_alias = false;
+  }
+  CHECK(all_alias);
+
+  // parsing over the segment list yields the same bytes as the source
+  nanom::seg_input in = nanom::from(r2.parts);
+  for (std::size_t i = 0; i < 24; ++i) CHECK(in[i] == std::uint8_t(i));
+
+  // materialize() is the opt-in stitch escape hatch: same bytes, and it's the ONLY owned copy
+  const auto* mat = table.materialize(r2.datagram_id);
+  CHECK(mat != nullptr);
+  if (mat) {
+    CHECK(mat->size() == 24);
+    for (std::size_t i = 0; i < mat->size(); ++i) CHECK((*mat)[i] == std::byte(i));
+  }
+}
+
+// Overlap-trim + conflict semantics must match the old eager stitch exactly.
+void test_overlap_semantics() {
+  using nano_shark::defrag::Ipv4Key;
+  using nano_shark::defrag::ReassemblyTable;
+
+  std::array<std::byte, 16> src{};
+  for (std::size_t i = 0; i < src.size(); ++i) src[i] = std::byte(i);
+  const std::byte* base = src.data();
+
+  // agreeing overlap: frag [0,10) then [6,16); the [6,10) overlap is byte-identical -> completes,
+  // trimmed (no conflict).
+  {
+    ReassemblyTable<Ipv4Key> table;
+    const Ipv4Key key{{1, 1, 1, 1}, {2, 2, 2, 2}, 17, 1};
+    CHECK(!table.add_fragment(key, 0, 0, true, std::span<const std::byte>(base, 10)).completed);
+    const auto r = table.add_fragment(key, 1, 6, false, std::span<const std::byte>(base + 6, 10));
+    CHECK(r.completed);
+    CHECK(r.parts.size() == 16);
+    nanom::seg_input in = nanom::from(r.parts);
+    for (std::size_t i = 0; i < 16; ++i) CHECK(in[i] == std::uint8_t(i));
+  }
+
+  // conflicting overlap: second fragment's overlapping bytes DIFFER -> never completes (the
+  // decode pass reports this as completion_status 3 via evict_stale).
+  {
+    ReassemblyTable<Ipv4Key> table;
+    const Ipv4Key key{{1, 1, 1, 1}, {2, 2, 2, 2}, 17, 2};
+    std::array<std::byte, 10> other{};
+    for (auto& b : other) b = std::byte(0xEE);  // different content in the overlap
+    CHECK(!table.add_fragment(key, 0, 0, true, std::span<const std::byte>(base, 10)).completed);
+    const auto r = table.add_fragment(key, 1, 6, false, std::span<const std::byte>(other.data(), 10));
+    CHECK(!r.completed);  // conflict -> incomplete
+  }
+}
+
 }  // namespace
 
 int main() {
   test_ipv4_defrag();
   test_ipv6_defrag();
   test_key_reuse_after_eviction();
+  test_zero_copy_completion();
+  test_overlap_semantics();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;

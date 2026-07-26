@@ -128,6 +128,12 @@ set(td ${parity_dir}/testdata)
 nanom_exe(nanom_tests tests/test_nanom.cpp)
 add_test(NAME nanom_tests COMMAND nanom_tests)
 
+# Segmented (scatter-gather) input: exhaustive boundary property (cursor primitives agree with
+# the contiguous cursor over every split) + strct_seg/overlay_seg differential parity.
+nanom_exe(nanom_segmented_tests tests/test_segmented.cpp)
+target_include_directories(nanom_segmented_tests PRIVATE ${parity_dir})
+add_test(NAME nanom_segmented_tests COMMAND nanom_segmented_tests)
+
 # Memory-safety regression suite: enforced guards (must pass).
 nanom_exe(nanom_memory_safety_tests tests/test_memory_safety.cpp)
 add_test(NAME nanom_memory_safety_tests COMMAND nanom_memory_safety_tests)
@@ -316,16 +322,19 @@ add_test(NAME self_fuzz COMMAND nm_self_fuzz)
 nanom_exe(nm_parse_bench bench/parse_bench.cpp)
 nanom_exe(nm_safety_microbench bench/safety_microbench.cpp)
 nanom_exe(nm_bulk_bench  examples/nanotins_parity/pcap_bulk.cpp)  # reuse as bulk bench
+nanom_exe(nm_segmented_bench bench/segmented_bench.cpp)  # stitch-vs-segments + per-wrap overhead
+target_include_directories(nm_segmented_bench PRIVATE ${parity_dir})
 add_test(NAME bench_smoke_parse COMMAND nm_parse_bench ${td}/srv6_sample.pcap 2)
 add_test(NAME bench_smoke_safety COMMAND nm_safety_microbench 2)
 add_test(NAME bench_smoke_bulk  COMMAND nm_bulk_bench  ${td}/srv6_sample.pcap 50 2)
+add_test(NAME bench_smoke_segmented COMMAND nm_segmented_bench 2)
 
 # ---- libFuzzer coverage-guided targets (Clang only, opt-in) ---------------
 if(NANOM_BUILD_FUZZERS)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(FATAL_ERROR "NANOM_BUILD_FUZZERS requires Clang (libFuzzer)")
   endif()
-  foreach(fz scan_walk streaming_pcapng defrag)
+  foreach(fz scan_walk streaming_pcapng defrag segmented)
     add_executable(fuzz_${fz} fuzz/fuzz_${fz}.cpp)
     target_link_libraries(fuzz_${fz} PRIVATE nanom Threads::Threads)
     target_include_directories(fuzz_${fz} PRIVATE ${CMAKE_SOURCE_DIR}/bench ${parity_dir})

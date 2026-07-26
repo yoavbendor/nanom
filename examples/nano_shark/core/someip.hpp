@@ -72,46 +72,64 @@ inline bool sd_decode_endpoint(const std::byte* opt, u8 type, const std::byte* e
   return true;
 }
 
+// Longest option prefix sd_decode_endpoint ever reads: [len:2][type:1][reserved:1] + 16-byte IPv6
+// address + [reserved:1][l4proto:1][port:2] = 24 bytes. The option loop gathers at most this many
+// bytes of each option onto the stack, so the endpoint decode runs over CONTIGUOUS memory even
+// when the underlying SD payload is segmented (a reassembled datagram); the rest of the option is
+// never materialized.
+inline constexpr std::size_t kSdEndpointProbe = 24;
+
 // Visits every SD entry/option in `payload_after_header` (does nothing unless `hdr` names the
-// reserved SD Message ID). All variable reads are clamped to the payload's own bounds and to the
-// SD region's own declared lengths, so a truncated/over-claiming SD message yields a
-// partial-but-bounded visit, never an out-of-bounds read.
+// reserved SD Message ID). `payload` is a seg_input, so this walks a reassembled (segmented) SD
+// message zero-copy: entries decode via strct_seg (which windows across seams itself), and each
+// option's bounded header is gathered onto the stack before the endpoint decode. All variable
+// reads are clamped to the payload's own bounds and to the SD region's declared lengths, so a
+// truncated/over-claiming SD message yields a partial-but-bounded visit, never an OOB read.
 template <class OnEntry, class OnOption>
-inline void for_each_sd_child(const SomeipHeader& hdr, nm::bytes payload, OnEntry on_entry,
+inline void for_each_sd_child(const SomeipHeader& hdr, nm::seg_input payload, OnEntry on_entry,
                               OnOption on_option) {
   if (std::uint16_t(hdr.service_id) != kSomeipSdServiceId ||
       std::uint16_t(hdr.method_id) != kSomeipSdMethodId) {
     return;
   }
-  const std::byte* sd = payload.data();
   const std::size_t size = payload.size();
   if (size < kSomeipSdPreambleLen) return;
 
-  const u32 entries_len = rd_be32(sd + 4);  // preamble: [flags:1][reserved:3][entries_length:4]
+  const auto el = nm::seg_be32(payload.advance(4));  // preamble: [flags:1][reserved:3][entries_len:4]
+  if (!el) return;
+  const u32 entries_len = el->value;
   const std::size_t entries_off = kSomeipSdPreambleLen;
   std::size_t entries_end = entries_off + entries_len;
   if (entries_end > size) entries_end = size;  // clamp an over-claiming entries_length
   const u32 n_entries = u32((entries_end - entries_off) / kSomeipSdEntrySize);
   for (u32 i = 0; i < n_entries; ++i) {
-    const std::byte* e = sd + entries_off + std::size_t(i) * kSomeipSdEntrySize;
-    auto entry = nm::strct<SomeipSdEntry>(std::endian::big)(nm::from(e, kSomeipSdEntrySize));
+    const std::size_t eoff = entries_off + std::size_t(i) * kSomeipSdEntrySize;
+    auto entry = nm::strct_seg<SomeipSdEntry>(std::endian::big)(payload.advance(eoff));
     if (entry) on_entry(std::uint8_t(i), entry->value);
   }
 
   const std::size_t opt_len_at = entries_off + entries_len;  // declared (not clamped) entries end
   if (opt_len_at + 4 > size) return;
-  const u32 options_len = rd_be32(sd + opt_len_at);
+  const auto ol = nm::seg_be32(payload.advance(opt_len_at));
+  if (!ol) return;
+  const u32 options_len = ol->value;
   std::size_t opt = opt_len_at + 4;
   std::size_t opt_end = opt + options_len;
   if (opt_end > size) opt_end = size;  // clamp an over-claiming options_length
   u32 oi = 0;
   while (opt + 3 <= opt_end) {  // need [length:2][type:1]
-    const std::byte* o = sd + opt;
-    const u16 len = rd_be16(o);
-    const u8 type = std::uint8_t(o[2]);
+    const std::size_t probe = std::min<std::size_t>(kSdEndpointProbe, opt_end - opt);
+    std::array<std::byte, kSdEndpointProbe> ob{};
+    if (!payload.advance(opt).gather(std::span<std::byte>(ob.data(), probe))) break;
+    const u16 len = rd_be16(ob.data());
+    const u8 type = std::uint8_t(ob[2]);
     const std::size_t next = opt + 3u + len;  // Length counts the bytes after the type octet
     if (next > opt_end) break;                // truncated/over-claiming option -> stop (bounded)
-    on_option(std::uint8_t(oi), o, len, type);
+    std::array<u8, 16> addr{};
+    u8 l4 = 0;
+    u16 port = 0;
+    sd_decode_endpoint(ob.data(), type, ob.data() + probe, addr, l4, port);
+    on_option(std::uint8_t(oi), len, type, addr, l4, port);
     ++oi;
     opt = next;
   }
@@ -120,7 +138,7 @@ inline void for_each_sd_child(const SomeipHeader& hdr, nm::bytes payload, OnEntr
 // Pushes one row per SD entry/option found in `payload_after_header`, plus a JSON layer per row
 // when a sink is attached (auto-promoted to arrays by PacketJson, one per entry/option).
 template <class EntryTable, class OptionTable>
-inline void emit_sd_children(packet_id_t pid, const SomeipHeader& hdr, nm::bytes payload,
+inline void emit_sd_children(packet_id_t pid, const SomeipHeader& hdr, nm::seg_input payload,
                              EntryTable& entry_table, OptionTable& option_table, PacketJson* json) {
   for_each_sd_child(
       hdr, payload,
@@ -129,11 +147,7 @@ inline void emit_sd_children(packet_id_t pid, const SomeipHeader& hdr, nm::bytes
         entry_table.push(row);
         if (json) json->add_layer("someip.sd_entry", row);
       },
-      [&](u8 idx, const std::byte* o, u16 len, u8 type) {
-        std::array<u8, 16> addr{};
-        u8 l4 = 0;
-        u16 port = 0;
-        sd_decode_endpoint(o, type, payload.data() + payload.size(), addr, l4, port);
+      [&](u8 idx, u16 len, u8 type, const std::array<u8, 16>& addr, u8 l4, u16 port) {
         SomeipSdOptionRow row{pid, idx, len, type, l4, port, addr};
         option_table.push(row);
         if (json) json->add_layer("someip.sd_option", row);
@@ -155,43 +169,55 @@ NANOM_DESCRIBE(nano_shark::someip::someip_tag, rsvd, wire_type, data_id);
 
 namespace nano_shark::someip {
 
-struct someip_member {
-  u16       data_id;
-  u8        wire_type;
-  nm::bytes value;
+// One decoded TLV member's metadata: the row stores only the value LENGTH, never the value bytes,
+// so the segmented cursor never has to materialize a value spanning a fragment boundary.
+struct someip_member_meta {
+  u16 data_id;
+  u8  wire_type;
+  u32 length;  // value length in bytes (the data length, excluding any wire-type length prefix)
 };
 
-inline nm::result<someip_member> p_someip_member(nm::input in) {
-  auto tag = nm::strct<someip_tag>()(in);
+// Reads one TLV member off a seg_input cursor: the [wire_type:3|data_id:12] tag, then the value
+// length implied by the wire type (fixed for wt 0-3, a length prefix for wt 5-7), and advances
+// past the value without copying it. Matches the contiguous p_someip_member's wire semantics
+// (wt 4's width is IDL-config-dependent, so it stops the walk like the original).
+inline nm::seg_result<someip_member_meta> p_someip_member_seg(nm::seg_input in) {
+  auto tag = nm::strct_seg<someip_tag>()(in);
   if (!tag) return nm::unexp(tag.error());
   const u8 wt = u8(tag->value.wire_type);
-  auto value = [&]() -> nm::result<nm::bytes> {
-    switch (wt) {
-      case 0: return nm::take(1)(tag->rest);
-      case 1: return nm::take(2)(tag->rest);
-      case 2: return nm::take(4)(tag->rest);
-      case 3: return nm::take(8)(tag->rest);
-      case 5: return nm::length_data(nm::u8)(tag->rest);
-      case 6: return nm::length_data(nm::be_u16)(tag->rest);
-      case 7: return nm::length_data(nm::be_u32)(tag->rest);
-      default:  // wt 4: length width comes from IDL config -- not skippable
-        return nm::make_err(tag->rest, "someip wire type 4 (config-dependent width)");
-    }
-  }();
-  if (!value) return nm::unexp(value.error());
-  return nm::done{someip_member{tag->value.data_id, wt, value->value}, value->rest};
+  nm::seg_input rest = tag->rest;
+  std::size_t vlen = 0;
+  switch (wt) {
+    case 0: vlen = 1; break;
+    case 1: vlen = 2; break;
+    case 2: vlen = 4; break;
+    case 3: vlen = 8; break;
+    case 5: { auto n = nm::seg_u8(rest);   if (!n) return nm::unexp(n.error()); vlen = n->value; rest = n->rest; break; }
+    case 6: { auto n = nm::seg_be16(rest); if (!n) return nm::unexp(n.error()); vlen = n->value; rest = n->rest; break; }
+    case 7: { auto n = nm::seg_be32(rest); if (!n) return nm::unexp(n.error()); vlen = n->value; rest = n->rest; break; }
+    default:  // wt 4: length width comes from IDL config -- not skippable
+      return nm::seg_make_err(rest, "someip wire type 4 (config-dependent width)");
+  }
+  auto skipped = nm::seg_skip(rest, vlen);
+  if (!skipped) return nm::unexp(skipped.error());
+  return nm::seg_done{someip_member_meta{tag->value.data_id, wt, u32(vlen)}, skipped->rest};
 }
 
-// Walks `region` as a flat run of TLV members, pushing one row per member.
+// Walks `region` as a flat run of TLV members, pushing one row per member. A plain
+// progress-guarded loop (not many0, which is a contiguous-only combinator): stop at the first
+// decode error or a zero-consume, exactly like many0 would over the contiguous form.
 template <class TlvTable>
-inline void walk_tlv_members(nm::bytes region, packet_id_t pid, TlvTable& table, PacketJson* json) {
-  auto r = nm::many0(p_someip_member)(nm::from(region));
-  if (!r) return;
-  u32 idx = 0;
-  for (const someip_member& m : r->value) {
-    SomeipTlvMemberRow row{pid, idx++, m.data_id, m.wire_type, u32(m.value.size())};
+inline void walk_tlv_members(nm::seg_input region, packet_id_t pid, TlvTable& table, PacketJson* json) {
+  u32           idx = 0;
+  nm::seg_input cur = region;
+  while (!cur.empty()) {
+    auto m = p_someip_member_seg(cur);
+    if (!m) break;
+    if (m->rest.offset() == cur.offset()) break;  // no progress -> done (many0 contract)
+    SomeipTlvMemberRow row{pid, idx++, m->value.data_id, m->value.wire_type, m->value.length};
     table.push(row);
     if (json) json->add_layer("someip.tlv_member", row);
+    cur = m->rest;
   }
 }
 
@@ -201,17 +227,17 @@ inline void walk_tlv_members(nm::bytes region, packet_id_t pid, TlvTable& table,
 // SOME/IP's flat serialization isn't self-describing, so this can't be inferred), walks the
 // payload after the header as TLV members.
 template <class SomeipTable, class EntryTable, class OptionTable, class TlvTable>
-inline void maybe_dispatch(nm::bytes payload, packet_id_t pid, bool assume_tlv,
+inline void maybe_dispatch(nm::seg_input payload, packet_id_t pid, bool assume_tlv,
                            SomeipTable& someip_table, EntryTable& sd_entry_table,
                            OptionTable& sd_option_table, TlvTable& tlv_table, PacketJson* json) {
   if (payload.size() < kSomeipHeaderLen) return;
-  auto hdr = nm::strct<SomeipHeader>(std::endian::big)(nm::from(payload));
+  auto hdr = nm::strct_seg<SomeipHeader>(std::endian::big)(payload);
   if (!hdr) return;
 
   someip_table.push(SomeipNode{pid, 0, false, hdr->value});
   if (json) json->add_layer("someip", hdr->value);
 
-  const nm::bytes after_header = payload.subspan(kSomeipHeaderLen, payload.size() - kSomeipHeaderLen);
+  const nm::seg_input after_header = hdr->rest;  // == payload.advance(kSomeipHeaderLen)
   emit_sd_children(pid, hdr->value, after_header, sd_entry_table, sd_option_table, json);
   if (assume_tlv) walk_tlv_members(after_header, pid, tlv_table, json);
 }

@@ -4,29 +4,30 @@
 // nano_shark/core/defrag.hpp — IPv4/IPv6 fragment reassembly. New: no precedent anywhere in the
 // nano-family (nanom/nanotins detect fragmentation and stop the walk; nothing reassembles).
 //
-// This is the ONE deliberate, narrowly-scoped departure from nanom's zero-copy pledge: fragments
-// arrive non-contiguously in the source file, so reconstructing "the datagram" requires an owned,
-// stitched-together buffer. Every individual fragment's own IP header is still decoded zero-copy
-// over the original file bytes (see core/decode_pass.hpp). Fragments are BUFFERED as non-owning
-// spans into that same source buffer (valid for the whole decode pass -- the caller's `file` bytes
-// outlive every ReassemblyTable, which is local to one run_decode_pass call); only the final
-// cross-fragment stitch (Reassembly::assembled, built once a datagram completes) is an owned copy
-// -- exactly one copy per completed datagram, not one per fragment plus one more at the end.
+// Fragments arrive non-contiguously in the source file, so "the datagram" is a set of disjoint
+// byte ranges. Reassembly is now FULLY ZERO-COPY: on completion, add_fragment returns an ordered,
+// overlap-trimmed list of VIEWS into the source buffer (Result::parts, a nanom::segments), and the
+// L4 re-entry parses straight over it with strct_seg -- no stitched buffer is ever built. This is
+// what nanom/segmented.hpp exists for: it teaches nanom to parse a logical buffer split across
+// disjoint spans, decoding each struct off the segment it lies in (a bounded, stack-only gather
+// only when a struct straddles a fragment seam -- never a whole-datagram copy). The earlier design
+// (an owned std::vector<std::byte> stitched once per completed datagram) is gone; a lazy
+// materialize() escape hatch remains for the rare consumer that genuinely needs one contiguous
+// buffer, and it is the only place a copy can still happen -- and only if asked.
 //
-// A fully zero-copy reassembly (fragments kept as spans, joined lazily via std::views::join
-// instead of ever stitching) isn't practical here: nanom's parsing surface (nom.hpp's `input`,
-// strct<T>(), overlay<T>()) is built on a contiguous [first,last) pointer pair, not a generalized
-// range. A join_view over disjoint spans is only a forward_range -- its elements aren't adjacent
-// in memory, so it can't yield the pointer+length pair nanom's parser needs; feeding it in would
-// still require materializing (copying) at the parse call site, likely losing nanom's
-// pointer-arithmetic fast paths in the process. Teaching nanom's core cursor to understand
-// segmented input would be a real change to the LIBRARY itself, out of scope for this example.
+// (Historical note: this file once documented segmented parsing as impractical -- "a join_view
+// over disjoint spans is only a forward_range, can't yield the pointer+length pair the parser
+// needs, so teaching the core cursor to understand segmented input would be a real change to the
+// LIBRARY, out of scope." That library change is exactly what nanom/segmented.hpp is. The insight
+// that made it cheap: nanom's field decode (detail::decode_field/assign_field) already takes a raw
+// pointer, so segmentation is solved by WINDOWING one level above it -- the ~124 core combinators
+// never had to change at all.)
 //
-// Known scope trim: decode_pass.hpp re-enters L4 parsing over the reassembled buffer via a plain
-// nanom::from() (an "unattested" span), not a dedicated NANOM_GENERATION wire_arena scoped to the
-// Reassembly's lifetime. Functionally complete either way; wiring a per-datagram arena would add
-// use-after-evict detection on TOP of that (catching a stale view<T> that outlives evict_stale())
-// as a follow-up hardening pass, not a correctness requirement for reassembly itself.
+// Known scope trim: decode_pass.hpp re-enters L4 parsing over the reassembled segments via a plain
+// nanom::from(result.parts) (an "unattested" segments), not a dedicated NANOM_GENERATION wire_arena
+// scoped to the Reassembly's lifetime. Functionally complete either way; wiring a per-datagram
+// arena would add use-after-evict detection on TOP of that (catching a stale view<T> that outlives
+// evict_stale()) as a follow-up hardening pass, not a correctness requirement for reassembly.
 
 #include <nanom/nanom.hpp>
 
@@ -113,8 +114,32 @@ struct Reassembly {
   packet_id_t                first_packet_id = kNoPacket;
   packet_id_t                last_packet_id  = kNoPacket;
   bool                       completed = false;
-  std::vector<std::byte>     assembled;          // filled only once complete
+  // Once complete: the datagram as an ordered, overlap-trimmed list of VIEWS into the source
+  // buffer -- zero-copy (see nanom/segmented.hpp). Consumers parse straight over these via
+  // seg_input; nothing is ever stitched unless materialize() is explicitly called.
+  std::vector<std::span<const std::byte>> parts;
+  std::vector<std::byte>                  materialized;  // lazy; see ReassemblyTable::materialize
 };
+
+// Compare `want` against the datagram content already emitted in `parts` at logical offset
+// `at` (parts are contiguous from 0, in order). Used for overlap conflict detection -- the
+// segmented equivalent of comparing against the stitched buffer's bytes.
+inline bool range_equals(const std::vector<std::span<const std::byte>>& parts, std::size_t at,
+                         std::span<const std::byte> want) {
+  std::size_t skip = at, wi = 0;
+  for (const auto& p : parts) {
+    if (skip >= p.size()) {
+      skip -= p.size();
+      continue;
+    }
+    const std::size_t here = std::min(p.size() - skip, want.size() - wi);
+    if (std::memcmp(p.data() + skip, want.data() + wi, here) != 0) return false;
+    wi += here;
+    skip = 0;
+    if (wi == want.size()) return true;
+  }
+  return wi == want.size();
+}
 
 }  // namespace detail
 
@@ -129,12 +154,16 @@ class ReassemblyTable {
   explicit ReassemblyTable(Config cfg = {}) : cfg_(cfg) {}
 
   // The datagram_id is always returned (even mid-reassembly, so the caller can attach it to a
-  // per-fragment forensic row) -- only `completed`/`assembled` depend on whether this call finished
+  // per-fragment forensic row) -- only `completed`/`parts` depend on whether this call finished
   // reassembly (no gaps in [0,total_length), a terminal fragment seen, no content conflict).
   struct Result {
-    std::uint32_t               datagram_id = 0;
-    bool                        completed   = false;
-    std::span<const std::byte>  assembled;   // valid only when completed
+    std::uint32_t   datagram_id = 0;
+    bool            completed   = false;
+    // The completed datagram as ZERO-COPY segments: ordered, overlap-trimmed views into the
+    // source buffer, ready for nanom::from(parts) -> strct_seg/seg_* parsing (see segmented.hpp).
+    // The part descriptors live in this table's Reassembly entry: valid until that entry is
+    // evicted (the same lifetime the old stitched-buffer span had). Empty unless completed.
+    nanom::segments parts;
   };
 
   // Feed one fragment (already offset/MF-decoded by the caller from Ipv4/Ipv6Fragment).
@@ -178,32 +207,62 @@ class ReassemblyTable {
                                                  : a->packet_id < b->packet_id;
     });
 
-    std::vector<std::byte> assembled(r.total_length);
-    std::vector<bool>      written(r.total_length, false);
-    std::uint32_t          covered = 0;
+    // ZERO-COPY completion: build an ordered, overlap-trimmed list of views into the source
+    // buffer instead of stitching an owned copy (nanom's segmented input -- see segmented.hpp --
+    // parses straight over the list). Semantics preserved from the old stitch loop exactly:
+    //   * gap (a fragment starting past the covered prefix)     -> still incomplete;
+    //   * overlap whose bytes AGREE with what's already covered -> trimmed away (content is
+    //     byte-identical to the old last-writer-wins overwrite, since equal);
+    //   * overlap whose bytes DISAGREE                          -> conflict, never completes
+    //     (evict_stale reports it as status 3);
+    //   * bytes extending past the declared total_length        -> clamped (old code: ignored);
+    //   * completeness check uses the UNCLAMPED end             -> same as the old `covered`.
+    std::vector<std::span<const std::byte>> parts;
+    parts.reserve(ordered.size());
+    std::uint32_t covered = 0;  // unclamped high-water mark, matching the old loop's `covered`
     for (const detail::FragmentSpan* f : ordered) {
       if (f->offset_bytes > covered) return out;  // gap: still incomplete
+      const std::uint32_t clamped_covered = std::min(covered, r.total_length);
       const std::uint32_t end = f->offset_bytes + std::uint32_t(f->data.size());
-      for (std::uint32_t i = 0; i < f->data.size(); ++i) {
-        const std::uint32_t at = f->offset_bytes + i;
-        if (at >= r.total_length) break;  // a fragment extending past the declared total is ignored
-        if (written[at] && assembled[at] != f->data[i]) {
+      // overlap with already-covered content: verify byte equality (conflict detection)
+      if (f->offset_bytes < clamped_covered) {
+        const std::size_t ov =
+            std::min<std::size_t>(clamped_covered - f->offset_bytes, f->data.size());
+        if (!detail::range_equals(parts, f->offset_bytes, f->data.first(ov))) {
           r.conflict = true;  // two fragments disagree on an overlapping byte
+          return out;         // never completes; evict_stale reports it as a conflict
         }
-        assembled[at] = f->data[i];
-        written[at] = true;
       }
+      // emit the new tail, clamped to the declared total
+      const std::uint32_t emit_from = std::max(f->offset_bytes, clamped_covered);
+      const std::uint32_t emit_to   = std::min(end, r.total_length);
+      if (emit_from < emit_to)
+        parts.push_back(f->data.subspan(emit_from - f->offset_bytes, emit_to - emit_from));
       if (end > covered) covered = end;
     }
-    if (r.conflict) return out;             // never completes; evict_stale reports it as a conflict
     if (covered < r.total_length) return out;  // still missing bytes
 
-    r.assembled = std::move(assembled);
+    r.parts = std::move(parts);
     r.completed = true;
     key_to_id_.erase(key);  // free the 4-tuple so a NEW datagram reusing it starts fresh
     out.completed = true;
-    out.assembled = std::span<const std::byte>(r.assembled.data(), r.assembled.size());
+    out.parts = nanom::segments{
+        std::span<const std::span<const std::byte>>(r.parts.data(), r.parts.size())};
     return out;
+  }
+
+  /// Escape hatch for a consumer that genuinely needs the completed datagram as ONE contiguous
+  /// buffer: stitches lazily on first call (the copy the segmented path exists to avoid) and
+  /// caches. Returns nullptr for an unknown/incomplete datagram. Valid until eviction.
+  const std::vector<std::byte>* materialize(std::uint32_t datagram_id) {
+    auto it = by_id_.find(datagram_id);
+    if (it == by_id_.end() || !it->second.completed) return nullptr;
+    detail::Reassembly& r = it->second;
+    if (r.materialized.empty() && r.total_length > 0) {
+      r.materialized.reserve(r.total_length);
+      for (const auto& p : r.parts) r.materialized.insert(r.materialized.end(), p.begin(), p.end());
+    }
+    return &r.materialized;
   }
 
   // Evicts every entry last touched more than timeout_ticks packets ago (whether complete or not)

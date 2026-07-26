@@ -88,33 +88,72 @@ A malformed layer stops **that packet's** walk only (nanom's existing `walk_pack
 
 ## Fragment reassembly
 
-`core/defrag.hpp` is the one deliberate, narrowly-scoped departure from nanom's zero-copy pledge —
-and the first heap-owning, cross-packet **stateful** table anywhere in the nano-family. Every
-individual fragment's IP header is still decoded zero-copy over the file's own bytes; fragments are
-buffered as non-owning `std::span`s into that same source buffer (valid for the whole decode pass),
-and only the final cross-fragment stitch — built once a datagram completes — is an owned copy: one
-`memcpy`-shaped copy per completed datagram, not one per fragment plus another at the end.
+`core/defrag.hpp` is the first heap-owning, cross-packet **stateful** table anywhere in the
+nano-family. A reassembled datagram's bytes are disjoint in the source file, but reassembly is
+**fully zero-copy**: every individual fragment's IP header is decoded over the file's own bytes,
+fragments are buffered as non-owning `std::span`s into that same source buffer, and on completion
+`add_fragment` returns an ordered, overlap-trimmed **list of views** — `Result::parts`, a
+`nanom::segments` — that the L4 re-entry parses straight over with `strct_seg`. No stitched buffer
+is ever built.
 
 ```cpp
 ReassemblyTable<Ipv4Key> table;
 auto r = table.add_fragment(key, packet_id, offset_bytes, more_fragments, payload);
 if (r.completed) {
-  // r.assembled is a std::span<const std::byte> over the owned, stitched buffer
+  // r.parts is a nanom::segments: ordered, overlap-trimmed VIEWS into the source buffer.
+  nm::seg_input in = nm::from(r.parts);
+  auto udp = nm::strct_seg<Udp>()(in);   // parsed straight over the fragment views, no copy
 }
-table.evict_stale(now_packet_id);  // ages out timed-out / stuck-in-conflict reassemblies
+table.evict_stale(now_packet_id);        // ages out timed-out / stuck-in-conflict reassemblies
 ```
 
-A genuinely zero-copy reassembly (fragments joined lazily via `std::views::join`, never
-materializing a contiguous buffer) isn't practical here: nanom's parsing surface (`nom.hpp`'s
-`input`, `strct<T>()`, `overlay<T>()`) is built on a contiguous `[first,last)` pointer pair, not a
-generalized range — a `join_view` over disjoint spans is only a `forward_range`, so it can't yield
-the pointer+length pair the parser needs. Teaching the core cursor to understand segmented input
-would be a change to the *library*, out of scope for an example.
+This is what nanom's [segmented input](#segmented-input-parsing-across-disjoint-byte-ranges) layer
+(`nanom/segmented.hpp`) exists for. Earlier this was documented as impractical — "a `join_view`
+over disjoint spans is only a `forward_range`, can't yield the pointer+length pair the parser
+needs." The insight that dissolved that: nanom's field decode already takes a *raw pointer*, so
+segmentation is solved by **windowing** one level above it — a bounded, stack-only gather of one
+struct's bytes only when a struct straddles a fragment seam, and a pure pointer read otherwise.
+The ~124 core combinators never changed. Measured payoff: parsing the L4 header off the segment
+list is **33–43× faster** than the old stitch-then-parse for a 64 KiB datagram (the whole-datagram
+copy is gone), and the every-packet hot path is byte-for-byte unchanged (`bench/segmented_bench.cpp`,
+`bench/parse_bench.cpp`). A lazy `materialize()` escape hatch remains for the rare consumer that
+truly needs one contiguous buffer — the only place a copy can still happen, and only if asked.
 
 `fuzz/fuzz_defrag.cpp` is a dedicated libFuzzer harness for this table (out-of-order fragments,
-overlapping/conflicting fragments, capacity/timeout eviction) — within its first run it found a
-real bug (a stale key-to-id mapping surviving eviction, causing a crash on key reuse), now fixed and
-regression-tested.
+overlapping/conflicting fragments, capacity/timeout eviction, plus parsing a struct chain over the
+returned segment list) — within its first run it found a real bug (a stale key-to-id mapping
+surviving eviction, causing a crash on key reuse), now fixed and regression-tested.
+
+## Segmented input: parsing across disjoint byte ranges
+
+`nanom/segmented.hpp` is the library layer that makes zero-copy reassembly possible — a general
+nanom feature, not nano_shark-specific, but reassembly is its motivating consumer. It parses a
+logical buffer whose bytes live in an ordered list of **disjoint spans**, without ever copying
+them into one contiguous block.
+
+- `segments` — a non-owning, ordered list of `std::span<const std::byte>` parts.
+- `seg_input` — the cursor. It mirrors `input`'s member API (`size`/`advance`/`operator[]`/…), and
+  its hot fields are raw pointers into the *current* part, so a read inside one part is a pointer
+  compare + deref, exactly like the contiguous cursor.
+- `strct_seg<T>()` / the cursor kit (`seg_u8`, `seg_be16`, `seg_be32`, …) — parse structs and
+  scalars over `seg_input`. `strct_seg` reuses the **same** field-decode code as `strct` (nanom's
+  `decode_field`/`assign_field` already take a raw pointer); a `gather<N>` primitive supplies that
+  pointer — pointing straight into segment memory when the `N`-byte window lies inside one part, or
+  into a bounded stack buffer only when it straddles a seam.
+- `overlay_seg<T>()` — **zero-copy or a recoverable error, never a hidden copy**: it yields a
+  `view<T>` into segment memory when the struct is contiguous, and fails (so you fall back to
+  `strct_seg`, by value) when it would straddle. A view must never point at a temporary.
+
+The three design guarantees: (1) **zero cost when unused** — `input` and every combinator are
+untouched; don't include the header, don't pay; (2) **pay only at the seams** — an in-part read is
+pointer-based, only a straddling read gathers, and only one struct's worth of bytes onto the stack;
+(3) **honest views**. Explicitly out of scope (v1): the general combinator vocabulary
+(`alt`/`many0`/`tag`/`dec`/…) whose text-oriented members need physically contiguous memory —
+segmented parsing covers struct decode and hand-rolled cursor walks, which is what a re-entry
+parser (like SOME/IP over a reassembled datagram) needs. `tests/test_segmented.cpp` proves the
+cursor agrees with the contiguous cursor over every split, `strct_seg`/`overlay_seg` agree with
+`strct`/`overlay` over every split of six real wire structs, and `fuzz/fuzz_segmented.cpp`
+differentially fuzzes segmented vs contiguous parses.
 
 ## The JSON sink
 

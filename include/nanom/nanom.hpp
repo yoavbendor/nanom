@@ -11,6 +11,7 @@
 //   nom.hpp       the pure rust-nom parallel: input/result, combinators,
 //                 binary + text numbers, bits            (parser-only subset)
 //   reflect.hpp   fixed_string, wire types, describe<T> seam, strct<>/overlay<>
+//   segmented.hpp parsing over disjoint byte ranges       (scatter-gather input)
 //   schema.hpp    schemas + Arrow/Avro/JSON/CSV emission  (extra)
 //   soa.hpp       columnar Struct-of-Arrays storage       (extra)
 //   bulk.hpp      data-parallel (GPU-ready) scatter        (separate, opt-in)
@@ -41,10 +42,11 @@
 #ifndef NANOM_HPP_INCLUDED
 #define NANOM_HPP_INCLUDED
 
-#include "prelude.hpp"  // shared config (includes, NANOM_HD, feature probes)
-#include "nom.hpp"      // the nom-parallel parser (core + combinators + numbers + bits)
-#include "reflect.hpp"  // struct reflection + strct<>/overlay<> (pulls in the describe<T> providers)
-#include "schema.hpp"   // schema / Arrow / Avro / JSON / CSV
-#include "soa.hpp"      // columnar (SoA) storage
+#include "prelude.hpp"   // shared config (includes, NANOM_HD, feature probes)
+#include "nom.hpp"       // the nom-parallel parser (core + combinators + numbers + bits)
+#include "reflect.hpp"   // struct reflection + strct<>/overlay<> (pulls in the describe<T> providers)
+#include "segmented.hpp" // parsing over disjoint byte ranges (scatter-gather input)
+#include "schema.hpp"    // schema / Arrow / Avro / JSON / CSV
+#include "soa.hpp"       // columnar (SoA) storage
 
 #endif  // NANOM_HPP_INCLUDED

@@ -186,14 +186,16 @@ struct PacketVisitor {
       defrag::DatagramRow row{};
       row.datagram_id = result.datagram_id;
       row.ip_version = 4;
-      row.total_length = std::uint32_t(result.assembled.size());
+      row.total_length = std::uint32_t(result.parts.size());
       row.fragment_count = r ? std::uint32_t(r->fragments.size()) : 0;
       row.first_packet_id = r ? r->first_packet_id : pid;
       row.last_packet_id = pid;
       row.completion_status = 0;  // complete
       tables->datagram.push(row);
       if (json) json->add_layer_json("ip.reassembled", detail::datagram_json(row));
-      dispatch_l4(v.protocol, nanom::from(result.assembled), pid, result.datagram_id,
+      // Zero-copy re-entry: parse straight over the reassembled datagram's segment list (views
+      // into the source file), no stitched buffer -- see core/defrag.hpp / nanom/segmented.hpp.
+      dispatch_l4(v.protocol, nanom::from(result.parts), pid, result.datagram_id,
                  /*is_reassembled=*/true, *tables, json, *opts);
     }
   }
@@ -224,7 +226,10 @@ struct PacketVisitor {
     const std::size_t declared_payload = declared > 8 ? declared - 8 : 0;
     const std::size_t avail = pkt.size() - payload_offset;
     const nanom::bytes payload = pkt.subspan(payload_offset, std::min(declared_payload, avail));
-    maybe_dispatch_someip_from_udp(v, payload, pid, *tables, json, *opts);
+    // Wrap the contiguous UDP payload as a 1-part segment so the normal and reassembled SOME/IP
+    // paths share one seg_input-based code path; seg_input's fast path keeps this pointer-based.
+    const nanom::single_segment one{payload};
+    maybe_dispatch_someip_from_udp(v, nanom::from(one.view()), pid, *tables, json, *opts);
   }
   void on_ext_opt(nmproto::Ipv6ExtKind kind, const nmproto::Ipv6ExtOpt& v) {
     if (json) {
@@ -280,14 +285,15 @@ struct PacketVisitor {
       defrag::DatagramRow row{};
       row.datagram_id = result.datagram_id;
       row.ip_version = 6;
-      row.total_length = std::uint32_t(result.assembled.size());
+      row.total_length = std::uint32_t(result.parts.size());
       row.fragment_count = r ? std::uint32_t(r->fragments.size()) : 0;
       row.first_packet_id = r ? r->first_packet_id : pid;
       row.last_packet_id = pid;
       row.completion_status = 0;  // complete
       tables->datagram.push(row);
       if (json) json->add_layer_json("ip.reassembled", detail::datagram_json(row));
-      dispatch_l4(v.next_header, nanom::from(result.assembled), pid, result.datagram_id,
+      // Zero-copy re-entry over the reassembled datagram's segment list (see the IPv4 twin above).
+      dispatch_l4(v.next_header, nanom::from(result.parts), pid, result.datagram_id,
                  /*is_reassembled=*/true, *tables, json, *opts);
     }
   }

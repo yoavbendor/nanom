@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 
 // Coverage-guided libFuzzer entry point for defrag::ReassemblyTable -- the first heap-owning,
-// cross-packet stateful table in the nano-family (every other described struct fuzzed elsewhere is
-// a single-packet, zero-copy decode; this one buffers fragments across packets and stitches an
-// owned buffer once a datagram completes -- see defrag.hpp's header comment). Exercises:
-// out-of-order fragments, overlapping/conflicting fragments, oversized fragments, capacity/timeout
-// eviction, and find() after eviction -- all under ASan+UBSan, so a heap-buffer-overflow or
-// use-after-free in the stitch loop or the eviction bookkeeping shows up as a crash, not a wrong
-// answer. Build via -DNANOM_BUILD_FUZZERS with Clang; run: ./fuzz_defrag -max_total_time=60 corpus/
+// cross-packet stateful table in the nano-family. Since the segmented-input work it no longer
+// stitches an owned buffer on completion; it returns a zero-copy segment list (Result::parts).
+// Exercises: out-of-order fragments, overlapping/conflicting fragments, oversized fragments,
+// capacity/timeout eviction, find() after eviction, AND parsing a struct chain straight over the
+// returned segment list (the reassembled-datagram re-entry path) -- all under ASan+UBSan, so a
+// heap-buffer-overflow or use-after-free in the completion, eviction, or segmented-parse paths
+// shows up as a crash. Build via -DNANOM_BUILD_FUZZERS with Clang; run:
+// ./fuzz_defrag -max_total_time=60 corpus/
 
 #include "../examples/nano_shark/core/defrag.hpp"
+
+#include <nanom/nanom.hpp>
+
+#include "../examples/nanotins_parity/nm_protocols.hpp"
 
 #include <algorithm>
 #include <cstddef>
@@ -72,9 +77,23 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 
     const auto r = table.add_fragment(key, pid, offset_bytes, more_fragments, payload);
     if (r.completed) {
+      // read every byte through the segmented cursor (crosses fragment seams)
       volatile std::size_t touch = 0;
-      for (std::byte b : r.assembled) touch ^= std::size_t(b);  // actually read the stitched bytes
+      nanom::seg_input in = nanom::from(r.parts);
+      for (std::size_t i = 0; i < r.parts.size(); ++i) touch ^= in[i];
       (void)touch;
+      // parse a struct chain straight over the segment list -- the reassembled re-entry path
+      // (dispatch_l4 does exactly this over result.parts). Every parse must stay in bounds.
+      if (auto udp = nanom::strct_seg<nmproto::Udp>()(in); udp) {
+        volatile std::uint16_t p = std::uint16_t(udp->value.dst_port);
+        (void)p;
+        (void)nanom::strct_seg<nmproto::Tcp>()(udp->rest);
+      }
+      // materialize() (opt-in stitch escape hatch) must reconstruct the same length
+      if (const auto* mat = table.materialize(r.datagram_id)) {
+        volatile std::size_t n = mat->size();
+        (void)n;
+      }
     }
     (void)table.find(r.datagram_id);
     ++pid;

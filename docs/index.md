@@ -81,6 +81,10 @@ profile stays within best-of-5 noise on this workload. Reproduce with
   `v.get<"field">()`.
 - **Schemas for free.** `schema_of<T>()`, Arrow C-data format strings, `avro_schema<T>()`,
   `to_json`/`csv_row`, and `soa<T>` — column-wise chunked accumulation ready for Arrow/Lance buffers.
+- **Segmented input, still zero-copy.** `segmented.hpp` parses a logical buffer split across
+  *disjoint* spans (reassembled IP fragments, scatter-gather I/O) with `strct_seg<T>()` — pointer
+  reads inside a span, a bounded stack gather only when a struct straddles a seam, never a whole-
+  buffer copy. Opt-in and zero-cost when unused ([tutorial](NANO_SHARK.md#segmented-input-parsing-across-disjoint-byte-ranges)).
 - **Localized errors.** Allocation-free error values; `render()` prints the offset, the `context()`
   chain, and a hex window with a caret.
 - **Header-only, no dependencies.** gcc ≥ 13, clang ≥ 18 for the C++23 macro path; a P2996 compiler

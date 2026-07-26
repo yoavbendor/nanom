@@ -24,7 +24,7 @@ jobs:
         run: |
           cmake -B build -DCMAKE_CXX_COMPILER=clang++-18 -DNANOM_BUILD_FUZZERS=ON \
             -DNANOM_GUARD_VIEWS=ON -DNANOM_GENERATION=ON
-          cmake --build build --target fuzz_scan_walk fuzz_streaming_pcapng fuzz_defrag -j
+          cmake --build build --target fuzz_scan_walk fuzz_streaming_pcapng fuzz_defrag fuzz_segmented -j
 
       - name: seed corpus from the pcap fixtures
         run: |
@@ -52,6 +52,13 @@ jobs:
           if [ "${{ github.event_name }}" = "schedule" ]; then T=600; else T=90; fi
           ./build/fuzz_defrag -max_total_time=$T -rss_limit_mb=4096 \
             -print_final_stats=1 -artifact_prefix=crash-defrag- corpus_defrag/
+
+      - name: run segmented (differential vs contiguous)
+        run: |
+          if [ "${{ github.event_name }}" = "schedule" ]; then T=600; else T=90; fi
+          mkdir -p corpus_segmented
+          ./build/fuzz_segmented -max_total_time=$T -rss_limit_mb=4096 \
+            -print_final_stats=1 -artifact_prefix=crash-segmented- corpus_segmented/
 
       - name: upload crashes (if any)
         if: failure()

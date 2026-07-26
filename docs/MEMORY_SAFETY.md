@@ -103,6 +103,24 @@ These `constexpr` flags mark the contract surface:
 - `span_lifetime_is_caller_scoped` — `bytes` and field spans outlive their owner
 - `length_prefix_spans_are_unowned` — `length_data` payloads are plain spans
 
+### Segmented input (`segmented.hpp`)
+
+The disjoint-span parser keeps the same zero-copy view contract by *refusing to break it*:
+
+- **`overlay_seg<T>()` is zero-copy or a recoverable error — never a hidden copy.** A `view<T>`
+  hands out a pointer into wire memory; if the struct straddled a segment boundary, the only
+  contiguous copy of its bytes would be a transient stack buffer, so `overlay_seg` returns a
+  recoverable `error` instead of a `view<T>` that would dangle. Parse straddling structs by value
+  with `strct_seg<T>()` (which returns a `T`, owning nothing borrowed).
+- **`seg_window<N>` is copy-safe.** On the fast path it aliases segment memory (valid as long as
+  the segments are); on the straddle path it owns an inline `N`-byte copy. Either way the window is
+  safe to hold and copy; the `data()` pointer is valid for the window's own lifetime.
+- **`segments` / `seg_input` are non-owning**, like `input`: the part-descriptor array *and* the
+  bytes the parts point at must outlive them. `single_segment` and `seg_subrange` own their
+  descriptor storage inline, so `from(owner.view())` over a temporary `segments` is safe as long as
+  the owner outlives the cursor. Under `NANOM_GENERATION`, `segments` carries one `{arena, gen}`
+  attestation that threads into the `view<T>`s it yields, exactly as the contiguous path does.
+
 **Rules:**
 
 1. Keep the buffer alive while any `input` cursor, `bytes` span, or `view<T>` into it exists.
