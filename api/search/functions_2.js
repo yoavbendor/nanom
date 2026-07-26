@@ -1,7 +1,7 @@
 var searchData=
 [
   ['capacity_0',['capacity',['../classnanom_1_1bulk__table.html#a62b44da84b87cd2d33ecece50ec8b868',1,'nanom::bulk_table']]],
-  ['checked_5fadvance_1',['checked_advance',['../structnanom_1_1input.html#af49b941361ccc4fcfa54f3060d37e399',1,'nanom::input']]],
+  ['checked_5fadvance_1',['checked_advance',['../structnanom_1_1input.html#af49b941361ccc4fcfa54f3060d37e399',1,'nanom::input::checked_advance()'],['../structnanom_1_1seg__input.html#ab645bfc3de9352d40134756193215205',1,'nanom::seg_input::checked_advance()']]],
   ['checked_5fmany0_2',['checked_many0',['../namespacenanom.html#acd6592713b5536de2c32dd5ed0f8995e',1,'nanom']]],
   ['chr_3',['chr',['../namespacenanom.html#afa940dc026ba70e8c4ca6851d3948fed',1,'nanom']]],
   ['col_4',['col',['../structnanom_1_1soa_1_1chunk.html#aafef755d2528345494eef644a2e4605d',1,'nanom::soa::chunk']]],
@@ -14,8 +14,9 @@ var searchData=
   ['cond_11',['cond',['../namespacenanom.html#a29258ab00e930e1b3c58b7d70a035ef1',1,'nanom']]],
   ['consumed_12',['consumed',['../namespacenanom.html#af8a46604f59d4c5167208f644c79023d',1,'nanom']]],
   ['context_13',['context',['../namespacenanom.html#ad0dc92981394e4dce9bd471c39c6ece9',1,'nanom']]],
-  ['count_14',['count',['../namespacenanom.html#a1344db56c51b3e2cc4ac743b1793129e',1,'nanom']]],
-  ['csv_5fheader_15',['csv_header',['../namespacenanom.html#ac33b3d611aa936e64d7b7aa76df9dc68',1,'nanom']]],
-  ['csv_5frow_16',['csv_row',['../namespacenanom.html#a90264f3c5ed3485e8b164f38688450f5',1,'nanom']]],
-  ['cut_17',['cut',['../namespacenanom.html#a811b51c99850556906a9a4d2858b3f79',1,'nanom']]]
+  ['contiguous_14',['contiguous',['../structnanom_1_1seg__input.html#afb766a6142da880156bb8c25daefa575',1,'nanom::seg_input']]],
+  ['count_15',['count',['../namespacenanom.html#a1344db56c51b3e2cc4ac743b1793129e',1,'nanom']]],
+  ['csv_5fheader_16',['csv_header',['../namespacenanom.html#ac33b3d611aa936e64d7b7aa76df9dc68',1,'nanom']]],
+  ['csv_5frow_17',['csv_row',['../namespacenanom.html#a90264f3c5ed3485e8b164f38688450f5',1,'nanom']]],
+  ['cut_18',['cut',['../namespacenanom.html#a811b51c99850556906a9a4d2858b3f79',1,'nanom']]]
 ];

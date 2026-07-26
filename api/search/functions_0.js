@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['advance_0',['advance',['../structnanom_1_1input.html#a2f05fa0cf16328e6a3cb91d360bd9cae',1,'nanom::input']]],
+  ['advance_0',['advance',['../structnanom_1_1input.html#a2f05fa0cf16328e6a3cb91d360bd9cae',1,'nanom::input::advance()'],['../structnanom_1_1seg__input.html#aec2678aa57e4e4c9053e823ec6bd6991',1,'nanom::seg_input::advance()']]],
   ['all_5fconsuming_1',['all_consuming',['../namespacenanom.html#a2f5df4f869231ff15df1dce4a62e6afb',1,'nanom']]],
   ['alt_2',['alt',['../namespacenanom.html#a08e737c7203e0001cf9174bc29b62bf6',1,'nanom']]],
   ['arrow_5fformat_3',['arrow_format',['../namespacenanom.html#a607c33c6acf1e544059703248fa01267',1,'nanom']]],

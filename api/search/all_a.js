@@ -23,6 +23,6 @@ var searchData=
   ['line_5fending_20',['line_ending',['../namespacenanom.html#aa012a60b4538dff10869f63fb43d4443',1,'nanom']]],
   ['link_21',['link',['../structnanom_1_1pkt__ref.html#a02feb455151f832db9b4031ad7035740',1,'nanom::pkt_ref']]],
   ['list_22',['list',['../namespacenanom.html#ade5643fd7a4b85b5990807724eecdbd1a10ae9fc7d453b0dd525d0edf2ede7961',1,'nanom']]],
-  ['live_23',['live',['../structnanom_1_1input.html#a327f18ed3af96a1a84b41c846705b2e5',1,'nanom::input']]],
+  ['live_23',['live',['../structnanom_1_1seg__input.html#ad64696e394a0bfdbce02f73bad289faa',1,'nanom::seg_input::live'],['../structnanom_1_1input.html#a327f18ed3af96a1a84b41c846705b2e5',1,'nanom::input::live']]],
   ['lsb0_24',['lsb0',['../namespacenanom.html#aa6d0e66bd0d3ab9431dc56579fc7d9f1a25a72328b656e43fd71e9b6da13bfeab',1,'nanom']]]
 ];

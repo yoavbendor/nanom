@@ -92,6 +92,7 @@ $(document).ready(function(){initNavTree('namespacenanom.html',''); initResizabl
 
 <div class="header">
   <div class="summary">
+<a href="#namespaces">Namespaces</a> &#124;
 <a href="#nested-classes">Classes</a> &#124;
 <a href="#concepts">Concepts</a> &#124;
 <a href="#typedef-members">Typedefs</a> &#124;
@@ -102,6 +103,11 @@ $(document).ready(function(){initNavTree('namespacenanom.html',''); initResizabl
 </div><!--header-->
 <div class="contents">
 <table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="namespaces" name="namespaces"></a>
+Namespaces</h2></td></tr>
+<tr class="memitem:namespacenanom_1_1detail__seg" id="r_namespacenanom_1_1detail__seg"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1detail__seg.html">detail_seg</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
 Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1bdone.html">bdone</a></td></tr>
@@ -143,8 +149,25 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1schema__node.html">schema_node</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1seg__done.html">seg_done</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Mirrors input's member API (size/empty/offset/operator[]/safe_at/advance/checked_advance) so cursor-generic helper code can be written against either.  <a href="structnanom_1_1seg__input.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1seg__subrange.html">seg_subrange</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A subrange cannot alias the parent's part array (its first/last descriptors are trimmed), so it carries its own inline descriptor array — allocation-free, capped at seg_max_parts intersecting parts (subrange() returns nullopt past the cap; gather into owned storage as the fallback).  <a href="classnanom_1_1seg__subrange.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1seg__window.html">seg_window</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Either a zero-copy pointer into segment memory (fast path — the window fell inside one part) or a stack copy in the inline buffer (slow path — the window straddled a boundary).  <a href="classnanom_1_1seg__window.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1segments.html">segments</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Non-owning: both the part-descriptor array AND the bytes the parts point at are caller-owned and must outlive the segments object (same lifetime contract as input over a span).  <a href="classnanom_1_1segments.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1seq__exec.html">seq_exec</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Serial reference executor (also the shape a device kernel body takes).  <a href="structnanom_1_1seq__exec.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1single__segment.html">single_segment</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Owner for the common single-part case: keeps the one part descriptor inline so callers can wrap a contiguous payload as segmented input without managing a separate descriptor array.  <a href="classnanom_1_1single__segment.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1soa.html">soa</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Column-oriented accumulator: <a class="el" href="classnanom_1_1soa.html#ad8d3d77978a903f31394b238cbd07be1">push()</a> decomposes each struct into flat, host-order leaf columns; full chunks are sealed at chunk_rows so buffers can be handed to ArrowArray / Lance fragment writers without a transpose.  <a href="classnanom_1_1soa.html#details">More...</a><br /></td></tr>
@@ -195,6 +218,9 @@ Typedefs</h2></td></tr>
 <tr class="memitem:a1bc4fb4ecfebd272419a2cb269c60d9f" id="r_a1bc4fb4ecfebd272419a2cb269c60d9f"><td class="memTemplParams" colspan="2">template&lt;class T &gt; </td></tr>
 <tr class="memitem:a1bc4fb4ecfebd272419a2cb269c60d9f"><td class="memTemplItemLeft" align="right" valign="top">using&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a1bc4fb4ecfebd272419a2cb269c60d9f">le</a> = <a class="el" href="structnanom_1_1endian__scalar.html">endian_scalar</a>&lt; T, std::endian::little &gt;</td></tr>
 <tr class="separator:a1bc4fb4ecfebd272419a2cb269c60d9f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a552de83d4e047718d5d2c94279bc73d1" id="r_a552de83d4e047718d5d2c94279bc73d1"><td class="memTemplParams" colspan="2">template&lt;class T &gt; </td></tr>
+<tr class="memitem:a552de83d4e047718d5d2c94279bc73d1"><td class="memTemplItemLeft" align="right" valign="top">using&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a> = <a class="el" href="classnanom_1_1expected.html">expected</a>&lt; <a class="el" href="structnanom_1_1seg__done.html">seg_done</a>&lt; T &gt;, <a class="el" href="structnanom_1_1error.html">error</a> &gt;</td></tr>
+<tr class="separator:a552de83d4e047718d5d2c94279bc73d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
@@ -555,6 +581,48 @@ requires (sizeof...(Ps) &gt;= 1)</td></tr>
 <tr class="memitem:a90264f3c5ed3485e8b164f38688450f5" id="r_a90264f3c5ed3485e8b164f38688450f5"><td class="memTemplParams" colspan="2">template&lt;Described T&gt; </td></tr>
 <tr class="memitem:a90264f3c5ed3485e8b164f38688450f5"><td class="memTemplItemLeft" align="right" valign="top">std::string&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a90264f3c5ed3485e8b164f38688450f5">csv_row</a> (const T &amp;v)</td></tr>
 <tr class="separator:a90264f3c5ed3485e8b164f38688450f5"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a191a5d88536de51a7f7c6a1ef7b24ed0" id="r_a191a5d88536de51a7f7c6a1ef7b24ed0"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a191a5d88536de51a7f7c6a1ef7b24ed0">from</a> (<a class="el" href="classnanom_1_1segments.html">segments</a> s)</td></tr>
+<tr class="separator:a191a5d88536de51a7f7c6a1ef7b24ed0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac92a6da66b6460d03e1912d9b3d05975" id="r_ac92a6da66b6460d03e1912d9b3d05975"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#ac92a6da66b6460d03e1912d9b3d05975">streaming</a> (<a class="el" href="structnanom_1_1seg__input.html">seg_input</a> in)</td></tr>
+<tr class="separator:ac92a6da66b6460d03e1912d9b3d05975"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa24de0b3bccf681965aaf832732c1c07" id="r_aa24de0b3bccf681965aaf832732c1c07"><td class="memTemplParams" colspan="2">template&lt;class T &gt; </td></tr>
+<tr class="memitem:aa24de0b3bccf681965aaf832732c1c07"><td class="memTemplItemLeft" align="right" valign="top">&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aa24de0b3bccf681965aaf832732c1c07">seg_done</a> (T, <a class="el" href="structnanom_1_1seg__input.html">seg_input</a>) -&gt; <a class="el" href="structnanom_1_1seg__done.html">seg_done</a>&lt; T &gt;</td></tr>
+<tr class="separator:aa24de0b3bccf681965aaf832732c1c07"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af5d47bce601abd7ea0cae5358b5385c6" id="r_af5d47bce601abd7ea0cae5358b5385c6"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1unexpected.html">unexpected</a>&lt; <a class="el" href="structnanom_1_1error.html">error</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#af5d47bce601abd7ea0cae5358b5385c6">seg_make_err</a> (const <a class="el" href="structnanom_1_1seg__input.html">seg_input</a> &amp;at, const char *<a class="el" href="classnanom_1_1expected.html">expected</a>)</td></tr>
+<tr class="separator:af5d47bce601abd7ea0cae5358b5385c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a4cae61a854ae2bb9b15197a6ff009795" id="r_a4cae61a854ae2bb9b15197a6ff009795"><td class="memItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1unexpected.html">unexpected</a>&lt; <a class="el" href="structnanom_1_1error.html">error</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a4cae61a854ae2bb9b15197a6ff009795">seg_make_incomplete</a> (const <a class="el" href="structnanom_1_1seg__input.html">seg_input</a> &amp;at, std::size_t needed)</td></tr>
+<tr class="separator:a4cae61a854ae2bb9b15197a6ff009795"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a295d93f03553120731573300a6caa7e1" id="r_a295d93f03553120731573300a6caa7e1"><td class="memItemLeft" align="right" valign="top">std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a295d93f03553120731573300a6caa7e1">render</a> (const <a class="el" href="structnanom_1_1error.html">error</a> &amp;e, const <a class="el" href="classnanom_1_1segments.html">segments</a> &amp;whole)</td></tr>
+<tr class="memdesc:a295d93f03553120731573300a6caa7e1"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="structnanom_1_1error.html#a1e88aec7f10ca9b735025f5320d020a6" title="Pretty, localized message: offset, context chain, hex window with caret.">error::render</a>'s segmented twin: same message shape, hex window via <a class="el" href="classnanom_1_1segments.html#a0184cdea6cf34ea4255cd23d18c19922" title="Byte at logical offset i (linear in parts; for diagnostics, not hot paths).">segments::byte_at</a>.  <br /></td></tr>
+<tr class="separator:a295d93f03553120731573300a6caa7e1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a508d813dcf9b2960a248210f568082c1" id="r_a508d813dcf9b2960a248210f568082c1"><td class="memTemplParams" colspan="2">template&lt;Described T&gt; </td></tr>
+<tr class="memitem:a508d813dcf9b2960a248210f568082c1"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a508d813dcf9b2960a248210f568082c1">strct_seg</a> (std::endian dflt=std::endian::native)</td></tr>
+<tr class="memdesc:a508d813dcf9b2960a248210f568082c1"><td class="mdescLeft">&#160;</td><td class="mdescRight">strct&lt;T&gt;'s segmented twin: identical decode (the same detail::assign_field walk <a class="el" href="reflect_8hpp.html">reflect.hpp</a>'s strct uses — decode_field/assign_field already take a raw pointer, so segmentation is solved entirely by WINDOWING one level above).  <br /></td></tr>
+<tr class="separator:a508d813dcf9b2960a248210f568082c1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a51467750aec6d091de46b8e515bcf5d9" id="r_a51467750aec6d091de46b8e515bcf5d9"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint8_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a51467750aec6d091de46b8e515bcf5d9">seg_u8</a> (<a class="el" href="structnanom_1_1seg__input.html">seg_input</a> in)</td></tr>
+<tr class="separator:a51467750aec6d091de46b8e515bcf5d9"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acecaa2b91de3b1ac5c18e44b8d2cf927" id="r_acecaa2b91de3b1ac5c18e44b8d2cf927"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint16_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#acecaa2b91de3b1ac5c18e44b8d2cf927">seg_be16</a> (<a class="el" href="structnanom_1_1seg__input.html">seg_input</a> in)</td></tr>
+<tr class="separator:acecaa2b91de3b1ac5c18e44b8d2cf927"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a484e6379412c842cab4730e85f05d6be" id="r_a484e6379412c842cab4730e85f05d6be"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint32_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a484e6379412c842cab4730e85f05d6be">seg_be32</a> (<a class="el" href="structnanom_1_1seg__input.html">seg_input</a> in)</td></tr>
+<tr class="separator:a484e6379412c842cab4730e85f05d6be"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aac574cf5a49226fbc2c13b8b826faa88" id="r_aac574cf5a49226fbc2c13b8b826faa88"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint64_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aac574cf5a49226fbc2c13b8b826faa88">seg_be64</a> (<a class="el" href="structnanom_1_1seg__input.html">seg_input</a> in)</td></tr>
+<tr class="separator:aac574cf5a49226fbc2c13b8b826faa88"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a20e2892d11365da5f3f0de2133451566" id="r_a20e2892d11365da5f3f0de2133451566"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint16_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a20e2892d11365da5f3f0de2133451566">seg_le16</a> (<a class="el" href="structnanom_1_1seg__input.html">seg_input</a> in)</td></tr>
+<tr class="separator:a20e2892d11365da5f3f0de2133451566"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7ab767b306184941fd59ce477df40173" id="r_a7ab767b306184941fd59ce477df40173"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint32_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a7ab767b306184941fd59ce477df40173">seg_le32</a> (<a class="el" href="structnanom_1_1seg__input.html">seg_input</a> in)</td></tr>
+<tr class="separator:a7ab767b306184941fd59ce477df40173"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae482a0fdd77210e2cfd286e0e19f6993" id="r_ae482a0fdd77210e2cfd286e0e19f6993"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint64_t &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#ae482a0fdd77210e2cfd286e0e19f6993">seg_le64</a> (<a class="el" href="structnanom_1_1seg__input.html">seg_input</a> in)</td></tr>
+<tr class="separator:ae482a0fdd77210e2cfd286e0e19f6993"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aac70a91c3a197adcf5c9ed6aee79ada0" id="r_aac70a91c3a197adcf5c9ed6aee79ada0"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; <a class="el" href="structnanom_1_1unit.html">unit</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aac70a91c3a197adcf5c9ed6aee79ada0">seg_skip</a> (<a class="el" href="structnanom_1_1seg__input.html">seg_input</a> in, std::size_t n)</td></tr>
+<tr class="memdesc:aac70a91c3a197adcf5c9ed6aee79ada0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Skip n bytes (bounds-checked take-nothing).  <br /></td></tr>
+<tr class="separator:aac70a91c3a197adcf5c9ed6aee79ada0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a698eead26dfc8bc33f67137d1c73fd9b" id="r_a698eead26dfc8bc33f67137d1c73fd9b"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; <a class="el" href="structnanom_1_1unit.html">unit</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a698eead26dfc8bc33f67137d1c73fd9b">seg_take</a> (<a class="el" href="structnanom_1_1seg__input.html">seg_input</a> in, std::span&lt; std::byte &gt; dst)</td></tr>
+<tr class="memdesc:a698eead26dfc8bc33f67137d1c73fd9b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Gathering take: copy the next n bytes into caller storage (dst.size() == n).  <br /></td></tr>
+<tr class="separator:a698eead26dfc8bc33f67137d1c73fd9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5dc441a22762eb2a2503037273234f38" id="r_a5dc441a22762eb2a2503037273234f38"><td class="memTemplParams" colspan="2">template&lt;Described T&gt; </td></tr>
+<tr class="memitem:a5dc441a22762eb2a2503037273234f38"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a5dc441a22762eb2a2503037273234f38">overlay_seg</a> (std::endian dflt=std::endian::native)</td></tr>
+<tr class="memdesc:a5dc441a22762eb2a2503037273234f38"><td class="mdescLeft">&#160;</td><td class="mdescRight">overlay&lt;T&gt;'s segmented twin: ZERO-COPY OR ERROR, never a hidden copy.  <br /></td></tr>
+<tr class="separator:a5dc441a22762eb2a2503037273234f38"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
@@ -704,6 +772,8 @@ Variables</h2></td></tr>
 <tr class="memitem:a1df0707718895a1a4a16c161db8c1571" id="r_a1df0707718895a1a4a16c161db8c1571"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a1df0707718895a1a4a16c161db8c1571">wire_mutation_is_runtime_detected</a> = false</td></tr>
 <tr class="memdesc:a1df0707718895a1a4a16c161db8c1571"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set true when in-place wire mutation behind a live view is runtime-detected.  <br /></td></tr>
 <tr class="separator:a1df0707718895a1a4a16c161db8c1571"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa5622c7ac77421db4609a143bb75a0db" id="r_aa5622c7ac77421db4609a143bb75a0db"><td class="memItemLeft" align="right" valign="top">constexpr std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aa5622c7ac77421db4609a143bb75a0db">seg_max_parts</a> = <a class="el" href="segmented_8hpp.html#a0be8383e2f0f60f47caab64882ba293b">NANOM_SEG_MAX_PARTS</a></td></tr>
+<tr class="separator:aa5622c7ac77421db4609a143bb75a0db"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Typedef Documentation</h2>
 <a id="a2cb1eeb47b70a1e8f6b109642a541fe2" name="a2cb1eeb47b70a1e8f6b109642a541fe2"></a>
@@ -812,6 +882,22 @@ template&lt;class T &gt; </div>
       <table class="memname">
         <tr>
           <td class="memname">using <a class="el" href="namespacenanom.html#ae8763c24c61dc3c46bdacd4b38850e70">nanom::result</a> = typedef <a class="el" href="classnanom_1_1expected.html">expected</a>&lt;<a class="el" href="structnanom_1_1done.html">done</a>&lt;T&gt;, <a class="el" href="structnanom_1_1error.html">error</a>&gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a552de83d4e047718d5d2c94279bc73d1" name="a552de83d4e047718d5d2c94279bc73d1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a552de83d4e047718d5d2c94279bc73d1">&#9670;&#160;</a></span>seg_result</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class T &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">using <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">nanom::seg_result</a> = typedef <a class="el" href="classnanom_1_1expected.html">expected</a>&lt;<a class="el" href="structnanom_1_1seg__done.html">seg_done</a>&lt;T&gt;, <a class="el" href="structnanom_1_1error.html">error</a>&gt;</td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -1896,7 +1982,7 @@ template&lt;Parser P, class Init , class F &gt; </div>
 </div>
 </div>
 <a id="a6f10fa3e9cecc6db153a82f11da4c4b7" name="a6f10fa3e9cecc6db153a82f11da4c4b7"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6f10fa3e9cecc6db153a82f11da4c4b7">&#9670;&#160;</a></span>from() <span class="overload">[1/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a6f10fa3e9cecc6db153a82f11da4c4b7">&#9670;&#160;</a></span>from() <span class="overload">[1/5]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1925,7 +2011,7 @@ template&lt;Parser P, class Init , class F &gt; </div>
 </div>
 </div>
 <a id="a3fdc8fb9ad807594c82c8d06ff6eca75" name="a3fdc8fb9ad807594c82c8d06ff6eca75"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a3fdc8fb9ad807594c82c8d06ff6eca75">&#9670;&#160;</a></span>from() <span class="overload">[2/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a3fdc8fb9ad807594c82c8d06ff6eca75">&#9670;&#160;</a></span>from() <span class="overload">[2/5]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1954,7 +2040,7 @@ requires (sizeof(T) == 1)</div>
 </div>
 </div>
 <a id="a49e16e11b85f08e72391b62952c25550" name="a49e16e11b85f08e72391b62952c25550"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a49e16e11b85f08e72391b62952c25550">&#9670;&#160;</a></span>from() <span class="overload">[3/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a49e16e11b85f08e72391b62952c25550">&#9670;&#160;</a></span>from() <span class="overload">[3/5]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -1992,8 +2078,34 @@ requires (sizeof(T) == 1)</div>
 
 </div>
 </div>
+<a id="a191a5d88536de51a7f7c6a1ef7b24ed0" name="a191a5d88536de51a7f7c6a1ef7b24ed0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a191a5d88536de51a7f7c6a1ef7b24ed0">&#9670;&#160;</a></span>from() <span class="overload">[4/5]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="structnanom_1_1seg__input.html">seg_input</a> nanom::from </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="classnanom_1_1segments.html">segments</a> s&#160;</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="a2ea5127471c97a142c6e068678dcad66" name="a2ea5127471c97a142c6e068678dcad66"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a2ea5127471c97a142c6e068678dcad66">&#9670;&#160;</a></span>from() <span class="overload">[4/4]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a2ea5127471c97a142c6e068678dcad66">&#9670;&#160;</a></span>from() <span class="overload">[5/5]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -2765,6 +2877,37 @@ template&lt;Described T&gt; </div>
 
 </div>
 </div>
+<a id="a5dc441a22762eb2a2503037273234f38" name="a5dc441a22762eb2a2503037273234f38"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5dc441a22762eb2a2503037273234f38">&#9670;&#160;</a></span>overlay_seg()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Described T&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::overlay_seg </td>
+          <td>(</td>
+          <td class="paramtype">std::endian&#160;</td>
+          <td class="paramname"><em>dflt</em> = <code>std::endian::native</code></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>overlay&lt;T&gt;'s segmented twin: ZERO-COPY OR ERROR, never a hidden copy. </p>
+<p>When the struct's window lies inside the current part, the returned view&lt;T&gt; points straight at segment memory (arena/gen threaded through when generation tracking is on). When it straddles a boundary, a view would have to point at a temporary — dishonest — so this fails with a recoverable error instead; parse straddling structs by value with <a class="el" href="namespacenanom.html#a508d813dcf9b2960a248210f568082c1" title="strct&lt;T&gt;&#39;s segmented twin: identical decode (the same detail::assign_field walk reflect....">strct_seg&lt;T&gt;()</a>. </p>
+
+</div>
+</div>
 <a id="a489aaa634b0c7f86bc0c011cb670936f" name="a489aaa634b0c7f86bc0c011cb670936f"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a489aaa634b0c7f86bc0c011cb670936f">&#9670;&#160;</a></span>pair()</h2>
 
@@ -2964,6 +3107,44 @@ template&lt;Parser P&gt; </div>
 
 </div>
 </div>
+<a id="a295d93f03553120731573300a6caa7e1" name="a295d93f03553120731573300a6caa7e1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a295d93f03553120731573300a6caa7e1">&#9670;&#160;</a></span>render()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::string nanom::render </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structnanom_1_1error.html">error</a> &amp;&#160;</td>
+          <td class="paramname"><em>e</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="classnanom_1_1segments.html">segments</a> &amp;&#160;</td>
+          <td class="paramname"><em>whole</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p><a class="el" href="structnanom_1_1error.html#a1e88aec7f10ca9b735025f5320d020a6" title="Pretty, localized message: offset, context chain, hex window with caret.">error::render</a>'s segmented twin: same message shape, hex window via <a class="el" href="classnanom_1_1segments.html#a0184cdea6cf34ea4255cd23d18c19922" title="Byte at logical offset i (linear in parts; for diagnostics, not hot paths).">segments::byte_at</a>. </p>
+
+</div>
+</div>
 <a id="aa515439980944173ae68bd8c13a458aa" name="aa515439980944173ae68bd8c13a458aa"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aa515439980944173ae68bd8c13a458aa">&#9670;&#160;</a></span>satisfy()</h2>
 
@@ -3064,6 +3245,366 @@ template&lt;Described T&gt; </div>
 </div><div class="memdoc">
 
 <p>The schema of a registered struct — a compile-time constant tree. </p>
+
+</div>
+</div>
+<a id="acecaa2b91de3b1ac5c18e44b8d2cf927" name="acecaa2b91de3b1ac5c18e44b8d2cf927"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acecaa2b91de3b1ac5c18e44b8d2cf927">&#9670;&#160;</a></span>seg_be16()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint16_t &gt; nanom::seg_be16 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td>
+          <td class="paramname"><em>in</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a484e6379412c842cab4730e85f05d6be" name="a484e6379412c842cab4730e85f05d6be"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a484e6379412c842cab4730e85f05d6be">&#9670;&#160;</a></span>seg_be32()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint32_t &gt; nanom::seg_be32 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td>
+          <td class="paramname"><em>in</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aac574cf5a49226fbc2c13b8b826faa88" name="aac574cf5a49226fbc2c13b8b826faa88"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aac574cf5a49226fbc2c13b8b826faa88">&#9670;&#160;</a></span>seg_be64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint64_t &gt; nanom::seg_be64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td>
+          <td class="paramname"><em>in</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aa24de0b3bccf681965aaf832732c1c07" name="aa24de0b3bccf681965aaf832732c1c07"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa24de0b3bccf681965aaf832732c1c07">&#9670;&#160;</a></span>seg_done()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class T &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="structnanom_1_1seg__done.html">nanom::seg_done</a> </td>
+          <td>(</td>
+          <td class="paramtype">T&#160;</td>
+          <td class="paramname">, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td>
+          <td class="paramname">&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td> -&gt;  <a class="el" href="structnanom_1_1seg__done.html">seg_done</a>&lt; T &gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a20e2892d11365da5f3f0de2133451566" name="a20e2892d11365da5f3f0de2133451566"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a20e2892d11365da5f3f0de2133451566">&#9670;&#160;</a></span>seg_le16()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint16_t &gt; nanom::seg_le16 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td>
+          <td class="paramname"><em>in</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7ab767b306184941fd59ce477df40173" name="a7ab767b306184941fd59ce477df40173"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7ab767b306184941fd59ce477df40173">&#9670;&#160;</a></span>seg_le32()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint32_t &gt; nanom::seg_le32 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td>
+          <td class="paramname"><em>in</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="ae482a0fdd77210e2cfd286e0e19f6993" name="ae482a0fdd77210e2cfd286e0e19f6993"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae482a0fdd77210e2cfd286e0e19f6993">&#9670;&#160;</a></span>seg_le64()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint64_t &gt; nanom::seg_le64 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td>
+          <td class="paramname"><em>in</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af5d47bce601abd7ea0cae5358b5385c6" name="af5d47bce601abd7ea0cae5358b5385c6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af5d47bce601abd7ea0cae5358b5385c6">&#9670;&#160;</a></span>seg_make_err()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classnanom_1_1unexpected.html">unexpected</a>&lt; <a class="el" href="structnanom_1_1error.html">error</a> &gt; nanom::seg_make_err </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structnanom_1_1seg__input.html">seg_input</a> &amp;&#160;</td>
+          <td class="paramname"><em>at</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const char *&#160;</td>
+          <td class="paramname"><em>expected</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a4cae61a854ae2bb9b15197a6ff009795" name="a4cae61a854ae2bb9b15197a6ff009795"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a4cae61a854ae2bb9b15197a6ff009795">&#9670;&#160;</a></span>seg_make_incomplete()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classnanom_1_1unexpected.html">unexpected</a>&lt; <a class="el" href="structnanom_1_1error.html">error</a> &gt; nanom::seg_make_incomplete </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structnanom_1_1seg__input.html">seg_input</a> &amp;&#160;</td>
+          <td class="paramname"><em>at</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>needed</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aac70a91c3a197adcf5c9ed6aee79ada0" name="aac70a91c3a197adcf5c9ed6aee79ada0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aac70a91c3a197adcf5c9ed6aee79ada0">&#9670;&#160;</a></span>seg_skip()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; <a class="el" href="structnanom_1_1unit.html">unit</a> &gt; nanom::seg_skip </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td>
+          <td class="paramname"><em>in</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>n</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Skip n bytes (bounds-checked take-nothing). </p>
+
+</div>
+</div>
+<a id="a698eead26dfc8bc33f67137d1c73fd9b" name="a698eead26dfc8bc33f67137d1c73fd9b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a698eead26dfc8bc33f67137d1c73fd9b">&#9670;&#160;</a></span>seg_take()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; <a class="el" href="structnanom_1_1unit.html">unit</a> &gt; nanom::seg_take </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td>
+          <td class="paramname"><em>in</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::span&lt; std::byte &gt;&#160;</td>
+          <td class="paramname"><em>dst</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Gathering take: copy the next n bytes into caller storage (dst.size() == n). </p>
+
+</div>
+</div>
+<a id="a51467750aec6d091de46b8e515bcf5d9" name="a51467750aec6d091de46b8e515bcf5d9"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a51467750aec6d091de46b8e515bcf5d9">&#9670;&#160;</a></span>seg_u8()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a>&lt; std::uint8_t &gt; nanom::seg_u8 </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td>
+          <td class="paramname"><em>in</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -3254,8 +3795,39 @@ template&lt;Described T&gt; </div>
 
 </div>
 </div>
+<a id="a508d813dcf9b2960a248210f568082c1" name="a508d813dcf9b2960a248210f568082c1"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a508d813dcf9b2960a248210f568082c1">&#9670;&#160;</a></span>strct_seg()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Described T&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::strct_seg </td>
+          <td>(</td>
+          <td class="paramtype">std::endian&#160;</td>
+          <td class="paramname"><em>dflt</em> = <code>std::endian::native</code></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>strct&lt;T&gt;'s segmented twin: identical decode (the same detail::assign_field walk <a class="el" href="reflect_8hpp.html">reflect.hpp</a>'s strct uses — decode_field/assign_field already take a raw pointer, so segmentation is solved entirely by WINDOWING one level above). </p>
+<p>Within-part parses are zero-copy reads off segment memory; a straddling parse gathers wire_size_v&lt;T&gt; bytes onto the stack first. </p>
+
+</div>
+</div>
 <a id="ac0c6f76d8bf93df7e308825ed6dfbd77" name="ac0c6f76d8bf93df7e308825ed6dfbd77"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac0c6f76d8bf93df7e308825ed6dfbd77">&#9670;&#160;</a></span>streaming()</h2>
+<h2 class="memtitle"><span class="permalink"><a href="#ac0c6f76d8bf93df7e308825ed6dfbd77">&#9670;&#160;</a></span>streaming() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -3279,6 +3851,32 @@ template&lt;Described T&gt; </div>
 </div><div class="memdoc">
 
 <p>Mark an input as a stream prefix: parsers that hit the end will report <code>incomplete</code> with the byte count still needed, so the caller can refill and retry (nom's streaming mode; default inputs behave like nom complete). </p>
+
+</div>
+</div>
+<a id="ac92a6da66b6460d03e1912d9b3d05975" name="ac92a6da66b6460d03e1912d9b3d05975"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac92a6da66b6460d03e1912d9b3d05975">&#9670;&#160;</a></span>streaming() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="structnanom_1_1seg__input.html">seg_input</a> nanom::streaming </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1seg__input.html">seg_input</a>&#160;</td>
+          <td class="paramname"><em>in</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -5283,6 +5881,28 @@ template&lt;Parser P, class Pred &gt; </div>
 </div><div class="memdoc">
 
 <p>Set true when span/view lifetime is runtime-enforced (e.g. via wire_arena on all parses). </p>
+
+</div>
+</div>
+<a id="aa5622c7ac77421db4609a143bb75a0db" name="aa5622c7ac77421db4609a143bb75a0db"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa5622c7ac77421db4609a143bb75a0db">&#9670;&#160;</a></span>seg_max_parts</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::size_t nanom::seg_max_parts = <a class="el" href="segmented_8hpp.html#a0be8383e2f0f60f47caab64882ba293b">NANOM_SEG_MAX_PARTS</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>

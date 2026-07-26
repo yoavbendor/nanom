@@ -18,5 +18,5 @@ var searchData=
   ['length_5fprefix_5fspans_5fare_5funowned_15',['length_prefix_spans_are_unowned',['../namespacenanom.html#adb5bdd721cdb59c2708f1bb33f2b1edd',1,'nanom']]],
   ['line_5fending_16',['line_ending',['../namespacenanom.html#aa012a60b4538dff10869f63fb43d4443',1,'nanom']]],
   ['link_17',['link',['../structnanom_1_1pkt__ref.html#a02feb455151f832db9b4031ad7035740',1,'nanom::pkt_ref']]],
-  ['live_18',['live',['../structnanom_1_1input.html#a327f18ed3af96a1a84b41c846705b2e5',1,'nanom::input']]]
+  ['live_18',['live',['../structnanom_1_1seg__input.html#ad64696e394a0bfdbce02f73bad289faa',1,'nanom::seg_input::live'],['../structnanom_1_1input.html#a327f18ed3af96a1a84b41c846705b2e5',1,'nanom::input::live']]]
 ];

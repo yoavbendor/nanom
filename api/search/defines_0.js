@@ -46,5 +46,6 @@ var searchData=
   ['nanom_5fpp_5fnarg_43',['NANOM_PP_NARG',['../describe__macro_8hpp.html#a5771bbcda35e60e76535d6b97b264da4',1,'describe_macro.hpp']]],
   ['nanom_5fpp_5fnarg_5f_44',['NANOM_PP_NARG_',['../describe__macro_8hpp.html#a76204f932797a288c533f7dfdd7dbec0',1,'describe_macro.hpp']]],
   ['nanom_5fpp_5frseq_45',['NANOM_PP_RSEQ',['../describe__macro_8hpp.html#a99c13e94b7cc45ee0f1cd1022985e062',1,'describe_macro.hpp']]],
-  ['nanom_5fstrict_46',['NANOM_STRICT',['../prelude_8hpp.html#a0aa2c8fa0523f6185f8028ec10ce5362',1,'prelude.hpp']]]
+  ['nanom_5fseg_5fmax_5fparts_46',['NANOM_SEG_MAX_PARTS',['../segmented_8hpp.html#a0be8383e2f0f60f47caab64882ba293b',1,'segmented.hpp']]],
+  ['nanom_5fstrict_47',['NANOM_STRICT',['../prelude_8hpp.html#a0aa2c8fa0523f6185f8028ec10ce5362',1,'prelude.hpp']]]
 ];

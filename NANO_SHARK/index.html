@@ -23,7 +23,7 @@
       
       
       <link rel="icon" href="../assets/images/favicon.png">
-      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.6">
+      <meta name="generator" content="mkdocs-1.6.1, mkdocs-material-9.7.7">
     
     
       
@@ -31,7 +31,7 @@
       
     
     
-      <link rel="stylesheet" href="../assets/stylesheets/main.484c7ddc.min.css">
+      <link rel="stylesheet" href="../assets/stylesheets/main.ec1eaa64.min.css">
       
         
         <link rel="stylesheet" href="../assets/stylesheets/palette.ab4e12ef.min.css">
@@ -644,6 +644,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#segmented-input-parsing-across-disjoint-byte-ranges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Segmented input: parsing across disjoint byte ranges
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-json-sink" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -963,6 +974,17 @@
 </li>
       
         <li class="md-nav__item">
+  <a href="#segmented-input-parsing-across-disjoint-byte-ranges" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Segmented input: parsing across disjoint byte ranges
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
   <a href="#the-json-sink" class="md-nav__link">
     <span class="md-ellipsis">
       
@@ -1109,29 +1131,66 @@ key) plus the existing <code>nanom::soa&lt;Row&gt;</code>:</p>
 <code>run_decode_pass()</code> itself returns <code>false</code> only when the pcap/pcapng container scan fails outright
 (a corrupt file, not a corrupt packet).</p>
 <h2 id="fragment-reassembly">Fragment reassembly<a class="headerlink" href="#fragment-reassembly" title="Permanent link">&para;</a></h2>
-<p><code>core/defrag.hpp</code> is the one deliberate, narrowly-scoped departure from nanom's zero-copy pledge —
-and the first heap-owning, cross-packet <strong>stateful</strong> table anywhere in the nano-family. Every
-individual fragment's IP header is still decoded zero-copy over the file's own bytes; fragments are
-buffered as non-owning <code>std::span</code>s into that same source buffer (valid for the whole decode pass),
-and only the final cross-fragment stitch — built once a datagram completes — is an owned copy: one
-<code>memcpy</code>-shaped copy per completed datagram, not one per fragment plus another at the end.</p>
+<p><code>core/defrag.hpp</code> is the first heap-owning, cross-packet <strong>stateful</strong> table anywhere in the
+nano-family. A reassembled datagram's bytes are disjoint in the source file, but reassembly is
+<strong>fully zero-copy</strong>: every individual fragment's IP header is decoded over the file's own bytes,
+fragments are buffered as non-owning <code>std::span</code>s into that same source buffer, and on completion
+<code>add_fragment</code> returns an ordered, overlap-trimmed <strong>list of views</strong> — <code>Result::parts</code>, a
+<code>nanom::segments</code> — that the L4 re-entry parses straight over with <code>strct_seg</code>. No stitched buffer
+is ever built.</p>
 <div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-4-1" name="__codelineno-4-1" href="#__codelineno-4-1"></a><span class="n">ReassemblyTable</span><span class="o">&lt;</span><span class="n">Ipv4Key</span><span class="o">&gt;</span><span class="w"> </span><span class="n">table</span><span class="p">;</span>
 <a id="__codelineno-4-2" name="__codelineno-4-2" href="#__codelineno-4-2"></a><span class="k">auto</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">table</span><span class="p">.</span><span class="n">add_fragment</span><span class="p">(</span><span class="n">key</span><span class="p">,</span><span class="w"> </span><span class="n">packet_id</span><span class="p">,</span><span class="w"> </span><span class="n">offset_bytes</span><span class="p">,</span><span class="w"> </span><span class="n">more_fragments</span><span class="p">,</span><span class="w"> </span><span class="n">payload</span><span class="p">);</span>
 <a id="__codelineno-4-3" name="__codelineno-4-3" href="#__codelineno-4-3"></a><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="n">r</span><span class="p">.</span><span class="n">completed</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="c1">// r.assembled is a std::span&lt;const std::byte&gt; over the owned, stitched buffer</span>
-<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="p">}</span>
-<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="n">table</span><span class="p">.</span><span class="n">evict_stale</span><span class="p">(</span><span class="n">now_packet_id</span><span class="p">);</span><span class="w">  </span><span class="c1">// ages out timed-out / stuck-in-conflict reassemblies</span>
+<a id="__codelineno-4-4" name="__codelineno-4-4" href="#__codelineno-4-4"></a><span class="w">  </span><span class="c1">// r.parts is a nanom::segments: ordered, overlap-trimmed VIEWS into the source buffer.</span>
+<a id="__codelineno-4-5" name="__codelineno-4-5" href="#__codelineno-4-5"></a><span class="w">  </span><span class="n">nm</span><span class="o">::</span><span class="n">seg_input</span><span class="w"> </span><span class="n">in</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">from</span><span class="p">(</span><span class="n">r</span><span class="p">.</span><span class="n">parts</span><span class="p">);</span>
+<a id="__codelineno-4-6" name="__codelineno-4-6" href="#__codelineno-4-6"></a><span class="w">  </span><span class="k">auto</span><span class="w"> </span><span class="n">udp</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nm</span><span class="o">::</span><span class="n">strct_seg</span><span class="o">&lt;</span><span class="n">Udp</span><span class="o">&gt;</span><span class="p">()(</span><span class="n">in</span><span class="p">);</span><span class="w">   </span><span class="c1">// parsed straight over the fragment views, no copy</span>
+<a id="__codelineno-4-7" name="__codelineno-4-7" href="#__codelineno-4-7"></a><span class="p">}</span>
+<a id="__codelineno-4-8" name="__codelineno-4-8" href="#__codelineno-4-8"></a><span class="n">table</span><span class="p">.</span><span class="n">evict_stale</span><span class="p">(</span><span class="n">now_packet_id</span><span class="p">);</span><span class="w">        </span><span class="c1">// ages out timed-out / stuck-in-conflict reassemblies</span>
 </code></pre></div>
-<p>A genuinely zero-copy reassembly (fragments joined lazily via <code>std::views::join</code>, never
-materializing a contiguous buffer) isn't practical here: nanom's parsing surface (<code>nom.hpp</code>'s
-<code>input</code>, <code>strct&lt;T&gt;()</code>, <code>overlay&lt;T&gt;()</code>) is built on a contiguous <code>[first,last)</code> pointer pair, not a
-generalized range — a <code>join_view</code> over disjoint spans is only a <code>forward_range</code>, so it can't yield
-the pointer+length pair the parser needs. Teaching the core cursor to understand segmented input
-would be a change to the <em>library</em>, out of scope for an example.</p>
+<p>This is what nanom's <a href="#segmented-input-parsing-across-disjoint-byte-ranges">segmented input</a> layer
+(<code>nanom/segmented.hpp</code>) exists for. Earlier this was documented as impractical — "a <code>join_view</code>
+over disjoint spans is only a <code>forward_range</code>, can't yield the pointer+length pair the parser
+needs." The insight that dissolved that: nanom's field decode already takes a <em>raw pointer</em>, so
+segmentation is solved by <strong>windowing</strong> one level above it — a bounded, stack-only gather of one
+struct's bytes only when a struct straddles a fragment seam, and a pure pointer read otherwise.
+The ~124 core combinators never changed. Measured payoff: parsing the L4 header off the segment
+list is <strong>33–43× faster</strong> than the old stitch-then-parse for a 64 KiB datagram (the whole-datagram
+copy is gone), and the every-packet hot path is byte-for-byte unchanged (<code>bench/segmented_bench.cpp</code>,
+<code>bench/parse_bench.cpp</code>). A lazy <code>materialize()</code> escape hatch remains for the rare consumer that
+truly needs one contiguous buffer — the only place a copy can still happen, and only if asked.</p>
 <p><code>fuzz/fuzz_defrag.cpp</code> is a dedicated libFuzzer harness for this table (out-of-order fragments,
-overlapping/conflicting fragments, capacity/timeout eviction) — within its first run it found a
-real bug (a stale key-to-id mapping surviving eviction, causing a crash on key reuse), now fixed and
-regression-tested.</p>
+overlapping/conflicting fragments, capacity/timeout eviction, plus parsing a struct chain over the
+returned segment list) — within its first run it found a real bug (a stale key-to-id mapping
+surviving eviction, causing a crash on key reuse), now fixed and regression-tested.</p>
+<h2 id="segmented-input-parsing-across-disjoint-byte-ranges">Segmented input: parsing across disjoint byte ranges<a class="headerlink" href="#segmented-input-parsing-across-disjoint-byte-ranges" title="Permanent link">&para;</a></h2>
+<p><code>nanom/segmented.hpp</code> is the library layer that makes zero-copy reassembly possible — a general
+nanom feature, not nano_shark-specific, but reassembly is its motivating consumer. It parses a
+logical buffer whose bytes live in an ordered list of <strong>disjoint spans</strong>, without ever copying
+them into one contiguous block.</p>
+<ul>
+<li><code>segments</code> — a non-owning, ordered list of <code>std::span&lt;const std::byte&gt;</code> parts.</li>
+<li><code>seg_input</code> — the cursor. It mirrors <code>input</code>'s member API (<code>size</code>/<code>advance</code>/<code>operator[]</code>/…), and
+  its hot fields are raw pointers into the <em>current</em> part, so a read inside one part is a pointer
+  compare + deref, exactly like the contiguous cursor.</li>
+<li><code>strct_seg&lt;T&gt;()</code> / the cursor kit (<code>seg_u8</code>, <code>seg_be16</code>, <code>seg_be32</code>, …) — parse structs and
+  scalars over <code>seg_input</code>. <code>strct_seg</code> reuses the <strong>same</strong> field-decode code as <code>strct</code> (nanom's
+  <code>decode_field</code>/<code>assign_field</code> already take a raw pointer); a <code>gather&lt;N&gt;</code> primitive supplies that
+  pointer — pointing straight into segment memory when the <code>N</code>-byte window lies inside one part, or
+  into a bounded stack buffer only when it straddles a seam.</li>
+<li><code>overlay_seg&lt;T&gt;()</code> — <strong>zero-copy or a recoverable error, never a hidden copy</strong>: it yields a
+  <code>view&lt;T&gt;</code> into segment memory when the struct is contiguous, and fails (so you fall back to
+  <code>strct_seg</code>, by value) when it would straddle. A view must never point at a temporary.</li>
+</ul>
+<p>The three design guarantees: (1) <strong>zero cost when unused</strong> — <code>input</code> and every combinator are
+untouched; don't include the header, don't pay; (2) <strong>pay only at the seams</strong> — an in-part read is
+pointer-based, only a straddling read gathers, and only one struct's worth of bytes onto the stack;
+(3) <strong>honest views</strong>. Explicitly out of scope (v1): the general combinator vocabulary
+(<code>alt</code>/<code>many0</code>/<code>tag</code>/<code>dec</code>/…) whose text-oriented members need physically contiguous memory —
+segmented parsing covers struct decode and hand-rolled cursor walks, which is what a re-entry
+parser (like SOME/IP over a reassembled datagram) needs. <code>tests/test_segmented.cpp</code> proves the
+cursor agrees with the contiguous cursor over every split, <code>strct_seg</code>/<code>overlay_seg</code> agree with
+<code>strct</code>/<code>overlay</code> over every split of six real wire structs, and <code>fuzz/fuzz_segmented.cpp</code>
+differentially fuzzes segmented vs contiguous parses.</p>
 <h2 id="the-json-sink">The JSON sink<a class="headerlink" href="#the-json-sink" title="Permanent link">&para;</a></h2>
 <p><code>core/json_tree.hpp</code>'s <code>PacketJson</code> builds the tshark-shaped <code>{"_index":N,"_source":{"layers":{...}}}</code>
 tree at runtime. <code>add_layer_json(name, json)</code> inserts a layer; a <strong>second</strong> call with the same name
@@ -1303,7 +1362,7 @@ needed in that repo at all.</p>
       <script id="__config" type="application/json">{"annotate": null, "base": "..", "features": ["navigation.instant", "navigation.tracking", "navigation.sections", "navigation.top", "navigation.footer", "content.code.copy", "content.code.annotate", "search.suggest", "toc.follow"], "search": "../assets/javascripts/workers/search.2c215733.min.js", "tags": null, "translations": {"clipboard.copied": "Copied to clipboard", "clipboard.copy": "Copy to clipboard", "search.result.more.one": "1 more on this page", "search.result.more.other": "# more on this page", "search.result.none": "No matching documents", "search.result.one": "1 matching document", "search.result.other": "# matching documents", "search.result.placeholder": "Type to start searching", "search.result.term.missing": "Missing", "select.version": "Select version"}, "version": null}</script>
     
     
-      <script src="../assets/javascripts/bundle.79ae519e.min.js"></script>
+      <script src="../assets/javascripts/bundle.d7400e89.min.js"></script>
       
     
   </body>

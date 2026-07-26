@@ -9,5 +9,6 @@ var dir_03efe1aa45b50d97332c093e73ed40ef =
     [ "prelude.hpp", "prelude_8hpp.html", "prelude_8hpp" ],
     [ "reflect.hpp", "reflect_8hpp.html", "reflect_8hpp" ],
     [ "schema.hpp", "schema_8hpp.html", "schema_8hpp" ],
+    [ "segmented.hpp", "segmented_8hpp.html", "segmented_8hpp" ],
     [ "soa.hpp", "soa_8hpp.html", "soa_8hpp" ]
 ];

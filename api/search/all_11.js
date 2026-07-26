@@ -17,5 +17,5 @@ var searchData=
   ['threads_14',['threads',['../structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813',1,'nanom::par_exec']]],
   ['to_5fjson_15',['to_json',['../namespacenanom.html#ad8080093c14f04e71d8f486428451de0',1,'nanom']]],
   ['to_5fstruct_16',['to_struct',['../structnanom_1_1view.html#a4396f00a9c3b752f93c2aeb1125d0487',1,'nanom::view']]],
-  ['type_17',['type',['../structnanom_1_1bdone.html#ac72a34838d88bceedbd8e34dbf8ec9e0',1,'nanom::bdone::type'],['../structnanom_1_1done.html#a8a0f9a600956215f2d9ce5fd541ac5d2',1,'nanom::done::type']]]
+  ['type_17',['type',['../structnanom_1_1seg__done.html#af239028ae40a0ca9a451fbfa17258e9a',1,'nanom::seg_done::type'],['../structnanom_1_1bdone.html#ac72a34838d88bceedbd8e34dbf8ec9e0',1,'nanom::bdone::type'],['../structnanom_1_1done.html#a8a0f9a600956215f2d9ce5fd541ac5d2',1,'nanom::done::type']]]
 ];
