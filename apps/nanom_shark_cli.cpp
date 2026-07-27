@@ -35,6 +35,10 @@ void usage(const char* argv0) {
               "  --json-array out.json: one JSON array of per-packet objects\n"
               "  --avro out-stem      : one <out-stem>_<table>.avro Object Container File per\n"
               "                         non-empty table (eth/ipv4/.../someip/gptp_sync/lldp/...)\n"
+              "  --someip-port P      : also attempt a SOME/IP parse on UDP port P (repeatable;\n"
+              "                         replaces the default set {30490} on first use)\n"
+              "  --someip-tlv-port P  : treat UDP port P's SOME/IP payload as TLV-serialized\n"
+              "                         (repeatable; implies --someip-port P)\n"
               "  (with no sink flag at all, --json is written to stdout; --json and --avro may\n"
               "  both be given, draining the same decode pass into both)\n",
               argv0);
@@ -52,6 +56,9 @@ int main(int argc, char** argv) {
   const char* avro_stem = nullptr;
   bool array_mode = false;
   bool json_requested = false;
+  // DecodeOptions' SOME/IP port configuration used to be unreachable from here (the CLI always
+  // default-constructed DecodeOptions), so SOME/IP was only ever decoded on port 30490.
+  std::vector<std::uint16_t> someip_ports, someip_tlv_ports;
 
   for (int i = 1; i < argc; ++i) {
     const std::string a = argv[i];
@@ -63,6 +70,18 @@ int main(int argc, char** argv) {
         return 2;
       }
       json_path = argv[++i];
+    } else if (a == "--someip-port" || a == "--someip-tlv-port") {
+      if (i + 1 >= argc) {
+        std::fprintf(stderr, "nanom_shark: %s requires a UDP port number\n", a.c_str());
+        return 2;
+      }
+      const long port = std::strtol(argv[++i], nullptr, 10);
+      if (port <= 0 || port > 65535) {
+        std::fprintf(stderr, "nanom_shark: %s: '%s' is not a UDP port\n", a.c_str(), argv[i]);
+        return 2;
+      }
+      someip_ports.push_back(std::uint16_t(port));
+      if (a == "--someip-tlv-port") someip_tlv_ports.push_back(std::uint16_t(port));
     } else if (a == "--avro") {
       if (i + 1 >= argc) {
         std::fprintf(stderr, "nanom_shark: --avro requires a path stem\n");
@@ -95,6 +114,8 @@ int main(int argc, char** argv) {
   std::vector<nanom_shark::PacketJson> json_packets;
   nanom_shark::SinkHub sink{json_requested ? &json_packets : nullptr};
   nanom_shark::DecodeOptions opts{};
+  if (!someip_ports.empty()) opts.someip_ports = someip_ports;
+  opts.someip_tlv_ports = someip_tlv_ports;
 
   std::string error;
   if (!nanom_shark::run_decode_pass(file, tables, sink, opts, error)) {
