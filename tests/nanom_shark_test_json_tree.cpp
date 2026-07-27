@@ -75,17 +75,17 @@ void test_ipv4_options_sample() {
 
   CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
   CHECK(json_packets.size() == 5);
-  CHECK(tables.eth.rows() == 5);
-  CHECK(tables.ipv4.rows() == 5);
+  CHECK(tables.get<"eth">().rows() == 5);
+  CHECK(tables.get<"ipv4">().rows() == 5);
 
   // packets: one row per captured frame regardless of decode outcome, in file order (byte offsets
   // strictly increasing) with a real (non-zero) captured length -- the anchor a byte-level sink
   // (the sibling `nanoshark` repo's Lance bridge) needs to resolve raw file bytes per packet.
-  CHECK(tables.packets.rows() == 5);
+  CHECK(tables.get<"packets">().rows() == 5);
   {
     std::uint64_t prev_offset = 0;
     bool first = true, offsets_increasing = true, caplens_positive = true;
-    tables.packets.soa().for_each_chunk([&](const auto& c) {
+    tables.get<"packets">().soa().for_each_chunk([&](const auto& c) {
       auto file_offsets = c.template as<std::uint64_t>(1);
       auto caplens = c.template as<std::uint32_t>(2);
       for (std::size_t i = 0; i < c.rows; ++i) {

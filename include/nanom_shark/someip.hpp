@@ -7,6 +7,7 @@
 // examples/nanotins_parity/dpar_lite.cpp's someip_tag/someip_member/p_someip_member.
 
 #include <nanom_shark/json_tree.hpp>
+#include <nanom_shark/protocol.hpp>
 #include <nanom_shark/someip_rows.hpp>
 
 #include <nanom/nanom.hpp>
@@ -243,3 +244,37 @@ inline void maybe_dispatch(nm::seg_input payload, packet_id_t pid, bool assume_t
 }
 
 }  // namespace nanom_shark::someip
+
+namespace nanom_shark {
+
+// The whole of "SOME/IP is a nanom_shark protocol", in one place.
+//
+// Its trigger is the interesting one: SOME/IP has no ethertype and no magic number, so the port set
+// is inherently runtime configuration. `udp_port_cfg<&DecodeOptions::someip_ports>` names WHICH
+// runtime vector to consult with a compile-time pointer-to-member, so the protocol type list stays
+// fully unrolled -- only the port values are late-bound. This is the single place SOME/IP port
+// matching now happens; the normal per-packet path and the reassembled-datagram re-entry both reach
+// it through the same `dispatch`, so they are structurally incapable of disagreeing.
+struct Someip {
+  using trigger = udp_port_cfg<&DecodeOptions::someip_ports>;
+  using state   = no_state;
+
+  static constexpr auto tables = table_spec<
+      table_decl<"someip", SomeipNode>,
+      table_decl<"someip_sd_entry", SomeipSdEntryRow>,
+      table_decl<"someip_sd_option", SomeipSdOptionRow>,
+      table_decl<"someip_tlv", SomeipTlvMemberRow>>{};
+
+  static void parse(const decode_ctx& c, nanom::seg_input payload, no_state&, auto& t,
+                    PacketJson* json) {
+    // A second, independent configured port set decides whether the optional TLV serialization is
+    // attempted (a flat SOME/IP payload is not self-describing as TLV without IDL knowledge, so it
+    // cannot be inferred). SD entry/option extraction IS self-describing and always attempted.
+    const bool assume_tlv = c.opts != nullptr && port_in(c.opts->someip_tlv_ports, c.src_port, c.dst_port);
+    someip::maybe_dispatch(payload, c.packet_id, assume_tlv, t.template get<"someip">(),
+                           t.template get<"someip_sd_entry">(), t.template get<"someip_sd_option">(),
+                           t.template get<"someip_tlv">(), json);
+  }
+};
+
+}  // namespace nanom_shark

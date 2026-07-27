@@ -89,7 +89,7 @@ void test_ipv4_defrag() {
   // DatagramRow entries so far (flow C never completes, flow D hasn't been evicted yet at this
   // point in the loop -- eviction happens per-packet inside run_decode_pass, checked next).
   std::size_t complete_count = 0;
-  tables.datagram.soa().for_each_chunk([&](const auto& chunk) {
+  tables.get<"datagram">().soa().for_each_chunk([&](const auto& chunk) {
     auto statuses = chunk.template as<std::uint8_t>(6);  // completion_status is column index 6
     for (std::size_t i = 0; i < chunk.rows; ++i) {
       if (statuses[i] == 0) ++complete_count;
@@ -101,7 +101,7 @@ void test_ipv4_defrag() {
   // enough filler packets afterward, evict_stale() must age it out as timed_out (status 1), not
   // silently drop it.
   bool saw_timed_out = false;
-  tables.datagram.soa().for_each_chunk([&](const auto& chunk) {
+  tables.get<"datagram">().soa().for_each_chunk([&](const auto& chunk) {
     auto statuses = chunk.template as<std::uint8_t>(6);
     for (std::size_t i = 0; i < chunk.rows; ++i) {
       if (statuses[i] == 1) saw_timed_out = true;
@@ -111,7 +111,7 @@ void test_ipv4_defrag() {
 
   // And the overlap conflict (flow C) must be reported as status 3, distinct from a plain timeout.
   bool saw_conflict = false;
-  tables.datagram.soa().for_each_chunk([&](const auto& chunk) {
+  tables.get<"datagram">().soa().for_each_chunk([&](const auto& chunk) {
     auto statuses = chunk.template as<std::uint8_t>(6);
     for (std::size_t i = 0; i < chunk.rows; ++i) {
       if (statuses[i] == 3) saw_conflict = true;

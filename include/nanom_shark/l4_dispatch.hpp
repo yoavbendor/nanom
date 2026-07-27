@@ -1,74 +1,70 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nanom_shark/core/l4_dispatch.hpp — the one TCP/UDP row-push, shared by the normal per-packet walk
-// (decode_pass.hpp's PacketVisitor, over an already-decoded value from walk_packet_ext) and defrag's
-// completion re-entry (over a raw reassembled buffer, which needs its own strct<>() parse since
-// walk_packet_ext cannot be re-entered mid-buffer). Keeps the AllTables-push + JSON-layer logic in
-// exactly one place regardless of which of those two shapes the caller has on hand. Also the one
-// place SOME/IP port-matching happens, so the normal and reassembled paths can't disagree.
+// nanom_shark/l4_dispatch.hpp — the ONE L4 entry point.
+//
+// There used to be two: the normal per-packet walk (decode_pass.hpp's PacketVisitor::on_udp) and
+// defrag's reassembly re-entry (dispatch_l4 here) each re-implemented SOME/IP port matching, and the
+// comment that used to sit here admitted the arrangement was maintained by hand. Both now funnel
+// through `on_udp_layer` / `on_tcp_layer`, which push the L4 row and then hand off to the single
+// `dispatch<layer::l4_payload, Decoder>` fold -- so "the normal and reassembled paths can't
+// disagree" is now structural rather than a promise in a comment. SOME/IP port matching itself
+// lives in exactly one place, `Someip::trigger` (someip.hpp).
 
-#include <nanom_shark/decode_options.hpp>
 #include <nanom_shark/json_tree.hpp>
 #include <nanom_shark/l2l3_nodes.hpp>
-#include <nanom_shark/someip.hpp>
+#include <nanom_shark/protocol.hpp>
 
 #include <nanom_shark/protocols.hpp>  // nmproto::{Tcp,Udp,kIpProtoTcp,kIpProtoUdp}
 
 #include <nanom/nanom.hpp>
 
-#include <algorithm>
 #include <cstdint>
 
 namespace nanom_shark {
 
-inline void push_tcp_row(const nmproto::Tcp& v, packet_id_t pid, std::uint32_t datagram_id,
-                         bool is_reassembled, AllTables& tables, PacketJson* json) {
-  tables.tcp.push(TcpNode{pid, datagram_id, is_reassembled, v});
+// `payload` is a seg_input over the bytes AFTER the L4 header -- a 1-part segment on the normal
+// path (contiguous, so seg_input's fast path keeps it pointer-based) and the multi-part reassembled
+// datagram on the defrag path. `c` is taken by value: the port/proto fields it fills in are scoped
+// to this layer and must not leak back into the caller's context.
+
+template <class Decoder, class Tables, class States>
+inline void on_tcp_layer(decode_ctx c, const nmproto::Tcp& v, nanom::seg_input payload,
+                         Tables& tables, States& states, PacketJson* json) {
+  tables.template get<"tcp">().push(TcpNode{c.packet_id, c.datagram_id, c.is_reassembled, v});
   if (json) json->add_layer("tcp", v);
+
+  c.ip_proto = nmproto::kIpProtoTcp;
+  c.src_port = v.src_port;
+  c.dst_port = v.dst_port;
+  dispatch<layer::l4_payload, Decoder>(c, payload, tables, states, json);
 }
-inline void push_udp_row(const nmproto::Udp& v, packet_id_t pid, std::uint32_t datagram_id,
-                         bool is_reassembled, AllTables& tables, PacketJson* json) {
-  tables.udp.push(UdpNode{pid, datagram_id, is_reassembled, v});
+
+template <class Decoder, class Tables, class States>
+inline void on_udp_layer(decode_ctx c, const nmproto::Udp& v, nanom::seg_input payload,
+                         Tables& tables, States& states, PacketJson* json) {
+  tables.template get<"udp">().push(UdpNode{c.packet_id, c.datagram_id, c.is_reassembled, v});
   if (json) json->add_layer("udp", v);
+
+  c.ip_proto = nmproto::kIpProtoUdp;
+  c.src_port = v.src_port;
+  c.dst_port = v.dst_port;
+  dispatch<layer::l4_payload, Decoder>(c, payload, tables, states, json);
 }
 
-// Shared by both the normal (decode_pass.hpp's on_udp) and reassembled (dispatch_l4 below) UDP
-// paths so port-matching can't disagree between them. `payload` is a seg_input over the bytes
-// after the UDP header -- a 1-part segment on the normal path (contiguous, so seg_input's fast
-// path keeps it pointer-based) and the multi-part reassembled datagram on the defrag path.
-inline void maybe_dispatch_someip_from_udp(const nmproto::Udp& udp, nanom::seg_input payload, packet_id_t pid,
-                                           AllTables& tables, PacketJson* json, const DecodeOptions& opts) {
-  const std::uint16_t sport = udp.src_port, dport = udp.dst_port;
-  const auto& ports = opts.someip_ports;
-  const bool matched =
-      std::find(ports.begin(), ports.end(), sport) != ports.end() ||
-      std::find(ports.begin(), ports.end(), dport) != ports.end();
-  if (!matched) return;
-  const auto& tlv_ports = opts.someip_tlv_ports;
-  const bool assume_tlv =
-      std::find(tlv_ports.begin(), tlv_ports.end(), sport) != tlv_ports.end() ||
-      std::find(tlv_ports.begin(), tlv_ports.end(), dport) != tlv_ports.end();
-  someip::maybe_dispatch(payload, pid, assume_tlv, tables.someip, tables.someip_sd_entry,
-                         tables.someip_sd_option, tables.someip_tlv, json);
-}
-
-// Parses the L4 header directly from `after_l3` (a seg_input) and pushes its row -- the shape
-// defrag's completion callback needs, since it only has a reassembled datagram (now a zero-copy
-// segment list, nanom::from(result.parts)), not a decoded value. The normal per-packet path wraps
-// its own contiguous payload as a 1-part seg_input, so there is exactly one L4-dispatch code path.
-inline void dispatch_l4(std::uint8_t ip_proto, nanom::seg_input after_l3, packet_id_t pid,
-                        std::uint32_t datagram_id, bool is_reassembled, AllTables& tables,
-                        PacketJson* json, const DecodeOptions& opts) {
-  if (ip_proto == nmproto::kIpProtoTcp) {
+// The reassembled-datagram re-entry: parses the L4 header straight out of `after_l3` (a seg_input
+// over the zero-copy segment list of a completed reassembly), then joins the SAME path the normal
+// per-packet walk takes. `c.ip_proto` selects the L4 kind; `c.datagram_id` / `c.is_reassembled`
+// are already set by the caller.
+template <class Decoder, class Tables, class States>
+inline void dispatch_l4(const decode_ctx& c, nanom::seg_input after_l3, Tables& tables,
+                        States& states, PacketJson* json) {
+  if (c.ip_proto == nmproto::kIpProtoTcp) {
     auto tcp = nanom::strct_seg<nmproto::Tcp>()(after_l3);
-    if (tcp) push_tcp_row(tcp->value, pid, datagram_id, is_reassembled, tables, json);
-  } else if (ip_proto == nmproto::kIpProtoUdp) {
+    if (tcp) on_tcp_layer<Decoder>(c, tcp->value, tcp->rest, tables, states, json);
+  } else if (c.ip_proto == nmproto::kIpProtoUdp) {
     auto udp = nanom::strct_seg<nmproto::Udp>()(after_l3);
-    if (udp) {
-      push_udp_row(udp->value, pid, datagram_id, is_reassembled, tables, json);
-      maybe_dispatch_someip_from_udp(udp->value, udp->rest, pid, tables, json, opts);
-    }
+    if (udp) on_udp_layer<Decoder>(c, udp->value, udp->rest, tables, states, json);
   }
 }
 

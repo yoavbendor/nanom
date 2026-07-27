@@ -18,6 +18,7 @@
 
 #include <nanom_shark/gptp_rows.hpp>
 #include <nanom_shark/json_tree.hpp>
+#include <nanom_shark/protocol.hpp>
 
 #include <nanom/nanom.hpp>
 
@@ -87,17 +88,24 @@ inline constexpr std::uint16_t kTlvOrganizationExtension = 0x0003;
 inline constexpr std::uint16_t kTlvPathTrace             = 0x0008;
 
 // ---- the 9 output tables + a running message-index join key ----
+//
+// This is a BUNDLE OF REFERENCES, not storage: the tables themselves live in the decoder-wide
+// table_set (declared by nanom_shark::Gptp's table_spec below, in the same node_table<Row>
+// representation every other protocol uses -- gPTP used to be the one place that reached for a bare
+// nm::soa, which is why there used to be two table representations in the codebase). The running
+// message index is per-decode-pass protocol STATE, so it lives in nanom_shark::Gptp::state.
+// The per-kind parsers below are unchanged: node_table<Row> has the same push() soa<Row> does.
 struct GptpTables {
-  std::uint64_t next_msg_index = 0;
-  nm::soa<SyncRow>                 sync{4096};
-  nm::soa<FollowUpRow>             follow_up{4096};
-  nm::soa<DelayReqRow>             delay_req{4096};
-  nm::soa<DelayRespRow>            delay_resp{4096};
-  nm::soa<PdelayReqRow>            pdelay_req{4096};
-  nm::soa<PdelayRespRow>           pdelay_resp{4096};
-  nm::soa<PdelayRespFollowUpRow>   pdelay_resp_follow_up{4096};
-  nm::soa<AnnounceRow>             announce{4096};
-  nm::soa<PathTraceEntryRow>       path_trace{4096};
+  std::uint64_t&                                     next_msg_index;
+  nanom_shark::node_table<SyncRow>&                  sync;
+  nanom_shark::node_table<FollowUpRow>&              follow_up;
+  nanom_shark::node_table<DelayReqRow>&              delay_req;
+  nanom_shark::node_table<DelayRespRow>&             delay_resp;
+  nanom_shark::node_table<PdelayReqRow>&             pdelay_req;
+  nanom_shark::node_table<PdelayRespRow>&            pdelay_resp;
+  nanom_shark::node_table<PdelayRespFollowUpRow>&    pdelay_resp_follow_up;
+  nanom_shark::node_table<AnnounceRow>&              announce;
+  nanom_shark::node_table<PathTraceEntryRow>&        path_trace;
 };
 
 inline RowCommon make_common(std::uint64_t msg_index, std::uint64_t packet_id, const GptpHeader& h) {
@@ -317,3 +325,46 @@ inline bool parse_gptp_message(GptpTables& t, std::uint64_t packet_id, nm::input
 inline constexpr std::uint16_t kEtherTypeGptp = 0x88F7U;
 
 }  // namespace nmgptp
+
+namespace nanom_shark {
+
+// gPTP as a registered nanom_shark protocol: an ethertype trigger, nine named tables, and the
+// running message index as explicit per-pass state.
+struct Gptp {
+  using trigger = ethertype<nmgptp::kEtherTypeGptp>;
+
+  /// gPTP's msg_index is the join key across all nine tables, so it is genuinely per-decode-pass
+  /// mutable state -- the motivating case for the Protocol concept requiring a `state` type.
+  struct state {
+    std::uint64_t next_msg_index = 0;
+  };
+
+  // 4096-row chunks, matching what GptpTables used to construct its soa<> members with (chunk size
+  // is the columnar block granularity a sink writes, so it is preserved rather than defaulted).
+  static constexpr auto tables = table_spec<
+      table_decl<"gptp_sync", nmgptp::SyncRow, 4096>,
+      table_decl<"gptp_follow_up", nmgptp::FollowUpRow, 4096>,
+      table_decl<"gptp_delay_req", nmgptp::DelayReqRow, 4096>,
+      table_decl<"gptp_delay_resp", nmgptp::DelayRespRow, 4096>,
+      table_decl<"gptp_pdelay_req", nmgptp::PdelayReqRow, 4096>,
+      table_decl<"gptp_pdelay_resp", nmgptp::PdelayRespRow, 4096>,
+      table_decl<"gptp_pdelay_resp_follow_up", nmgptp::PdelayRespFollowUpRow, 4096>,
+      table_decl<"gptp_announce", nmgptp::AnnounceRow, 4096>,
+      table_decl<"gptp_path_trace", nmgptp::PathTraceEntryRow, 4096>>{};
+
+  static void parse(const decode_ctx& c, nanom::seg_input, state& st, auto& t, PacketJson* json) {
+    nmgptp::GptpTables bundle{st.next_msg_index,
+                              t.template get<"gptp_sync">(),
+                              t.template get<"gptp_follow_up">(),
+                              t.template get<"gptp_delay_req">(),
+                              t.template get<"gptp_delay_resp">(),
+                              t.template get<"gptp_pdelay_req">(),
+                              t.template get<"gptp_pdelay_resp">(),
+                              t.template get<"gptp_pdelay_resp_follow_up">(),
+                              t.template get<"gptp_announce">(),
+                              t.template get<"gptp_path_trace">()};
+    nmgptp::parse_gptp_message(bundle, c.packet_id, nanom::from(c.eth_payload_bytes()), json);
+  }
+};
+
+}  // namespace nanom_shark

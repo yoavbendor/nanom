@@ -1,67 +1,37 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nanom_shark/core/l2l3_nodes.hpp — Node<> instantiations + registrations for the base L2-L4 walk
-// (Ethernet/VLAN/IPv4/IPv6/UDP/TCP), reusing nanotins_parity's existing wire structs verbatim.
+// nanom_shark/l2l3_nodes.hpp — the DEFAULT decoder: which protocols are registered, and therefore
+// which tables exist.
+//
+// This used to be a hand-written `AllTables` struct with one member per table, which is exactly the
+// thing Phase 2 removes: `tables_of<decoder<...>>` now DERIVES the table set from the registered
+// protocol type list, so adding a protocol adds its tables with no edit here. The Node<> aliases
+// for the base L2-L4 walk moved to core_protocols.hpp, next to the table_spec that declares them.
 
-#include <nanom_shark/defrag.hpp>
+#include <nanom_shark/core_protocols.hpp>
 #include <nanom_shark/gptp.hpp>
-#include <nanom_shark/lldp_rows.hpp>
-#include <nanom_shark/node_row.hpp>
-#include <nanom_shark/packet_row.hpp>
-#include <nanom_shark/someip_rows.hpp>
-
-#include <nanom_shark/protocols.hpp>  // nmproto::{Ethernet,VlanTag,Ipv4,Ipv6,Udp,Tcp}; include path set by CMake
+#include <nanom_shark/lldp.hpp>
+#include <nanom_shark/protocol.hpp>
+#include <nanom_shark/someip.hpp>
 
 namespace nanom_shark {
 
-using EthNode  = Node<nmproto::Ethernet>;
-using VlanNode = Node<nmproto::VlanTag>;
-using Ipv4Node = Node<nmproto::Ipv4>;
-using Ipv6Node = Node<nmproto::Ipv6>;
-using UdpNode  = Node<nmproto::Udp>;
-using TcpNode  = Node<nmproto::Tcp>;
+// The type list IS the registry. Order matters only in that a dispatch point folds over it in this
+// order -- kept matching the old hand-written if-chain (gPTP before LLDP at the Ethernet payload,
+// SOME/IP at the L4 payload) so JSON layer order and Avro row order are byte-identical.
+//
+// Adding a protocol is `decoder<CoreL2L3, Someip, Gptp, Lldp, FooProto>` -- one token, in the ONE
+// place a build declares which protocols it wants. A build that wants a different set writes its
+// own `decoder<...>` at its own call site and never touches this header (see
+// tests/nanom_shark_test_ergonomics.cpp, which does exactly that).
+using default_decoder = decoder<CoreL2L3, Someip, Gptp, Lldp>;
 
-}  // namespace nanom_shark
+/// Every registered protocol's tables, concatenated. `t.get<"eth">()`, `t.get<"someip_sd_entry">()`,
+/// `t.for_each_table(f)`.
+using AllTables = tables_of<default_decoder>;
 
-// Node<Body>'s describe<> registration is one shared partial specialization in node_row.hpp,
-// covering EthNode/VlanNode/Ipv4Node/Ipv6Node/UdpNode/TcpNode (and SomeipNode, see someip_rows.hpp)
-// at once — no per-protocol NANOM_DESCRIBE line needed here.
-
-namespace nanom_shark {
-
-// One table per protocol layer decoded by the base L2-L4 walk, always populated by
-// run_decode_pass regardless of which sinks are active — the JSON sink does not depend on this
-// struct at all (it renders straight from the decoded values at each walk_packet_ext callback
-// site / dispatch call, see core/decode_pass.hpp). Grows further with the IPv6 ext-header/SRv6
-// detail tables a later sink (Parquet/Lance) needs.
-struct AllTables {
-  // One row per captured packet, regardless of decode outcome -- see packet_row.hpp. Anchors
-  // byte-level sinks (e.g. the sibling `nanoshark` repo's Lance bridge) back to the source file.
-  node_table<PacketRow> packets{"packets"};
-
-  node_table<EthNode>  eth{"eth"};
-  node_table<VlanNode> vlan{"vlan"};
-  node_table<Ipv4Node> ipv4{"ipv4"};
-  node_table<Ipv6Node> ipv6{"ipv6"};
-  node_table<UdpNode>  udp{"udp"};
-  node_table<TcpNode>  tcp{"tcp"};
-
-  // Phase 2: IPv4/IPv6 fragmentation. One row per observed fragment (forensic visibility, "this
-  // packet was fragment N of datagram D") plus one row per reassembly attempt, complete or not.
-  node_table<defrag::Ipv4FragMeta> ipv4_frag{"ipv4_frag"};
-  node_table<defrag::Ipv6FragMeta> ipv6_frag{"ipv6_frag"};
-  node_table<defrag::DatagramRow>  datagram{"datagram"};
-
-  // Phase 3: SOME/IP (header + Service Discovery entries/options + optional TLV members), gPTP
-  // (its own 9-table bundle, joined by msg_index rather than node_table's packet_id-only shape),
-  // and LLDP (one row per TLV).
-  node_table<SomeipNode>          someip{"someip"};
-  node_table<SomeipSdEntryRow>    someip_sd_entry{"someip_sd_entry"};
-  node_table<SomeipSdOptionRow>   someip_sd_option{"someip_sd_option"};
-  node_table<SomeipTlvMemberRow>  someip_tlv{"someip_tlv"};
-  nmgptp::GptpTables              gptp{};
-  node_table<LldpTlvRow>          lldp{"lldp"};
-};
+/// Per-decode-pass mutable protocol state (gPTP's running message index, ...).
+using AllStates = states_of<default_decoder>;
 
 }  // namespace nanom_shark

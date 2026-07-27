@@ -258,6 +258,14 @@ inline void for_each_ipv6_option(nm::bytes pkt, std::size_t start, std::size_t e
 //   on_srh(Ipv6Srh) on_fragment(Ipv6Fragment) on_ah(Ipv6Ah)
 //   on_srh_segment(u8 srh_order, u8 segment_index, std::array<u8,16> address)
 //   on_ipv6_option(u8 container_type, u8 opt_type, u8 opt_len)   // container: 0 HbH, 60 DstOpt, 43 SRH
+//   on_offset(std::size_t byte_offset)   // fired IMMEDIATELY BEFORE each layer callback above, with
+//                                        // that layer header's own byte offset within `pkt`
+//   on_l2_done(u16 inner_ethertype, std::size_t l2_end)  // after Ethernet + every VLAN tag
+//
+// on_offset/on_l2_done exist because this walk hands callbacks DECODED VALUES, which used to force
+// every consumer to re-derive byte offsets by re-counting header sizes it had already parsed
+// (nanom_shark/decode_pass.hpp recomputed `14 + 4*vlan_count` in five places). The walk already
+// knows every offset, so it now simply says so; the arithmetic is not duplicated anywhere.
 // Returns the same WalkResult as walk_packet (reached_l4 / l4_payload_offset / l4_ports), now computed
 // through the extension chain — so SRv6 packets correctly reach their L4 header.
 enum class Ipv6ExtKind : u8 { hop_by_hop = 0, routing = 43, fragment = 44, dest_opts = 60, ah = 51 };
@@ -270,16 +278,22 @@ inline WalkResult walk_packet_ext(u32 link_type, nm::bytes pkt, V&& v) {
 
   auto eth = nm::strct<Ethernet>()(in);
   if (!eth) return res;
+  NMPROTO_VISIT(on_offset(in.offset()));
   NMPROTO_VISIT(on_eth(eth->value));
   u16 ethertype = eth->value.ethertype;
   nm::input cur = eth->rest;
   while (ethertype == kEtherTypeVlan || ethertype == kEtherTypeQinQ) {
     auto tag = nm::strct<VlanTag>()(cur);
     if (!tag) return res;
+    NMPROTO_VISIT(on_offset(cur.offset()));
     NMPROTO_VISIT(on_vlan(tag->value));
     ethertype = tag->value.inner_ethertype;
     cur = tag->rest;
   }
+
+  // Ethernet + every VLAN tag is behind us; `cur.offset()` is the L2 payload offset (the `14` /
+  // `14 + 4*vlan_count` consumers used to recompute), and `ethertype` is the innermost one.
+  NMPROTO_VISIT(on_l2_done(ethertype, cur.offset()));
 
   u8 ip_proto = 0;
   bool has_l4 = true;
@@ -287,6 +301,7 @@ inline WalkResult walk_packet_ext(u32 link_type, nm::bytes pkt, V&& v) {
   if (ethertype == kEtherTypeIpv4) {
     auto ip = nm::strct<Ipv4>()(cur);
     if (!ip) return res;
+    NMPROTO_VISIT(on_offset(cur.offset()));
     NMPROTO_VISIT(on_ipv4(ip->value));
     const std::size_t hdr = std::size_t(ip->value.ihl) * 4;
     const std::size_t l3 = hdr >= nm::wire_size_v<Ipv4> ? hdr : nm::wire_size_v<Ipv4>;
@@ -297,6 +312,7 @@ inline WalkResult walk_packet_ext(u32 link_type, nm::bytes pkt, V&& v) {
   } else if (ethertype == kEtherTypeIpv6) {
     auto ip = nm::strct<Ipv6>()(cur);
     if (!ip) return res;
+    NMPROTO_VISIT(on_offset(cur.offset()));
     NMPROTO_VISIT(on_ipv6(ip->value));
     std::size_t off = cur.offset() + nm::wire_size_v<Ipv6>;  // past the 40-byte base header
     u8 nh = ip->value.next_header;
@@ -304,6 +320,7 @@ inline WalkResult walk_packet_ext(u32 link_type, nm::bytes pkt, V&& v) {
     for (int guard = 0; guard < 64 && is_ipv6_ext(nh); ++guard) {
       if (off >= pkt.size()) return res;
       nm::input at = nm::from(pkt).advance(off);
+      NMPROTO_VISIT(on_offset(off));  // this extension header's own offset within `pkt`
       if (nh == 0 || nh == 60) {  // Hop-by-Hop / Destination Options
         auto h = nm::strct<Ipv6ExtOpt>()(at);
         if (!h) return res;
@@ -365,6 +382,7 @@ inline WalkResult walk_packet_ext(u32 link_type, nm::bytes pkt, V&& v) {
   if (!has_l4 || after_l3_off > pkt.size()) return res;
 
   nm::input after_l3 = nm::from(pkt).advance(after_l3_off);
+  NMPROTO_VISIT(on_offset(after_l3_off));  // the L4 header's offset within `pkt`
   if (ip_proto == kIpProtoTcp) {
     auto tcp = nm::strct<Tcp>()(after_l3);
     if (!tcp) return res;

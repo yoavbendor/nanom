@@ -9,6 +9,7 @@
 #include <nanom_shark/json_tree.hpp>
 #include <nanom_shark/lldp_rows.hpp>
 #include <nanom_shark/node_row.hpp>
+#include <nanom_shark/protocol.hpp>
 
 #include <nanom/nanom.hpp>
 
@@ -111,3 +112,20 @@ inline void walk(nm::bytes region, packet_id_t pid, LldpTable& table, PacketJson
 }
 
 }  // namespace nanom_shark::lldp
+
+namespace nanom_shark {
+
+// LLDP rides directly on Ethernet (optionally under VLAN tags), so its trigger is a plain
+// compile-time ethertype compare -- codegen-identical to the `ethertype == 0x88CC` it replaces.
+struct Lldp {
+  using trigger = ethertype<lldp::kEtherTypeLldp>;
+  using state   = no_state;
+
+  static constexpr auto tables = table_spec<table_decl<"lldp", LldpTlvRow>>{};
+
+  static void parse(const decode_ctx& c, nanom::seg_input, no_state&, auto& t, PacketJson* json) {
+    lldp::walk(c.eth_payload_bytes(), c.packet_id, t.template get<"lldp">(), json);
+  }
+};
+
+}  // namespace nanom_shark
