@@ -318,6 +318,12 @@ add_test(NAME nanom_shark_golden_lldp_dpar_sample
     -P ${parity_dir}/diff_test.cmake)
 
 # Phase 4: the Avro Object Container File sink.
+# Phase 2 acceptance test: a brand-new protocol defined in ONE new file (this .cpp), registered in
+# a decoder<...> type list, with ZERO edits to any header under include/nanom_shark/.
+nanom_exe(nanom_shark_ergonomics_tests tests/nanom_shark_test_ergonomics.cpp)
+target_link_libraries(nanom_shark_ergonomics_tests PRIVATE nanom::shark)
+add_test(NAME nanom_shark_ergonomics_tests COMMAND nanom_shark_ergonomics_tests)
+
 nanom_exe(nanom_shark_avro_tests tests/nanom_shark_test_avro.cpp)
 target_link_libraries(nanom_shark_avro_tests PRIVATE nanom::shark)
 add_test(NAME nanom_shark_avro_tests COMMAND nanom_shark_avro_tests)
