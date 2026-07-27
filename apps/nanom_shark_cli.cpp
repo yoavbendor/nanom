@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// nano_shark — the textbook nanom network analyzer. Decodes pcap/pcapng end to end (Ethernet,
+// nanom_shark — the textbook nanom network analyzer. Decodes pcap/pcapng end to end (Ethernet,
 // VLAN 802.1Q/QinQ, IPv4 with defragmentation, IPv6 with its full extension-header chain incl.
 // SRv6, TCP/UDP, SOME/IP incl. Service Discovery, gPTP's all 8 message types, LLDP) in one pass,
 // then drains the same in-memory tables into whichever sinks were requested: a tshark `-T
@@ -8,8 +8,8 @@
 // per table (--avro) -- both dependency-free. Parquet and Lance sinks live in a separate,
 // dedicated repo that vendors this one, since they need heavier external libraries.
 
-#include "../core/avro_dump.hpp"
-#include "../core/decode_pass.hpp"
+#include <nanom_shark/avro_dump.hpp>
+#include <nanom_shark/decode_pass.hpp>
 
 #include <cstdio>
 #include <cstdlib>
@@ -59,20 +59,20 @@ int main(int argc, char** argv) {
       array_mode = (a == "--json-array");
       json_requested = true;
       if (i + 1 >= argc) {
-        std::fprintf(stderr, "nano_shark: %s requires a path\n", a.c_str());
+        std::fprintf(stderr, "nanom_shark: %s requires a path\n", a.c_str());
         return 2;
       }
       json_path = argv[++i];
     } else if (a == "--avro") {
       if (i + 1 >= argc) {
-        std::fprintf(stderr, "nano_shark: --avro requires a path stem\n");
+        std::fprintf(stderr, "nanom_shark: --avro requires a path stem\n");
         return 2;
       }
       avro_stem = argv[++i];
     } else if (!input_path) {
       input_path = argv[i];
     } else {
-      std::fprintf(stderr, "nano_shark: unexpected argument '%s'\n", a.c_str());
+      std::fprintf(stderr, "nanom_shark: unexpected argument '%s'\n", a.c_str());
       usage(argv[0]);
       return 2;
     }
@@ -86,26 +86,26 @@ int main(int argc, char** argv) {
 
   std::vector<std::uint8_t> bytes;
   if (!read_file(input_path, bytes)) {
-    std::fprintf(stderr, "nano_shark: cannot open %s\n", input_path);
+    std::fprintf(stderr, "nanom_shark: cannot open %s\n", input_path);
     return 1;
   }
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
 
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{json_requested ? &json_packets : nullptr};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{json_requested ? &json_packets : nullptr};
+  nanom_shark::DecodeOptions opts{};
 
   std::string error;
-  if (!nano_shark::run_decode_pass(file, tables, sink, opts, error)) {
-    std::fprintf(stderr, "nano_shark: %s\n", error.c_str());
+  if (!nanom_shark::run_decode_pass(file, tables, sink, opts, error)) {
+    std::fprintf(stderr, "nanom_shark: %s\n", error.c_str());
     return 1;
   }
 
   if (json_requested) {
     std::string out;
     if (array_mode) out += '[';
-    for (const nano_shark::PacketJson& pj : json_packets) nano_shark::append_packet(out, pj, array_mode);
+    for (const nanom_shark::PacketJson& pj : json_packets) nanom_shark::append_packet(out, pj, array_mode);
     if (array_mode) out += ']';
 
     if (json_to_stdout) {
@@ -113,7 +113,7 @@ int main(int argc, char** argv) {
     } else {
       std::FILE* f = std::fopen(json_path, "wb");
       if (!f) {
-        std::fprintf(stderr, "nano_shark: cannot open %s for writing\n", json_path);
+        std::fprintf(stderr, "nanom_shark: cannot open %s for writing\n", json_path);
         return 1;
       }
       std::fwrite(out.data(), 1, out.size(), f);
@@ -121,7 +121,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (avro_stem) nano_shark::dump_all_tables_avro(avro_stem, tables);
+  if (avro_stem) nanom_shark::dump_all_tables_avro(avro_stem, tables);
 
   return 0;
 }

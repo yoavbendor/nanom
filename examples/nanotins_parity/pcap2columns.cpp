@@ -20,8 +20,8 @@
 // address columns map to Arrow fixed-binary ("w:4" / "w:16"), like the
 // nanotins PDU tables.
 
-#include "nm_pcap.hpp"
-#include "nm_protocols.hpp"
+#include <nanom_shark/pcap.hpp>
+#include <nanom_shark/protocols.hpp>
 
 #include <cstdio>
 #include <cstring>

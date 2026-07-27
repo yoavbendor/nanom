@@ -1,6 +1,6 @@
-# nano_shark: a textbook network analyzer
+# nanom_shark: a textbook network analyzer
 
-`examples/nano_shark/` is nanom's flagship example: a single pcap/pcapng decode pass — Ethernet,
+`nanom_shark` (headers in `include/nanom_shark/`, CLI in `apps/nanom_shark_cli.cpp`) is nanom's flagship decoder library: a single pcap/pcapng decode pass — Ethernet,
 VLAN 802.1Q/QinQ, IPv4/IPv6 (with fragment reassembly and the full IPv6 extension-header chain
 incl. SRv6), TCP/UDP, SOME/IP (incl. Service Discovery), all 8 gPTP message types, and LLDP — that
 drains into whichever sinks you ask for: a tshark-`-T json`-shaped NDJSON dump and a real Avro
@@ -10,19 +10,19 @@ Object Container File, both dependency-free. (Parquet and Lance sinks live in a 
 This page walks the architecture end to end. If you just want to run it:
 
 ```sh
-cmake -B build && cmake --build build --target nano_shark -j
-./build/nano_shark capture.pcapng --json out.ndjson
+cmake -B build && cmake --build build --target nanom_shark_cli -j
+./build/nanom_shark_cli capture.pcapng --json out.ndjson
 ```
 
 ## The core idea: reuse, don't re-type
 
 Every other pcap-to-columns tool in this space hand-writes a parallel "row" struct per protocol,
-duplicating every field name a wire struct already has. nano_shark doesn't: `Node<Body>` wraps an
+duplicating every field name a wire struct already has. nanom_shark doesn't: `Node<Body>` wraps an
 **existing** `NANOM_DESCRIBE`d wire struct as a nested field, and `nanom::soa<T>`'s dotted-name
 flattening already knows how to turn that nesting into `body.<field>` columns with no extra code:
 
 ```cpp
-// core/node_row.hpp
+// nanom_shark/node_row.hpp
 template <class Body>
 struct Node {
   packet_id_t   packet_id      = kNoPacket;
@@ -33,7 +33,7 @@ struct Node {
 ```
 
 ```cpp
-// core/l2l3_nodes.hpp — the entire per-protocol registration is one line:
+// nanom_shark/l2l3_nodes.hpp — the entire per-protocol registration is one line:
 using EthNode = Node<nmproto::Ethernet>;
 ```
 
@@ -58,7 +58,7 @@ struct AllTables {
 
 ## The decode pass
 
-`run_decode_pass()` (`core/decode_pass.hpp`) is the one entry point every sink drains from:
+`run_decode_pass()` (`nanom_shark/decode_pass.hpp`) is the one entry point every sink drains from:
 
 1. `nmpcap::scan_blocks()` walks the pcap/pcapng container structure (SHB/IDB/EPB or legacy pcap
    records) — reused verbatim from `examples/nanotins_parity/`.
@@ -88,7 +88,7 @@ A malformed layer stops **that packet's** walk only (nanom's existing `walk_pack
 
 ## Fragment reassembly
 
-`core/defrag.hpp` is the first heap-owning, cross-packet **stateful** table anywhere in the
+`nanom_shark/defrag.hpp` is the first heap-owning, cross-packet **stateful** table anywhere in the
 nano-family. A reassembled datagram's bytes are disjoint in the source file, but reassembly is
 **fully zero-copy**: every individual fragment's IP header is decoded over the file's own bytes,
 fragments are buffered as non-owning `std::span`s into that same source buffer, and on completion
@@ -127,7 +127,7 @@ surviving eviction, causing a crash on key reuse), now fixed and regression-test
 ## Segmented input: parsing across disjoint byte ranges
 
 `nanom/segmented.hpp` is the library layer that makes zero-copy reassembly possible — a general
-nanom feature, not nano_shark-specific, but reassembly is its motivating consumer. It parses a
+nanom feature, not nanom_shark-specific, but reassembly is its motivating consumer. It parses a
 logical buffer whose bytes live in an ordered list of **disjoint spans**, without ever copying
 them into one contiguous block.
 
@@ -157,7 +157,7 @@ differentially fuzzes segmented vs contiguous parses.
 
 ## The JSON sink
 
-`core/json_tree.hpp`'s `PacketJson` builds the tshark-shaped `{"_index":N,"_source":{"layers":{...}}}`
+`nanom_shark/json_tree.hpp`'s `PacketJson` builds the tshark-shaped `{"_index":N,"_source":{"layers":{...}}}`
 tree at runtime. `add_layer_json(name, json)` inserts a layer; a **second** call with the same name
 promotes it to a JSON array — this is what makes VLAN stacking, the IPv6 extension-header chain,
 LLDP TLVs, and SOME/IP SD entries render as repeated-field arrays, matching tshark's own shape,
@@ -165,7 +165,7 @@ without the caller needing to know in advance how many of a given layer a packet
 
 ## The Avro sink
 
-`core/avro_ocf.hpp` is a real Avro Object Container File writer — `"Obj\x01"` magic, a metadata map
+`nanom_shark/avro_ocf.hpp` is a real Avro Object Container File writer — `"Obj\x01"` magic, a metadata map
 (`avro.schema` = `nanom::avro_schema<T>()`, reused verbatim from `schema.hpp`; `avro.codec` =
 `"null"`), a random 16-byte sync marker, then one block per `nanom::soa<T>` chunk. The binary
 encoding itself is zigzag varints + raw IEEE-754 bytes + length-prefixed byte strings — no external
@@ -179,7 +179,7 @@ Parquet and Lance both need external libraries nanom itself never depends on, so
 sibling repo, [nanoshark](https://github.com/yoavbendor/nanoshark), which vendors nanom (plus
 [nanoarrow2parquet](https://github.com/yoavbendor/nanoarrow2parquet) and
 [nanolance](https://github.com/yoavbendor/nanolance)) as read-only git submodules. The bridge
-between nanom's columnar storage and either target schema is `core/soa_columns.hpp`'s
+between nanom's columnar storage and either target schema is `nanom_shark/soa_columns.hpp`'s
 `columns_of<T>` — a compile-time leaf-column **type list** that mirrors `nanom::soa<T>::columns()`'s
 own dotted-name flattening exactly (same names, same order, same per-row size — proven by
 `tests/test_soa_columns.cpp` across every current row shape), so nanoshark's Parquet and Lance
@@ -212,7 +212,7 @@ needed in that repo at all.
 
 ## See also
 
-- [Design](design.md) — the `describe<T>` seam, zero-copy views, error model (the ideas nano_shark
+- [Design](design.md) — the `describe<T>` seam, zero-copy views, error model (the ideas nanom_shark
   builds on).
 - [Memory safety](MEMORY_SAFETY.md) — `NANOM_GENERATION`/`NANOM_GUARD_VIEWS` and what they catch.
 - [nanoshark](https://github.com/yoavbendor/nanoshark) — the Parquet/Lance integration repo.

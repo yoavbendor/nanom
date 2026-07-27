@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/defrag.hpp — IPv4/IPv6 fragment reassembly. New: no precedent anywhere in the
+// nanom_shark/core/defrag.hpp — IPv4/IPv6 fragment reassembly. New: no precedent anywhere in the
 // nano-family (nanom/nanotins detect fragmentation and stop the walk; nothing reassembles).
 //
 // Fragments arrive non-contiguously in the source file, so "the datagram" is a set of disjoint
@@ -39,9 +39,9 @@
 #include <unordered_map>
 #include <vector>
 
-#include "node_row.hpp"
+#include <nanom_shark/node_row.hpp>
 
-namespace nano_shark::defrag {
+namespace nanom_shark::defrag {
 
 struct Ipv4Key {
   std::array<std::uint8_t, 4> src, dst;
@@ -368,11 +368,11 @@ struct DefragState {
   ReassemblyTable<Ipv6Key> ipv6;
 };
 
-}  // namespace nano_shark::defrag
+}  // namespace nanom_shark::defrag
 
-NANOM_DESCRIBE(nano_shark::defrag::Ipv4FragMeta, packet_id, datagram_id, frag_offset_bytes,
+NANOM_DESCRIBE(nanom_shark::defrag::Ipv4FragMeta, packet_id, datagram_id, frag_offset_bytes,
               more_fragments, is_first, is_last);
-NANOM_DESCRIBE(nano_shark::defrag::Ipv6FragMeta, packet_id, datagram_id, frag_offset_bytes,
+NANOM_DESCRIBE(nanom_shark::defrag::Ipv6FragMeta, packet_id, datagram_id, frag_offset_bytes,
               more_fragments, is_first, is_last);
-NANOM_DESCRIBE(nano_shark::defrag::DatagramRow, datagram_id, ip_version, total_length,
+NANOM_DESCRIBE(nanom_shark::defrag::DatagramRow, datagram_id, ip_version, total_length,
               fragment_count, first_packet_id, last_packet_id, completion_status, gap_bytes);

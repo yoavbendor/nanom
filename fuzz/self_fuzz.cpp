@@ -11,8 +11,8 @@
 // it needs the nanotins headers on the include path, so it is not part of the
 // default CI build. See fuzz/README.md.
 
-#include "../examples/nanotins_parity/nm_pcap.hpp"
-#include "../examples/nanotins_parity/nm_protocols.hpp"
+#include <nanom_shark/pcap.hpp>
+#include <nanom_shark/protocols.hpp>
 
 #include <cstdint>
 #include <cstdio>

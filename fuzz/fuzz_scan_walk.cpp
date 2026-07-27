@@ -10,8 +10,8 @@
 //     1. walk_packet() directly (raw packet bytes)
 //     2. scan_blocks() + parse_epb() + walk_packet() (whole-file surface)
 
-#include "../examples/nanotins_parity/nm_pcap.hpp"
-#include "../examples/nanotins_parity/nm_protocols.hpp"
+#include <nanom_shark/pcap.hpp>
+#include <nanom_shark/protocols.hpp>
 
 #include <cstddef>
 #include <cstdint>

@@ -1,11 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-// nano_shark Phase 1 tests: PacketJson layer-promotion logic + an end-to-end decode of a real
+// nanom_shark Phase 1 tests: PacketJson layer-promotion logic + an end-to-end decode of a real
 // fixture, with expected values cross-checked by hand against
 // examples/nanotins_parity/testdata/ipv4_options_sample.ndjson (the nanotins-parity golden for the
 // same capture) -- same decoded values, different JSON shape (nm::to_json's hex/decimal rendering
 // vs that file's hand-written colon-MAC/dotted-IPv4 rendering).
 
-#include "decode_pass.hpp"
+#include <nanom_shark/decode_pass.hpp>
 
 #include <cstdio>
 #include <cstdlib>
@@ -40,7 +40,7 @@ bool read_file(const std::string& path, std::vector<std::uint8_t>& out) {
 }
 
 void test_layer_promotion() {
-  nano_shark::PacketJson pj(42);
+  nanom_shark::PacketJson pj(42);
   CHECK(pj.empty());
   pj.add_layer_json("vlan", "{\"vid\":10}");
   CHECK(pj.to_json() == "{\"_index\":42,\"_source\":{\"layers\":{\"vlan\":{\"vid\":10}}}}");
@@ -61,19 +61,19 @@ void test_layer_promotion() {
 }
 
 void test_ipv4_options_sample() {
-  const char* testdata = NANO_SHARK_TESTDATA;
+  const char* testdata = NANOM_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
   CHECK(read_file(std::string(testdata) + "/ipv4_options_sample.pcap", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};
   std::string error;
 
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
   CHECK(json_packets.size() == 5);
   CHECK(tables.eth.rows() == 5);
   CHECK(tables.ipv4.rows() == 5);
@@ -126,19 +126,19 @@ void test_ipv4_options_sample() {
 }
 
 void test_srv6_sample_ext_headers() {
-  const char* testdata = NANO_SHARK_TESTDATA;
+  const char* testdata = NANOM_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
   CHECK(read_file(std::string(testdata) + "/srv6_sample.pcap", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};
   std::string error;
 
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
   CHECK(json_packets.size() == 7);
 
   // At least one packet in this fixture carries an SRv6 Routing header + segment list (the whole
@@ -165,6 +165,6 @@ int main() {
     std::printf("%d failure(s)\n", failures);
     return 1;
   }
-  std::printf("nano_shark_tests: OK\n");
+  std::printf("nanom_shark_tests: OK\n");
   return 0;
 }

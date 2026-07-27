@@ -1,26 +1,26 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/l4_dispatch.hpp — the one TCP/UDP row-push, shared by the normal per-packet walk
+// nanom_shark/core/l4_dispatch.hpp — the one TCP/UDP row-push, shared by the normal per-packet walk
 // (decode_pass.hpp's PacketVisitor, over an already-decoded value from walk_packet_ext) and defrag's
 // completion re-entry (over a raw reassembled buffer, which needs its own strct<>() parse since
 // walk_packet_ext cannot be re-entered mid-buffer). Keeps the AllTables-push + JSON-layer logic in
 // exactly one place regardless of which of those two shapes the caller has on hand. Also the one
 // place SOME/IP port-matching happens, so the normal and reassembled paths can't disagree.
 
-#include "decode_options.hpp"
-#include "json_tree.hpp"
-#include "l2l3_nodes.hpp"
-#include "someip.hpp"
+#include <nanom_shark/decode_options.hpp>
+#include <nanom_shark/json_tree.hpp>
+#include <nanom_shark/l2l3_nodes.hpp>
+#include <nanom_shark/someip.hpp>
 
-#include "nm_protocols.hpp"  // nmproto::{Tcp,Udp,kIpProtoTcp,kIpProtoUdp}
+#include <nanom_shark/protocols.hpp>  // nmproto::{Tcp,Udp,kIpProtoTcp,kIpProtoUdp}
 
 #include <nanom/nanom.hpp>
 
 #include <algorithm>
 #include <cstdint>
 
-namespace nano_shark {
+namespace nanom_shark {
 
 inline void push_tcp_row(const nmproto::Tcp& v, packet_id_t pid, std::uint32_t datagram_id,
                          bool is_reassembled, AllTables& tables, PacketJson* json) {
@@ -72,4 +72,4 @@ inline void dispatch_l4(std::uint8_t ip_proto, nanom::seg_input after_l3, packet
   }
 }
 
-}  // namespace nano_shark
+}  // namespace nanom_shark

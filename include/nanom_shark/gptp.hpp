@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // gPTP (IEEE 802.1AS) dispatch + TLV walking, built on nanom. Promoted from
-// bindings/python/gptp/gptp_parse.hpp into nano_shark's decode core (that file is untouched); the
+// bindings/python/gptp/gptp_parse.hpp into nanom_shark's decode core (that file is untouched); the
 // only substantive change is dropping this file's own pcap/pcapng scanning (parse_pcapng_with_gptp
 // and its detail::EthHdr/png_block_hdr/png_epb_body structs) since decode_pass.hpp's PacketVisitor
 // already scans blocks and decodes Ethernet/VLAN via nmpcap/nm_protocols.hpp — parse_gptp_message
@@ -16,8 +16,8 @@
 // soa<T>. See bindings/python/gptp/README.md for the full writeup of this pattern.
 #pragma once
 
-#include "gptp_rows.hpp"
-#include "json_tree.hpp"
+#include <nanom_shark/gptp_rows.hpp>
+#include <nanom_shark/json_tree.hpp>
 
 #include <nanom/nanom.hpp>
 
@@ -115,7 +115,7 @@ inline RowCommon make_common(std::uint64_t msg_index, std::uint64_t packet_id, c
 // ---- per-kind body parsers: each reads its own body (bounded to the header's declared
 // message_length), builds its Row, and pushes it. Returns false only on a malformed/truncated body. ----
 
-inline bool parse_sync(GptpTables& t, const RowCommon& common, nm::input body, nano_shark::PacketJson* json) {
+inline bool parse_sync(GptpTables& t, const RowCommon& common, nm::input body, nanom_shark::PacketJson* json) {
   FieldReader fr{body};
   SyncRow row{};
   row.common = common;
@@ -128,7 +128,7 @@ inline bool parse_sync(GptpTables& t, const RowCommon& common, nm::input body, n
   return true;
 }
 
-inline bool parse_delay_req(GptpTables& t, const RowCommon& common, nm::input body, nano_shark::PacketJson* json) {
+inline bool parse_delay_req(GptpTables& t, const RowCommon& common, nm::input body, nanom_shark::PacketJson* json) {
   FieldReader fr{body};
   DelayReqRow row{};
   row.common = common;
@@ -141,7 +141,7 @@ inline bool parse_delay_req(GptpTables& t, const RowCommon& common, nm::input bo
   return true;
 }
 
-inline bool parse_pdelay_req(GptpTables& t, const RowCommon& common, nm::input body, nano_shark::PacketJson* json) {
+inline bool parse_pdelay_req(GptpTables& t, const RowCommon& common, nm::input body, nanom_shark::PacketJson* json) {
   FieldReader fr{body};
   PdelayReqRow row{};
   row.common = common;
@@ -155,7 +155,7 @@ inline bool parse_pdelay_req(GptpTables& t, const RowCommon& common, nm::input b
   return true;
 }
 
-inline bool parse_delay_resp(GptpTables& t, const RowCommon& common, nm::input body, nano_shark::PacketJson* json) {
+inline bool parse_delay_resp(GptpTables& t, const RowCommon& common, nm::input body, nanom_shark::PacketJson* json) {
   FieldReader fr{body};
   DelayRespRow row{};
   row.common = common;
@@ -169,7 +169,7 @@ inline bool parse_delay_resp(GptpTables& t, const RowCommon& common, nm::input b
   return true;
 }
 
-inline bool parse_pdelay_resp(GptpTables& t, const RowCommon& common, nm::input body, nano_shark::PacketJson* json) {
+inline bool parse_pdelay_resp(GptpTables& t, const RowCommon& common, nm::input body, nanom_shark::PacketJson* json) {
   FieldReader fr{body};
   PdelayRespRow row{};
   row.common = common;
@@ -183,7 +183,7 @@ inline bool parse_pdelay_resp(GptpTables& t, const RowCommon& common, nm::input 
   return true;
 }
 
-inline bool parse_pdelay_resp_follow_up(GptpTables& t, const RowCommon& common, nm::input body, nano_shark::PacketJson* json) {
+inline bool parse_pdelay_resp_follow_up(GptpTables& t, const RowCommon& common, nm::input body, nanom_shark::PacketJson* json) {
   FieldReader fr{body};
   PdelayRespFollowUpRow row{};
   row.common = common;
@@ -201,7 +201,7 @@ inline bool parse_pdelay_resp_follow_up(GptpTables& t, const RowCommon& common, 
 // option walk (bench/streaming_pcapng_bench.cpp): read a 4-byte [type,length] header, bound the value
 // to what's declared, advance by the declared length (not by how much of it we actually decoded) so an
 // unrecognized/future TLV can never desync the walk.
-inline bool parse_follow_up(GptpTables& t, const RowCommon& common, nm::input body, nano_shark::PacketJson* json) {
+inline bool parse_follow_up(GptpTables& t, const RowCommon& common, nm::input body, nanom_shark::PacketJson* json) {
   FieldReader fr{body};
   FollowUpRow row{};
   row.common = common;
@@ -235,7 +235,7 @@ inline bool parse_follow_up(GptpTables& t, const RowCommon& common, nm::input bo
 
 // Announce: fixed body, then an optional PATH_TRACE TLV — one soa<PathTraceEntryRow> row per
 // clockIdentity entry (a many-rows-per-message table, mirroring nanolance's Ipv6OptionRow pattern).
-inline bool parse_announce(GptpTables& t, const RowCommon& common, nm::input body, nano_shark::PacketJson* json) {
+inline bool parse_announce(GptpTables& t, const RowCommon& common, nm::input body, nanom_shark::PacketJson* json) {
   FieldReader fr{body};
   AnnounceRow row{};
   row.common = common;
@@ -287,7 +287,7 @@ inline bool parse_announce(GptpTables& t, const RowCommon& common, nm::input bod
 // NOT expressed via alt()/flat_map() (see file header comment for why that's structurally impossible
 // here without first unifying every kind into one wrapper type).
 inline bool parse_gptp_message(GptpTables& t, std::uint64_t packet_id, nm::input msg,
-                               nano_shark::PacketJson* json = nullptr) {
+                               nanom_shark::PacketJson* json = nullptr) {
   auto hdr = nm::strct<GptpHeader>(std::endian::big)(msg);
   if (!hdr) return false;
   const GptpHeader& h = hdr->value;

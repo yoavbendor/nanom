@@ -164,6 +164,7 @@ jobs:
           cmake -S test/consumer -B _cons -DCMAKE_PREFIX_PATH=$PWD/_prefix
           cmake --build _cons
           ./_cons/consumer
+          ./_cons/shark_consumer
 
   # ---- every header compiles standalone (no missing includes) -----------
   header-selfcontained:
@@ -173,7 +174,7 @@ jobs:
       - name: compile each header alone
         run: |
           set -e
-          for h in include/nanom/*.hpp; do
+          for h in include/nanom/*.hpp include/nanom_shark/*.hpp; do
             echo "== $h =="
             echo "#include \"$h\"
             int main(){}" | g++-13 -std=c++23 -Wall -Wextra -Wpedantic -Werror \
@@ -354,7 +355,8 @@ jobs:
         # compiler), so a stock clang-tidy cannot analyze them — skip them here.
         run: |
           clang-tidy-18 -p build \
-            tests/test_nanom.cpp $(ls examples/*.cpp | grep -v reflect26) examples/nanotins_parity/*.cpp
+            tests/test_nanom.cpp $(ls examples/*.cpp | grep -v reflect26) examples/nanotins_parity/*.cpp \
+            apps/nanom_shark_cli.cpp tests/nanom_shark_test_*.cpp
 
   # ---- line coverage of the test suite, uploaded as an artifact ---------
   coverage:
@@ -374,7 +376,8 @@ jobs:
           lcov --capture --directory build --output-file coverage.info \
                --ignore-errors mismatch,negative 2>/dev/null || \
           lcov --capture --directory build --output-file coverage.info
-          lcov --extract coverage.info "*/include/nanom/*" --output-file nanom.info
+          lcov --extract coverage.info "*/include/nanom/*" "*/include/nanom_shark/*" \
+               --output-file nanom.info
           lcov --list nanom.info
           genhtml nanom.info --output-directory coverage-html 2>/dev/null || true
       - uses: actions/upload-artifact@v4

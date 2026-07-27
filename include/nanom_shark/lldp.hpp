@@ -1,20 +1,20 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/lldp.hpp — LLDP (IEEE 802.1AB) TLV walk, promoted from
+// nanom_shark/core/lldp.hpp — LLDP (IEEE 802.1AB) TLV walk, promoted from
 // examples/nanotins_parity/dpar_lite.cpp's lldp_hdr/lldp_tlv/p_lldp_tlv and the "lldp" branch of
 // its run_kind() (that file is untouched; this factors the same decode logic into a reusable
 // walk() called directly from decode_pass.hpp rather than through the DPAR rule engine).
 
-#include "json_tree.hpp"
-#include "lldp_rows.hpp"
-#include "node_row.hpp"
+#include <nanom_shark/json_tree.hpp>
+#include <nanom_shark/lldp_rows.hpp>
+#include <nanom_shark/node_row.hpp>
 
 #include <nanom/nanom.hpp>
 
 #include <cstring>
 
-namespace nano_shark::lldp {
+namespace nanom_shark::lldp {
 
 namespace nm = nanom;
 
@@ -30,11 +30,11 @@ struct lldp_hdr {
   nm::ubits<9> length;
 };
 
-}  // namespace nano_shark::lldp
+}  // namespace nanom_shark::lldp
 
-NANOM_DESCRIBE(nano_shark::lldp::lldp_hdr, type, length);
+NANOM_DESCRIBE(nanom_shark::lldp::lldp_hdr, type, length);
 
-namespace nano_shark::lldp {
+namespace nanom_shark::lldp {
 
 struct lldp_tlv {
   std::uint16_t type;
@@ -110,4 +110,4 @@ inline void walk(nm::bytes region, packet_id_t pid, LldpTable& table, PacketJson
   }
 }
 
-}  // namespace nano_shark::lldp
+}  // namespace nanom_shark::lldp

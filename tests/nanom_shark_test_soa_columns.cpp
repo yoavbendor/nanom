@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// nano_shark soa_columns.hpp tests: columns_of<T> (a compile-time leaf column TYPE LIST) must agree
+// nanom_shark soa_columns.hpp tests: columns_of<T> (a compile-time leaf column TYPE LIST) must agree
 // with nanom::soa<T>::columns() (the existing runtime leaf column list) exactly -- same count, same
 // dotted names, same order, same per-row element size -- since the sibling `nanoshark` repo's
 // Parquet/Lance bridges zip nanom::soa<T>::chunk::as<V>(i) spans against columns_of<T>'s leaf types
@@ -7,13 +7,13 @@
 // (no nesting) synthesized row, bit-field members (SomeipHeader's plain-looking-but-packed fields),
 // and a fixed byte-array member (LldpTlvRow::value_head).
 
-#include "l2l3_nodes.hpp"
-#include "soa_columns.hpp"
+#include <nanom_shark/l2l3_nodes.hpp>
+#include <nanom_shark/soa_columns.hpp>
 
 #include <cstdio>
 #include <cstdint>
 
-using namespace nano_shark;
+using namespace nanom_shark;
 
 namespace {
 
@@ -80,6 +80,6 @@ int main() {
     std::printf("%d failure(s)\n", failures);
     return 1;
   }
-  std::printf("nano_shark_soa_columns_tests: OK\n");
+  std::printf("nanom_shark_soa_columns_tests: OK\n");
   return 0;
 }

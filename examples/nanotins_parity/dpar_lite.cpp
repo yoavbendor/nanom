@@ -22,8 +22,8 @@
 //   - rows are described structs: nm::to_json emits them, nm::soa could
 //     column-store them — no per-row hand-written dumper.
 
-#include "nm_pcap.hpp"
-#include "nm_protocols.hpp"
+#include <nanom_shark/pcap.hpp>
+#include <nanom_shark/protocols.hpp>
 
 #include <cstdio>
 #include <cstring>

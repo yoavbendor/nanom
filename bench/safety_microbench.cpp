@@ -10,7 +10,7 @@
 // usage: nm_safety_microbench [iterations]
 //   iterations — outer repeat count per scenario (default 50)
 
-#include "../examples/nanotins_parity/nm_protocols.hpp"
+#include <nanom_shark/protocols.hpp>
 
 #include <nanom/nanom.hpp>
 #include <nanom/bulk.hpp>

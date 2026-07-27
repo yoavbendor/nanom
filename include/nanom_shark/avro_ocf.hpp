@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/avro_ocf.hpp — a real Avro Object Container File writer, dependency-free (Avro
+// nanom_shark/core/avro_ocf.hpp — a real Avro Object Container File writer, dependency-free (Avro
 // binary encoding is just zigzag varints + raw bytes; no external Avro/codec library needed for
 // the "null" codec this writes). Reuses nm::avro_schema<T>() verbatim for the header's schema
 // field; the encoding technique (walk fields, zigzag-encode) mirrors soatins' avro_glue.hpp,
@@ -15,7 +15,7 @@
 // (Avro has no unsigned type) -- the same caveat soatins' avro_glue.hpp documents, for the same
 // reason.
 
-#include "node_row.hpp"
+#include <nanom_shark/node_row.hpp>
 
 #include <nanom/nanom.hpp>
 
@@ -28,7 +28,7 @@
 #include <type_traits>
 #include <vector>
 
-namespace nano_shark {
+namespace nanom_shark {
 
 inline void avro_put_varint(std::vector<std::byte>& out, std::uint64_t u) {
   while (u >= 0x80) {
@@ -191,4 +191,4 @@ class AvroOcfWriter {
   nanom::soa<T>           probe_{1};  // never pushed to; exists only for its compile-time columns()
 };
 
-}  // namespace nano_shark
+}  // namespace nanom_shark

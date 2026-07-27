@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/decode_pass.hpp — the one decode pass: pcap/pcapng scan -> per-packet
+// nanom_shark/core/decode_pass.hpp — the one decode pass: pcap/pcapng scan -> per-packet
 // Eth/VLAN*/IPv4/IPv6(+extension-header chain, SRv6)/TCP/UDP walk, with IPv4/IPv6 fragment
 // reassembly (core/defrag.hpp) re-entering the same TCP/UDP dispatch (core/l4_dispatch.hpp) over
 // the reassembled buffer. Populates AllTables (always) and, when a JSON sink is attached, one
@@ -18,17 +18,17 @@
 // nm_protocols.hpp itself untouched rather than having it expose offsets it doesn't need for its
 // own (offset-free) callback contract.
 
-#include "decode_options.hpp"
-#include "defrag.hpp"
-#include "gptp.hpp"
-#include "json_tree.hpp"
-#include "l2l3_nodes.hpp"
-#include "l4_dispatch.hpp"
-#include "lldp.hpp"
-#include "someip.hpp"
+#include <nanom_shark/decode_options.hpp>
+#include <nanom_shark/defrag.hpp>
+#include <nanom_shark/gptp.hpp>
+#include <nanom_shark/json_tree.hpp>
+#include <nanom_shark/l2l3_nodes.hpp>
+#include <nanom_shark/l4_dispatch.hpp>
+#include <nanom_shark/lldp.hpp>
+#include <nanom_shark/someip.hpp>
 
-#include "nm_pcap.hpp"       // nmpcap::scan_blocks / parse_idb / parse_epb — include path set by CMake
-#include "nm_protocols.hpp"  // nmproto::walk_packet_ext
+#include <nanom_shark/pcap.hpp>       // nmpcap::scan_blocks / parse_idb / parse_epb — include path set by CMake
+#include <nanom_shark/protocols.hpp>  // nmproto::walk_packet_ext
 
 #include <nanom/nanom.hpp>
 
@@ -37,7 +37,7 @@
 #include <string>
 #include <vector>
 
-namespace nano_shark {
+namespace nanom_shark {
 
 namespace detail {
 
@@ -398,4 +398,4 @@ inline bool run_decode_pass(nanom::bytes file, AllTables& tables, SinkHub sink,
   return true;
 }
 
-}  // namespace nano_shark
+}  // namespace nanom_shark

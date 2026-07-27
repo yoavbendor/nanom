@@ -12,7 +12,7 @@
 
 #include <nanom/nanom.hpp>
 
-#include "../examples/nanotins_parity/nm_protocols.hpp"
+#include <nanom_shark/protocols.hpp>
 
 #include <algorithm>
 #include <cstdint>

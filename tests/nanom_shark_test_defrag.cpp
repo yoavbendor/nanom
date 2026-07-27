@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: Apache-2.0
-// Phase 2 tests: IPv4/IPv6 fragment reassembly, cross-checked against examples/nano_shark/
+// Phase 2 tests: IPv4/IPv6 fragment reassembly, cross-checked against examples/nanom_shark/
 // testdata/gen_fragments.py's known fragment patterns (in-order, out-of-order, overlap-conflict,
 // missing-final-fragment/timeout), plus a NANOM_GENERATION-backed use-after-evict check.
 
-#include "decode_pass.hpp"
+#include <nanom_shark/decode_pass.hpp>
 
 #include <cstdio>
 #include <fstream>
@@ -29,7 +29,7 @@ bool read_file(const std::string& path, std::vector<std::uint8_t>& out) {
 }
 
 // Finds the (unique, by construction) PacketJson whose serialized form contains `needle`.
-const nano_shark::PacketJson* find_with(const std::vector<nano_shark::PacketJson>& packets,
+const nanom_shark::PacketJson* find_with(const std::vector<nanom_shark::PacketJson>& packets,
                                         const std::string& needle) {
   for (const auto& p : packets) {
     if (p.to_json().find(needle) != std::string::npos) return &p;
@@ -38,20 +38,20 @@ const nano_shark::PacketJson* find_with(const std::vector<nano_shark::PacketJson
 }
 
 void test_ipv4_defrag() {
-  const char* testdata = NANO_SHARK_TESTDATA;
+  const char* testdata = NANOM_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
   CHECK(read_file(std::string(testdata) + "/ipv4_fragments_sample.pcap", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};
   opts.ipv4_defrag.timeout_ticks = 3;  // force flow D's lone fragment to age out within this capture
   std::string error;
 
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
 
   // Flow A (identification 0x1111): 2 in-order fragments -> completes, UDP length 24 (8-byte
   // header + 16-byte app payload), byte-exact through the reassembly.
@@ -121,19 +121,19 @@ void test_ipv4_defrag() {
 }
 
 void test_ipv6_defrag() {
-  const char* testdata = NANO_SHARK_TESTDATA;
+  const char* testdata = NANOM_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
   CHECK(read_file(std::string(testdata) + "/ipv6_fragments_sample.pcap", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};
   std::string error;
 
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
   CHECK(json_packets.size() == 2);
 
   const auto* pj = find_with(json_packets, "\"src_port\":1111");
@@ -152,8 +152,8 @@ void test_ipv6_defrag() {
 // throw std::out_of_range. Exercises ReassemblyTable directly (not through a full decode pass) since
 // this only needs one key, timed out once, then reused.
 void test_key_reuse_after_eviction() {
-  using nano_shark::defrag::Ipv4Key;
-  using nano_shark::defrag::ReassemblyTable;
+  using nanom_shark::defrag::Ipv4Key;
+  using nanom_shark::defrag::ReassemblyTable;
 
   ReassemblyTable<Ipv4Key>::Config cfg;
   cfg.timeout_ticks = 2;
@@ -182,8 +182,8 @@ void test_key_reuse_after_eviction() {
 // completion path. Also checks the overlap-trim semantics and that materialize() reconstructs the
 // same bytes lazily as the old eager stitch would have.
 void test_zero_copy_completion() {
-  using nano_shark::defrag::Ipv4Key;
-  using nano_shark::defrag::ReassemblyTable;
+  using nanom_shark::defrag::Ipv4Key;
+  using nanom_shark::defrag::ReassemblyTable;
 
   // A 24-byte "source file"; two fragments are non-overlapping views into it (offsets 0..12 and
   // 12..24). Byte value == index so reconstruction is easy to verify.
@@ -224,8 +224,8 @@ void test_zero_copy_completion() {
 
 // Overlap-trim + conflict semantics must match the old eager stitch exactly.
 void test_overlap_semantics() {
-  using nano_shark::defrag::Ipv4Key;
-  using nano_shark::defrag::ReassemblyTable;
+  using nanom_shark::defrag::Ipv4Key;
+  using nanom_shark::defrag::ReassemblyTable;
 
   std::array<std::byte, 16> src{};
   for (std::size_t i = 0; i < src.size(); ++i) src[i] = std::byte(i);
@@ -269,6 +269,6 @@ int main() {
     std::printf("%d failure(s)\n", failures);
     return 1;
   }
-  std::printf("nano_shark_defrag_tests: OK\n");
+  std::printf("nanom_shark_defrag_tests: OK\n");
   return 0;
 }

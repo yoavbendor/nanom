@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/soa_columns.hpp — compile-time LEAF COLUMN LIST for a Described type, mirroring
+// nanom_shark/core/soa_columns.hpp — compile-time LEAF COLUMN LIST for a Described type, mirroring
 // nanom::soa<T>'s own runtime column flattening (dotted names, nested Described members recursed
 // into, fixed-size arrays kept as one column) but as a TYPE LIST usable as a template parameter
 // pack -- e.g. folded into nanoarrow2parquet's Field<Name, T>... or nanolance's column<T, Name>...
@@ -18,7 +18,7 @@
 #include <tuple>
 #include <utility>
 
-namespace nano_shark {
+namespace nanom_shark {
 
 // One leaf column: a dotted, compile-time NAME plus its per-row DECODED element type -- exactly
 // the V that nanom::soa<T>::chunk::as<V>(i) requires for that column index.
@@ -111,4 +111,4 @@ struct column_list_of {
 template <nanom::Described T>
 using columns_of = typename column_list_of<T>::type;
 
-}  // namespace nano_shark
+}  // namespace nanom_shark

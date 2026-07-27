@@ -12,8 +12,8 @@
 // (correctness), and (2) times serial vs parallel decode to show the structural
 // speedup a per-packet scalar walk cannot reach.
 
-#include "nm_pcap.hpp"
-#include "nm_protocols.hpp"
+#include <nanom_shark/pcap.hpp>
+#include <nanom_shark/protocols.hpp>
 
 #include <nanom/bulk.hpp>
 

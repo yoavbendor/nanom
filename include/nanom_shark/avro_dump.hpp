@@ -1,16 +1,16 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/avro_dump.hpp — dumps every non-empty AllTables table to its own Avro Object
+// nanom_shark/core/avro_dump.hpp — dumps every non-empty AllTables table to its own Avro Object
 // Container File (<stem>_<table>.avro), draining the SAME soa<T>/nm::soa<T> storage the JSON sink
 // draws from -- one decode pass, multiple sinks.
 
-#include "avro_ocf.hpp"
-#include "l2l3_nodes.hpp"
+#include <nanom_shark/avro_ocf.hpp>
+#include <nanom_shark/l2l3_nodes.hpp>
 
 #include <string>
 
-namespace nano_shark {
+namespace nanom_shark {
 
 template <nanom::Described Row>
 inline void dump_avro_table(const std::string& path, const nanom::soa<Row>& soa) {
@@ -48,4 +48,4 @@ inline void dump_all_tables_avro(const std::string& stem, const AllTables& t) {
   dump_avro_table(stem + "_gptp_path_trace.avro", t.gptp.path_trace);
 }
 
-}  // namespace nano_shark
+}  // namespace nanom_shark

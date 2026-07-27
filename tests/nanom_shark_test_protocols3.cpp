@@ -2,7 +2,7 @@
 // Phase 3 tests: SOME/IP (header + SD entries/options + optional TLV members), gPTP (all 8
 // message kinds + PATH_TRACE), and LLDP (reusing the already-tested dpar_sample.pcap fixture).
 
-#include "decode_pass.hpp"
+#include <nanom_shark/decode_pass.hpp>
 
 #include <cstdio>
 #include <fstream>
@@ -36,19 +36,19 @@ bool read_file(const std::string& path, std::vector<std::uint8_t>& out) {
 }
 
 void test_gptp_all_kinds() {
-  const char* testdata = NANO_SHARK_TESTDATA;
+  const char* testdata = NANOM_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
   CHECK(read_file(std::string(testdata) + "/gptp_fixture.pcapng", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};
   std::string error;
 
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
   CHECK(json_packets.size() == 9);  // 8 kinds + a second Announce (with PATH_TRACE)
 
   // All 9 gPTP tables populated (the 8 message kinds' 1-row-each, Announce x2, path_trace x3).
@@ -85,19 +85,19 @@ void test_gptp_all_kinds() {
 }
 
 void test_someip_default_ports() {
-  const char* testdata = NANO_SHARK_TESTDATA;
+  const char* testdata = NANOM_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
   CHECK(read_file(std::string(testdata) + "/someip_fixture.pcap", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};  // default someip_ports = {30490}; someip_tlv_ports empty
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};  // default someip_ports = {30490}; someip_tlv_ports empty
 
   std::string error;
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
 
   // request, response, SD message all ride on port 30490 -> 3 SomeipNode rows; the 4th packet (a
   // TLV message on port 30509) is NOT on a configured port, so it must be invisible by default.
@@ -132,21 +132,21 @@ void test_someip_default_ports() {
 }
 
 void test_someip_tlv_opt_in() {
-  const char* testdata = NANO_SHARK_TESTDATA;
+  const char* testdata = NANOM_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
   CHECK(read_file(std::string(testdata) + "/someip_fixture.pcap", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};
   opts.someip_ports.push_back(30509);
   opts.someip_tlv_ports.push_back(30509);
 
   std::string error;
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
 
   CHECK(tables.someip.rows() == 4);       // now includes the TLV message
   CHECK(tables.someip_tlv.rows() == 2);   // its two TLV members
@@ -166,19 +166,18 @@ void test_someip_tlv_opt_in() {
 void test_lldp_dpar_sample() {
   // Reuses the already-tested examples/nanotins_parity/testdata/dpar_sample.pcap fixture (proven
   // to contain LLDP frames via the existing parity_lldp ctest), rather than a new one.
-  const char* testdata = NANO_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
-  CHECK(read_file(std::string(testdata) + "/../../nanotins_parity/testdata/dpar_sample.pcap", bytes));
+  CHECK(read_file(std::string(NANOM_PARITY_TESTDATA) + "/dpar_sample.pcap", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};
   std::string error;
 
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
   CHECK(tables.lldp.rows() > 0);
 
   // Cross-checked against nanotins_parity/testdata/lldp_sample.ndjson's first row (packet 0's
@@ -206,6 +205,6 @@ int main() {
     std::printf("%d failure(s)\n", failures);
     return 1;
   }
-  std::printf("nano_shark_protocols3_tests: OK\n");
+  std::printf("nanom_shark_protocols3_tests: OK\n");
   return 0;
 }

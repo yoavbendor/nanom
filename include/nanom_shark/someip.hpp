@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/someip.hpp — SOME/IP header + Service Discovery entry/option traversal + the
+// nanom_shark/core/someip.hpp — SOME/IP header + Service Discovery entry/option traversal + the
 // optional TLV serialization cursor. SD traversal re-expressed nanom-natively from nanotins'
 // someip_sd.hpp (bounds-checked byte reads, not copied); the TLV cursor is promoted from
 // examples/nanotins_parity/dpar_lite.cpp's someip_tag/someip_member/p_someip_member.
 
-#include "json_tree.hpp"
-#include "someip_rows.hpp"
+#include <nanom_shark/json_tree.hpp>
+#include <nanom_shark/someip_rows.hpp>
 
 #include <nanom/nanom.hpp>
 
@@ -15,7 +15,7 @@
 #include <array>
 #include <cstdint>
 
-namespace nano_shark::someip {
+namespace nanom_shark::someip {
 
 namespace nm = nanom;
 using u8 = std::uint8_t; using u16 = std::uint16_t; using u32 = std::uint32_t;
@@ -163,11 +163,11 @@ struct someip_tag {
   nm::ubits<12> data_id;
 };
 
-}  // namespace nano_shark::someip
+}  // namespace nanom_shark::someip
 
-NANOM_DESCRIBE(nano_shark::someip::someip_tag, rsvd, wire_type, data_id);
+NANOM_DESCRIBE(nanom_shark::someip::someip_tag, rsvd, wire_type, data_id);
 
-namespace nano_shark::someip {
+namespace nanom_shark::someip {
 
 // One decoded TLV member's metadata: the row stores only the value LENGTH, never the value bytes,
 // so the segmented cursor never has to materialize a value spanning a fragment boundary.
@@ -242,4 +242,4 @@ inline void maybe_dispatch(nm::seg_input payload, packet_id_t pid, bool assume_t
   if (assume_tlv) walk_tlv_members(after_header, pid, tlv_table, json);
 }
 
-}  // namespace nano_shark::someip
+}  // namespace nanom_shark::someip

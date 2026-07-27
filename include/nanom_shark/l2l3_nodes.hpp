@@ -1,19 +1,19 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/l2l3_nodes.hpp — Node<> instantiations + registrations for the base L2-L4 walk
+// nanom_shark/core/l2l3_nodes.hpp — Node<> instantiations + registrations for the base L2-L4 walk
 // (Ethernet/VLAN/IPv4/IPv6/UDP/TCP), reusing nanotins_parity's existing wire structs verbatim.
 
-#include "defrag.hpp"
-#include "gptp.hpp"
-#include "lldp_rows.hpp"
-#include "node_row.hpp"
-#include "packet_row.hpp"
-#include "someip_rows.hpp"
+#include <nanom_shark/defrag.hpp>
+#include <nanom_shark/gptp.hpp>
+#include <nanom_shark/lldp_rows.hpp>
+#include <nanom_shark/node_row.hpp>
+#include <nanom_shark/packet_row.hpp>
+#include <nanom_shark/someip_rows.hpp>
 
-#include "nm_protocols.hpp"  // nmproto::{Ethernet,VlanTag,Ipv4,Ipv6,Udp,Tcp}; include path set by CMake
+#include <nanom_shark/protocols.hpp>  // nmproto::{Ethernet,VlanTag,Ipv4,Ipv6,Udp,Tcp}; include path set by CMake
 
-namespace nano_shark {
+namespace nanom_shark {
 
 using EthNode  = Node<nmproto::Ethernet>;
 using VlanNode = Node<nmproto::VlanTag>;
@@ -22,13 +22,13 @@ using Ipv6Node = Node<nmproto::Ipv6>;
 using UdpNode  = Node<nmproto::Udp>;
 using TcpNode  = Node<nmproto::Tcp>;
 
-}  // namespace nano_shark
+}  // namespace nanom_shark
 
 // Node<Body>'s describe<> registration is one shared partial specialization in node_row.hpp,
 // covering EthNode/VlanNode/Ipv4Node/Ipv6Node/UdpNode/TcpNode (and SomeipNode, see someip_rows.hpp)
 // at once — no per-protocol NANOM_DESCRIBE line needed here.
 
-namespace nano_shark {
+namespace nanom_shark {
 
 // One table per protocol layer decoded by the base L2-L4 walk, always populated by
 // run_decode_pass regardless of which sinks are active — the JSON sink does not depend on this
@@ -64,4 +64,4 @@ struct AllTables {
   node_table<LldpTlvRow>          lldp{"lldp"};
 };
 
-}  // namespace nano_shark
+}  // namespace nanom_shark

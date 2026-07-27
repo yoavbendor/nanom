@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/decode_options.hpp — DecodeOptions lives in its own header (rather than
+// nanom_shark/core/decode_options.hpp — DecodeOptions lives in its own header (rather than
 // decode_pass.hpp) so that l4_dispatch.hpp's SOME/IP dispatch (shared by the normal per-packet
 // path and defrag's reassembly re-entry path) can see the someip_ports/someip_tlv_ports
 // configuration without decode_pass.hpp and l4_dispatch.hpp needing to include each other.
 
-#include "defrag.hpp"
+#include <nanom_shark/defrag.hpp>
 
 #include <cstdint>
 #include <vector>
 
-namespace nano_shark {
+namespace nanom_shark {
 
 struct DecodeOptions {
   bool decode_l2l3 = true;    // Eth/VLAN*/IPv4/IPv6(+ext headers, SRv6)/TCP/UDP
@@ -31,4 +31,4 @@ struct DecodeOptions {
   std::vector<std::uint16_t> someip_tlv_ports = {};
 };
 
-}  // namespace nano_shark
+}  // namespace nanom_shark

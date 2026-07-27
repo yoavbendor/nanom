@@ -5,7 +5,7 @@
 // require: (1) neither crashes / reads OOB (run under ASan+UBSan), and (2)
 // they agree layer-for-layer and field-for-field. Seeds are real headers,
 // then bit-flipped / truncated / extended to hammer the bounds logic.
-#include "../examples/nanotins_parity/nm_protocols.hpp"
+#include <nanom_shark/protocols.hpp>
 #include "nanotins/protocol_decode.hpp"
 #include "nanotins/protocols.hpp"
 

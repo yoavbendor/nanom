@@ -4,7 +4,7 @@
 // The core cursor (nom.hpp's `input`) is a contiguous [first,last) pointer pair, and stays that
 // way: this header is the opt-in sibling for the one case that model cannot express — a logical
 // buffer whose bytes live in several disjoint spans (the motivating consumer is IP fragment
-// reassembly, examples/nano_shark/core/defrag.hpp, where a reassembled datagram's fragments sit
+// reassembly, include/nanom_shark/defrag.hpp, where a reassembled datagram's fragments sit
 // scattered through the capture file). Design contract, in order of priority:
 //
 //   1. ZERO COST WHEN UNUSED. Nothing in nom.hpp/reflect.hpp changes; `input`, its layout, and
