@@ -118,6 +118,14 @@ inline void for_each_sd_child(const SomeipHeader& hdr, nm::seg_input payload, On
   std::size_t opt_end = opt + options_len;
   if (opt_end > size) opt_end = size;  // clamp an over-claiming options_length
   u32 oi = 0;
+  // NOT many0_seg, unlike walk_tlv_members: this loop is not "repeat until the parser stops making
+  // progress" but "repeat within a DECLARED sub-region [opt, opt_end) whose end is clamped against
+  // the payload". Its stop condition (`next > opt_end`) and its probe clamp
+  // (min(kSdEndpointProbe, opt_end - opt)) both read that bound, which a many0_seg inner parser
+  // cannot see; expressing it as one would mean narrowing to a subrange first, and subrange() is
+  // capped at seg_max_parts -- over that cap it returns nullopt, which would silently drop every
+  // option of a heavily-fragmented SD message. The entries loop above is fixed-stride and
+  // index-based (kSomeipSdEntrySize each, count known up front), so it is not the shape either.
   while (opt + 3 <= opt_end) {  // need [length:2][type:1]
     const std::size_t probe = std::min<std::size_t>(kSdEndpointProbe, opt_end - opt);
     std::array<std::byte, kSdEndpointProbe> ob{};
@@ -204,21 +212,24 @@ inline nm::seg_result<someip_member_meta> p_someip_member_seg(nm::seg_input in) 
   return nm::seg_done{someip_member_meta{tag->value.data_id, wt, u32(vlen)}, skipped->rest};
 }
 
-// Walks `region` as a flat run of TLV members, pushing one row per member. A plain
-// progress-guarded loop (not many0, which is a contiguous-only combinator): stop at the first
-// decode error or a zero-consume, exactly like many0 would over the contiguous form.
+// Walks `region` as a flat run of TLV members, pushing one row per member. This used to be a
+// hand-rolled progress-guarded loop; it is now literally many0_seg, the combinator that formalizes
+// that exact shape over segmented input (stop at the first recoverable decode error or a
+// zero-consume, keeping everything parsed so far). No cap: the region is a single packet's payload
+// and every iteration provably consumes, so checked_many0_seg's max_rep would only add a bound the
+// input length already imposes -- and the loop this replaces had no cap either.
 template <class TlvTable>
 inline void walk_tlv_members(nm::seg_input region, packet_id_t pid, TlvTable& table, PacketJson* json) {
-  u32           idx = 0;
-  nm::seg_input cur = region;
-  while (!cur.empty()) {
-    auto m = p_someip_member_seg(cur);
-    if (!m) break;
-    if (m->rest.offset() == cur.offset()) break;  // no progress -> done (many0 contract)
-    SomeipTlvMemberRow row{pid, idx++, m->value.data_id, m->value.wire_type, m->value.length};
+  const auto members = nm::many0_seg(p_someip_member_seg)(region);
+  // Only a non-recoverable error lands here, i.e. `incomplete` off a live cursor; a short read on
+  // the normal (non-live) packet cursor is a recoverable error, which many0_seg reports as a
+  // successful partial walk -- exactly what the old loop's `break` did.
+  if (!members) return;
+  u32 idx = 0;
+  for (const someip_member_meta& m : members->value) {
+    SomeipTlvMemberRow row{pid, idx++, m.data_id, m.wire_type, m.length};
     table.push(row);
     if (json) json->add_layer("someip.tlv_member", row);
-    cur = m->rest;
   }
 }
 
