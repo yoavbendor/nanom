@@ -17,12 +17,25 @@
 //      segment memory or fails with a recoverable error — it never points a view at a hidden
 //      temporary. Straddling callers use strct_seg<T> (by value) instead.
 //
-// Deliberately NOT supported over segments (v1): the general combinator vocabulary
-// (alt/many0/tag/take_until/dec/hex/...) — the text-oriented members need physically contiguous
-// memory (`from_chars`, `memcmp`, `std::search`) and cannot be segmented without copies. What IS
-// here: the struct parsers (strct_seg/overlay_seg), a small cursor kit for hand-rolled walkers
-// (seg_u8/seg_be16/seg_be32/...), and zero-copy narrowing (subrange). Bit FIELDS inside a
-// described struct work fine — they decode from the gathered window like every other field.
+// What IS here: the struct parsers (strct_seg/overlay_seg), a small cursor kit for hand-rolled
+// walkers (seg_u8/seg_be16/seg_be32/...), zero-copy narrowing (subrange), and — the one piece of
+// the general combinator vocabulary that segments cleanly — repetition (many0_seg /
+// checked_many0_seg). Bit FIELDS inside a described struct work fine: they decode from the gathered
+// window like every other field.
+//
+// Repetition earns its place because it is pure control flow: many0's only contiguity dependency is
+// its no-progress guard (pointer identity, `r->rest.first == cur.first`), and seg_input's absolute
+// `offset()` is an exact substitute. It is not a convenience — hand-rolling the loop is what
+// nanom_shark's SOME/IP TLV walker had to do, and forgetting to do so is what made its LLDP walker
+// silently collapse a segmented payload to contiguous bytes before parsing it.
+//
+// Still deliberately NOT supported over segments: the CONTENT-matching combinators (alt_seg,
+// tag_seg, take_until_seg, dec_seg/hex_seg, ...). Those compare or scan multi-byte patterns that
+// can straddle a seam, and the primitives they are built on (`memcmp`, `std::search`,
+// `std::from_chars`) all require physically contiguous memory — segmenting them means either a
+// copy or a bespoke seam-aware matcher for each. That is a materially harder problem than
+// repeat-until-no-progress and is left as an explicit, separate future direction, not something
+// this header attempts today.
 
 #ifndef NANOM_SEGMENTED_HPP_INCLUDED
 #define NANOM_SEGMENTED_HPP_INCLUDED
@@ -544,6 +557,80 @@ constexpr auto overlay_seg(std::endian dflt = std::endian::native) {
 #else
     return seg_done{view<T>{in.contiguous().data(), dflt}, in.advance(need)};
 #endif
+  };
+}
+
+// ---------------------------------------------------------------------------
+// repetition over segments — many0_seg / checked_many0_seg
+// ---------------------------------------------------------------------------
+// The segmented twins of nom.hpp's many0/checked_many0, with identical semantics. The ONE
+// necessary change is the no-progress guard: `input` compares raw pointer identity
+// (r->rest.first == cur.first), which seg_input cannot express (there is no single stable pointer
+// across a segment boundary). seg_input::offset() — the absolute logical position — is the direct
+// substitute, and is exactly what hand-rolled segmented walkers already use ad hoc.
+
+namespace detail_seg {
+template <class R>
+struct is_seg_result : std::false_type {};
+template <class T>
+struct is_seg_result<seg_result<T>> : std::true_type {};
+}  // namespace detail_seg
+
+/// A segmented parser is any callable: (seg_input) -> seg_result<T>. Twin of nom.hpp's Parser;
+/// same story — lambdas qualify, no base class, no type erasure on the hot path.
+template <class P>
+concept SegParser = std::invocable<const P&, seg_input> &&
+                    detail_seg::is_seg_result<std::invoke_result_t<const P&, seg_input>>::value;
+
+/// The value type a segmented parser produces (twin of parsed_t).
+template <SegParser P>
+using seg_parsed_t = typename std::invoke_result_t<const P&, seg_input>::value_type::type;
+
+/// many0_seg(p) — zero or more, into std::vector. Like many0: a non-recoverable error (fail /
+/// incomplete) propagates, a recoverable one ends the repetition successfully, and a parser that
+/// succeeds without consuming is an error rather than an infinite loop.
+template <SegParser P>
+constexpr auto many0_seg(P p) {
+  return [p](seg_input in) -> seg_result<std::vector<seg_parsed_t<P>>> {
+    std::vector<seg_parsed_t<P>> out;
+    seg_input                    cur = in;
+    for (;;) {
+      auto r = p(cur);
+      if (!r) {
+        if (r.error().kind != errk::err) return unexp(r.error());
+        return seg_done{std::move(out), cur};
+      }
+      if (r->rest.offset() == cur.offset())
+        return seg_make_err(cur, "many0_seg: inner parser must consume input");
+      out.push_back(std::move(r->value));
+      cur = r->rest;
+    }
+  };
+}
+
+/// checked_many0_seg(p, max_rep) — like many0_seg but stops with an error after max_rep successful
+/// matches (default 1M), so a custom inner parser cannot spin forever. Same cap + one-more-probe
+/// shape as checked_many0.
+template <SegParser P>
+constexpr auto checked_many0_seg(P p, std::size_t max_rep = 1'000'000) {
+  return [p, max_rep](seg_input in) -> seg_result<std::vector<seg_parsed_t<P>>> {
+    std::vector<seg_parsed_t<P>> out;
+    seg_input                    cur = in;
+    for (std::size_t n = 0; n < max_rep; ++n) {
+      auto r = p(cur);
+      if (!r) {
+        if (r.error().kind != errk::err) return unexp(r.error());
+        return seg_done{std::move(out), cur};
+      }
+      if (r->rest.offset() == cur.offset())
+        return seg_make_err(cur, "checked_many0_seg: inner parser must consume input");
+      out.push_back(std::move(r->value));
+      cur = r->rest;
+    }
+    auto probe = p(cur);
+    if (probe) return seg_make_err(cur, "checked_many0_seg: repetition cap exceeded");
+    if (!probe && probe.error().kind != errk::err) return unexp(probe.error());
+    return seg_done{std::move(out), cur};
   };
 }
 
