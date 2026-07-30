@@ -393,6 +393,29 @@ static void test_soa() {
     CHECK(ch.col(3).size() == ch.rows * 4);
   });
   CHECK(chunks == 3 && seen == 5);  // 2 + 2 + 1
+
+  // chunk_count()/chunk_at() must expose the SAME sequence for_each_chunk visits, in the same
+  // order -- they exist so callers can build a std::views pipeline over the chunks, which is only
+  // sound if the indexed view and the visitor cannot disagree.
+  CHECK(cols.chunk_count() == chunks);
+  std::size_t indexed_seen = 0;
+  for (std::size_t c = 0; c < cols.chunk_count(); ++c) {
+    const auto& ch = cols.chunk_at(c);
+    auto kinds = ch.template as<uint8_t>(0);
+    for (std::size_t r = 0; r < ch.rows; ++r, ++indexed_seen) CHECK(kinds[r] == indexed_seen);
+  }
+  CHECK(indexed_seen == seen);
+  // the open remainder is the last index (5 rows at chunk_rows=2 -> 2 + 2 + 1)
+  CHECK(cols.chunk_at(cols.chunk_count() - 1).rows == 1);
+
+  // sealing folds the open chunk in without changing the sequence's length or contents
+  cols.seal();
+  CHECK(cols.chunk_count() == chunks);
+  CHECK(cols.chunk_at(cols.chunk_count() - 1).rows == 1);
+
+  // an empty table has no chunks at all (the open remainder is not counted while it is empty)
+  nm::soa<outer_msg> empty(2);
+  CHECK(empty.chunk_count() == 0);
 }
 
 static void test_errors() {
