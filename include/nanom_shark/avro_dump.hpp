@@ -23,8 +23,9 @@ inline void dump_avro_table(const std::string& path, const nanom::soa<Row>& soa)
 }
 
 // Generic over the decoder's table set: `for_each_table` walks every table every registered
-// protocol declared, so a new protocol's tables land in Avro with NO edit here. (The Phase 3 sinks
-// -- Parquet, Lance -- collapse onto the same loop.) The file stem convention is unchanged:
+// protocol declared, so a new protocol's tables land in Avro with NO edit here. (The heavier sinks
+// in the downstream nanoshark repo -- Parquet, Lance -- now drive this same loop, so all four sinks
+// derive their table set from one source of truth and cannot drift apart.) The stem is unchanged:
 // <stem>_<table name>.avro, with the table name coming from the protocol's own table_decl<"...">.
 template <class Tables>
 inline void dump_all_tables_avro(const std::string& stem, const Tables& t) {
