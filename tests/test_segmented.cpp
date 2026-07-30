@@ -274,6 +274,133 @@ void test_cursor_kit() {
   if (!g32s) CHECK(g32s.error().kind == nm::errk::incomplete);
 }
 
+// ---- many0_seg / checked_many0_seg vs their contiguous twins, across every split --------------
+
+// The repetition combinators' differential property, over a "PDU train": 7 back-to-back 8-byte
+// records (nmproto::Udp) followed by a deliberate 4-byte partial tail, so the walk must stop on a
+// recoverable short read with the leftovers intact. Sweeping the cut over the whole buffer puts a
+// seam at every element boundary (multiples of 8) AND at every mid-element position, including
+// inside a record's last field and between the two halves of one.
+constexpr std::size_t kRec = 8;   // wire_size_v<nmproto::Udp>
+constexpr std::size_t kRecs = 7;
+constexpr std::size_t kTrain = kRec * kRecs + 4;  // 60 bytes: 7 whole records + a partial tail
+
+std::vector<std::byte> pdu_train() {
+  std::vector<std::byte> wire(kTrain);
+  for (std::size_t i = 0; i < wire.size(); ++i) wire[i] = std::byte((i * 29 + 5) & 0xFF);
+  return wire;
+}
+
+auto p_rec() { return nm::strct<nmproto::Udp>(std::endian::big); }
+auto p_rec_seg() { return nm::strct_seg<nmproto::Udp>(std::endian::big); }
+
+nm::segments segs_of(const std::vector<std::span<const std::byte>>& parts) {
+  return nm::segments{std::span<const std::span<const std::byte>>(parts.data(), parts.size())};
+}
+
+void test_many0_seg_parity() {
+  const auto wire = pdu_train();
+  const std::span<const std::byte> b(wire.data(), wire.size());
+
+  const auto want = nm::many0(p_rec())(nm::from(b));
+  CHECK(bool(want));
+  if (!want) return;
+  CHECK(want->value.size() == kRecs);            // the partial tail is not a record
+  CHECK(want->rest.offset() == kRec * kRecs);    // ...and is left unconsumed
+
+  const auto want_capped_ok = nm::checked_many0(p_rec(), 100)(nm::from(b));
+  const auto want_capped_hit = nm::checked_many0(p_rec(), 3)(nm::from(b));
+  CHECK(bool(want_capped_ok));
+  CHECK(!want_capped_hit);  // cap 3 < 7 records: the one-more probe still succeeds -> error
+
+  for (std::size_t cut = 0; cut <= wire.size(); ++cut) {
+    const auto parts = split(b, {cut});
+    const nm::segments segs = segs_of(parts);
+
+    const auto got = nm::many0_seg(p_rec_seg())(nm::from(segs));
+    CHECK(bool(got) == bool(want));
+    if (got) {
+      CHECK(got->value.size() == want->value.size());
+      CHECK(got->rest.offset() == want->rest.offset());
+      if (got->value.size() == want->value.size())
+        for (std::size_t i = 0; i < got->value.size(); ++i)
+          CHECK(nm::to_json(got->value[i]) == nm::to_json(want->value[i]));
+    }
+
+    // checked_many0_seg under a cap that is never reached == many0_seg
+    const auto cok = nm::checked_many0_seg(p_rec_seg(), 100)(nm::from(segs));
+    CHECK(bool(cok) == bool(want_capped_ok));
+    if (cok && want_capped_ok) {
+      CHECK(cok->value.size() == want_capped_ok->value.size());
+      CHECK(cok->rest.offset() == want_capped_ok->rest.offset());
+    }
+
+    // ...and a cap that IS reached fails identically to the contiguous twin
+    const auto chit = nm::checked_many0_seg(p_rec_seg(), 3)(nm::from(segs));
+    CHECK(!chit);
+    if (!chit && !want_capped_hit) {
+      CHECK(chit.error().kind == want_capped_hit.error().kind);
+      CHECK(chit.error().offset == want_capped_hit.error().offset);
+    }
+  }
+
+  // the two split points the property above must never lose sight of, called out by name
+  for (std::size_t cut : {kRec, kRec + 3}) {  // exactly on an element boundary / mid-element
+    const auto parts = split(b, {cut});
+    const nm::segments segs = segs_of(parts);
+    const auto got = nm::many0_seg(p_rec_seg())(nm::from(segs));
+    CHECK(got && got->value.size() == kRecs && got->rest.offset() == kRec * kRecs);
+  }
+
+  // 1-byte-per-part: every single record straddles six seams, and the result is still identical
+  std::vector<std::span<const std::byte>> ones;
+  for (std::size_t i = 0; i < wire.size(); ++i) ones.emplace_back(wire.data() + i, 1);
+  const nm::segments s1 = segs_of(ones);
+  const auto got1 = nm::many0_seg(p_rec_seg())(nm::from(s1));
+  CHECK(got1 && got1->value.size() == kRecs);
+  if (got1 && got1->value.size() == kRecs)
+    for (std::size_t i = 0; i < kRecs; ++i)
+      CHECK(nm::to_json(got1->value[i]) == nm::to_json(want->value[i]));
+}
+
+void test_many0_seg_edge_cases() {
+  // empty input -> zero elements, success, cursor unmoved (same as many0)
+  const std::vector<std::span<const std::byte>> empties(2);
+  const nm::segments none = segs_of(empties);
+  const auto e = nm::many0_seg(p_rec_seg())(nm::from(none));
+  const auto ec = nm::many0(p_rec())(nm::from(std::span<const std::byte>{}));
+  CHECK(e && ec);
+  if (e && ec) {
+    CHECK(e->value.empty() == ec->value.empty());
+    CHECK(e->rest.offset() == ec->rest.offset());
+  }
+
+  // the zero-consumption guard: a parser that succeeds without advancing must error, not spin
+  const auto wire = pdu_train();
+  const std::span<const std::byte> b(wire.data(), wire.size());
+  const auto parts = split(b, {5});
+  const nm::segments segs = segs_of(parts);
+
+  auto p_nothing_seg = [](nm::seg_input in) -> nm::seg_result<int> { return nm::seg_done{0, in}; };
+  auto p_nothing     = [](nm::input in) -> nm::result<int> { return nm::done{0, in}; };
+  const auto g = nm::many0_seg(p_nothing_seg)(nm::from(segs));
+  const auto c = nm::many0(p_nothing)(nm::from(b));
+  CHECK(!g && !c);
+  if (!g && !c) {
+    CHECK(g.error().kind == c.error().kind);
+    CHECK(g.error().offset == c.error().offset);
+  }
+  const auto gc = nm::checked_many0_seg(p_nothing_seg)(nm::from(segs));
+  CHECK(!gc);
+  if (!gc) CHECK(gc.error().kind == nm::errk::err);
+
+  // a live cursor propagates `incomplete` rather than ending the repetition (many0's contract for
+  // a non-recoverable inner error)
+  const auto live = nm::many0_seg(p_rec_seg())(nm::streaming(nm::from(segs)));
+  CHECK(!live);
+  if (!live) CHECK(live.error().kind == nm::errk::incomplete);
+}
+
 void test_streaming_and_render() {
   const auto buf = golden(4);
   const auto parts = split({buf.data(), buf.size()}, {2});
@@ -303,6 +430,8 @@ int main() {
   test_zero_copy_fastpath();
   test_strct_overlay_parity();
   test_cursor_kit();
+  test_many0_seg_parity();
+  test_many0_seg_edge_cases();
   test_streaming_and_render();
   if (failures) {
     std::printf("%d failure(s)\n", failures);

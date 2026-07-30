@@ -83,6 +83,25 @@ Trace run_contiguous(std::span<const std::byte> buf) {
     t.err(r.error().kind, r.error().offset);
   }
   t.ok(in.offset());
+
+  // repetition, from a fresh cursor: the whole buffer as a train of 8-byte records. Records land
+  // on every alignment relative to the fuzzer's seams, so this hunts a repetition that loses,
+  // duplicates or mis-decodes an element at a boundary -- and the leftover tail pins where the
+  // walk stopped.
+  if (auto r = nm::many0(nm::strct<nmproto::Udp>(std::endian::big))(nm::from(buf)); r) {
+    t.ok(r->value.size());
+    for (const auto& v : r->value) t.ok(fold_struct(v));
+    t.ok(r->rest.offset());
+  } else {
+    t.err(r.error().kind, r.error().offset);
+  }
+  // ...and the capped form, with a cap small enough that longer inputs trip it
+  if (auto r = nm::checked_many0(nm::strct<nmproto::Udp>(std::endian::big), 4)(nm::from(buf)); r) {
+    t.ok(r->value.size());
+    t.ok(r->rest.offset());
+  } else {
+    t.err(r.error().kind, r.error().offset);
+  }
   return t;
 }
 
@@ -121,6 +140,21 @@ Trace run_segmented(const nm::segments& segs) {
     t.err(r.error().kind, r.error().offset);
   }
   t.ok(in.offset());
+
+  if (auto r = nm::many0_seg(nm::strct_seg<nmproto::Udp>(std::endian::big))(nm::from(segs)); r) {
+    t.ok(r->value.size());
+    for (const auto& v : r->value) t.ok(fold_struct(v));
+    t.ok(r->rest.offset());
+  } else {
+    t.err(r.error().kind, r.error().offset);
+  }
+  if (auto r = nm::checked_many0_seg(nm::strct_seg<nmproto::Udp>(std::endian::big), 4)(nm::from(segs));
+      r) {
+    t.ok(r->value.size());
+    t.ok(r->rest.offset());
+  } else {
+    t.err(r.error().kind, r.error().offset);
+  }
   return t;
 }
 
@@ -167,3 +201,47 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   }
   return 0;
 }
+
+// ---------------------------------------------------------------------------
+// Standalone driver (opt-in): the same harness without libFuzzer.
+// ---------------------------------------------------------------------------
+// libFuzzer needs clang's compiler-rt fuzzer runtime, which is not present everywhere this repo is
+// built. This driver feeds LLVMFuzzerTestOneInput pseudo-random and seed-mutated inputs from a
+// plain main(), so the differential property can still be exercised for hundreds of thousands of
+// cases anywhere a compiler with -fsanitize=address,undefined is available:
+//
+//   g++ -std=c++23 -O1 -fsanitize=address,undefined -fno-sanitize-recover=all \
+//       -DNANOM_FUZZ_STANDALONE -I include -o fuzz_segmented_standalone fuzz/fuzz_segmented.cpp
+//   ./fuzz_segmented_standalone 300000
+//
+// The libFuzzer build (-DNANOM_BUILD_FUZZERS) does not define NANOM_FUZZ_STANDALONE, so it keeps
+// libFuzzer's own main and is unaffected.
+#ifdef NANOM_FUZZ_STANDALONE
+#include <cstdlib>
+#include <random>
+
+int main(int argc, char** argv) {
+  const long iters = argc > 1 ? std::strtol(argv[1], nullptr, 10) : 300000;
+  std::mt19937_64 rng(0x5E6E11EDull ^ 0x9E3779B97F4A7C15ull);
+  // A seed shaped like the harness's input format: 3 cuts, then Ethernet+IPv4+UDP-ish bytes.
+  const std::vector<std::uint8_t> seed = {
+      3, 7, 20, 41,
+      2,0,0,0,0,2, 2,0,0,0,0,1, 0x08,0x00,
+      0x45,0,0,0x1c,0,1,0,0,64,17,0,0, 10,0,0,1, 10,0,0,2, 0,53,4,0xd2,0,8,0,0};
+
+  std::vector<std::uint8_t> p;
+  for (long i = 0; i < iters; ++i) {
+    if (i % 2 == 0) {  // pure random bytes
+      p.resize(rng() % 96);
+      for (auto& x : p) x = std::uint8_t(rng());
+    } else {  // seed with a few bytes flipped and a random-length tail
+      p = seed;
+      for (int k = 0, n = int(rng() % 5); k < n; ++k) p[rng() % p.size()] ^= std::uint8_t(rng());
+      p.resize(p.size() + rng() % 24);
+    }
+    LLVMFuzzerTestOneInput(p.data(), p.size());
+  }
+  std::printf("fuzz_segmented standalone: %ld cases, no divergence\n", iters);
+  return 0;
+}
+#endif
