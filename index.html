@@ -1052,7 +1052,7 @@ profile stays within best-of-5 noise on this workload. Reproduce with
 <li><strong>Segmented input, still zero-copy.</strong> <code>segmented.hpp</code> parses a logical buffer split across
   <em>disjoint</em> spans (reassembled IP fragments, scatter-gather I/O) with <code>strct_seg&lt;T&gt;()</code> — pointer
   reads inside a span, a bounded stack gather only when a struct straddles a seam, never a whole-
-  buffer copy. Opt-in and zero-cost when unused (<a href="NANO_SHARK/#segmented-input-parsing-across-disjoint-byte-ranges">tutorial</a>).</li>
+  buffer copy. Opt-in and zero-cost when unused (<a href="NANO_SHARK/#segmented-input-parsing-across-disjoint-byte-ranges">details</a>).</li>
 <li><strong>Localized errors.</strong> Allocation-free error values; <code>render()</code> prints the offset, the <code>context()</code>
   chain, and a hex window with a caret.</li>
 <li><strong>Header-only, no dependencies.</strong> gcc ≥ 13, clang ≥ 18 for the C++23 macro path; a P2996 compiler

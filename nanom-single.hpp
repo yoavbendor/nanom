@@ -3814,6 +3814,28 @@ class soa {
     for (const auto& ch : sealed_) f(ch);
     if (open_.rows) f(open_);
   }
+
+  /// Random access to the same chunk sequence `for_each_chunk` visits, in the same order: indices
+  /// `[0, chunk_count())` are the sealed chunks followed by the open remainder when it is non-empty.
+  ///
+  /// `for_each_chunk` is a push-only visitor, which is all a sink writer needs but which cannot be
+  /// composed with anything. With an index and a subscript, a caller can build whatever range it
+  /// wants over the chunks without this header taking a dependency on <ranges>:
+  ///
+  ///     auto chunks = std::views::iota(std::size_t{0}, t.chunk_count())
+  ///                 | std::views::transform([&](std::size_t i) -> const auto& {
+  ///                     return t.chunk_at(i);
+  ///                   });
+  ///
+  /// Deliberately chunk-level, not row-level: `soa<T>` never materializes a `T`, so a row range
+  /// would have to reconstruct one per row and undo the whole point of the layout. Filtering
+  /// happens over row INDICES inside a chunk, against that chunk's own column spans -- see
+  /// docs/NANO_SHARK.md, "Composing with std::views".
+  std::size_t chunk_count() const { return sealed_.size() + (open_.rows ? 1 : 0); }
+  const chunk& chunk_at(std::size_t i) const {
+    return i < sealed_.size() ? sealed_[i] : open_;
+  }
+
   /// Force-seal the open chunk (e.g. before a final flush).
   void seal() {
     if (!open_.rows) return;

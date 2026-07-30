@@ -125,6 +125,11 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:abcd9c4cdc06164d211e6bcaafbb48591"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="classnanom_1_1soa.html#abcd9c4cdc06164d211e6bcaafbb48591">for_each_chunk</a> (F &amp;&amp;f) const</td></tr>
 <tr class="memdesc:abcd9c4cdc06164d211e6bcaafbb48591"><td class="mdescLeft">&#160;</td><td class="mdescRight">Visit every chunk (sealed ones, then the open remainder if non-empty).  <br /></td></tr>
 <tr class="separator:abcd9c4cdc06164d211e6bcaafbb48591"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aef5f1c9411fbb4c8435c5fcb0bc40ba2" id="r_aef5f1c9411fbb4c8435c5fcb0bc40ba2"><td class="memItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1soa.html#aef5f1c9411fbb4c8435c5fcb0bc40ba2">chunk_count</a> () const</td></tr>
+<tr class="memdesc:aef5f1c9411fbb4c8435c5fcb0bc40ba2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Random access to the same chunk sequence <code>for_each_chunk</code> visits, in the same order: indices <code>[0, <a class="el" href="classnanom_1_1soa.html#aef5f1c9411fbb4c8435c5fcb0bc40ba2" title="Random access to the same chunk sequence for_each_chunk visits, in the same order: indices [0,...">chunk_count()</a>)</code> are the sealed chunks followed by the open remainder when it is non-empty.  <br /></td></tr>
+<tr class="separator:aef5f1c9411fbb4c8435c5fcb0bc40ba2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afca1b3dea142bd947fb3ee35bda8bc57" id="r_afca1b3dea142bd947fb3ee35bda8bc57"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="structnanom_1_1soa_1_1chunk.html">chunk</a> &amp;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1soa.html#afca1b3dea142bd947fb3ee35bda8bc57">chunk_at</a> (std::size_t i) const</td></tr>
+<tr class="separator:afca1b3dea142bd947fb3ee35bda8bc57"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa08272cddde529462d92ca018ef6bbcd" id="r_aa08272cddde529462d92ca018ef6bbcd"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1soa.html#aa08272cddde529462d92ca018ef6bbcd">seal</a> ()</td></tr>
 <tr class="memdesc:aa08272cddde529462d92ca018ef6bbcd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Force-seal the open chunk (e.g. before a final flush).  <br /></td></tr>
 <tr class="separator:aa08272cddde529462d92ca018ef6bbcd"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -163,6 +168,68 @@ template&lt;Described T&gt; </div>
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="afca1b3dea142bd947fb3ee35bda8bc57" name="afca1b3dea142bd947fb3ee35bda8bc57"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afca1b3dea142bd947fb3ee35bda8bc57">&#9670;&#160;</a></span>chunk_at()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Described T&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">const <a class="el" href="structnanom_1_1soa_1_1chunk.html">chunk</a> &amp; <a class="el" href="classnanom_1_1soa.html">nanom::soa</a>&lt; T &gt;::chunk_at </td>
+          <td>(</td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>i</em></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="aef5f1c9411fbb4c8435c5fcb0bc40ba2" name="aef5f1c9411fbb4c8435c5fcb0bc40ba2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aef5f1c9411fbb4c8435c5fcb0bc40ba2">&#9670;&#160;</a></span>chunk_count()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Described T&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::size_t <a class="el" href="classnanom_1_1soa.html">nanom::soa</a>&lt; T &gt;::chunk_count </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td> const</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Random access to the same chunk sequence <code>for_each_chunk</code> visits, in the same order: indices <code>[0, <a class="el" href="classnanom_1_1soa.html#aef5f1c9411fbb4c8435c5fcb0bc40ba2" title="Random access to the same chunk sequence for_each_chunk visits, in the same order: indices [0,...">chunk_count()</a>)</code> are the sealed chunks followed by the open remainder when it is non-empty. </p>
+<p><code>for_each_chunk</code> is a push-only visitor, which is all a sink writer needs but which cannot be composed with anything. With an index and a subscript, a caller can build whatever range it wants over the chunks without this header taking a dependency on &lt;ranges&gt;: </p><pre class="fragment">auto chunks = std::views::iota(std::size_t{0}, t.chunk_count())
+            | std::views::transform([&amp;](std::size_t i) -&gt; const auto&amp; {
+                return t.chunk_at(i);
+              });
+</pre><p> Deliberately chunk-level, not row-level: <code>soa&lt;T&gt;</code> never materializes a <code>T</code>, so a row range would have to reconstruct one per row and undo the whole point of the layout. Filtering happens over row INDICES inside a chunk, against that chunk's own column spans &ndash; see docs/NANO_SHARK.md, "Composing with std::views". </p>
+
+</div>
+</div>
 <a id="a7aa48cabe94cbff0a836ad373b483a18" name="a7aa48cabe94cbff0a836ad373b483a18"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a7aa48cabe94cbff0a836ad373b483a18">&#9670;&#160;</a></span>columns()</h2>
 

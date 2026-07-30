@@ -3,6 +3,8 @@ var classnanom_1_1soa =
     [ "chunk", "structnanom_1_1soa_1_1chunk.html", "structnanom_1_1soa_1_1chunk" ],
     [ "column_info", "structnanom_1_1soa_1_1column__info.html", "structnanom_1_1soa_1_1column__info" ],
     [ "soa", "classnanom_1_1soa.html#a8ccca996480aab4ebd6e2da48863b409", null ],
+    [ "chunk_at", "classnanom_1_1soa.html#afca1b3dea142bd947fb3ee35bda8bc57", null ],
+    [ "chunk_count", "classnanom_1_1soa.html#aef5f1c9411fbb4c8435c5fcb0bc40ba2", null ],
     [ "columns", "classnanom_1_1soa.html#a7aa48cabe94cbff0a836ad373b483a18", null ],
     [ "for_each_chunk", "classnanom_1_1soa.html#abcd9c4cdc06164d211e6bcaafbb48591", null ],
     [ "push", "classnanom_1_1soa.html#ad8d3d77978a903f31394b238cbd07be1", null ],
