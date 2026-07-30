@@ -2,7 +2,7 @@
 // Phase 3 tests: SOME/IP (header + SD entries/options + optional TLV members), gPTP (all 8
 // message kinds + PATH_TRACE), and LLDP (reusing the already-tested dpar_sample.pcap fixture).
 
-#include "decode_pass.hpp"
+#include <nanom_shark/decode_pass.hpp>
 
 #include <cstdio>
 #include <fstream>
@@ -36,31 +36,31 @@ bool read_file(const std::string& path, std::vector<std::uint8_t>& out) {
 }
 
 void test_gptp_all_kinds() {
-  const char* testdata = NANO_SHARK_TESTDATA;
+  const char* testdata = NANOM_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
   CHECK(read_file(std::string(testdata) + "/gptp_fixture.pcapng", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};
   std::string error;
 
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
   CHECK(json_packets.size() == 9);  // 8 kinds + a second Announce (with PATH_TRACE)
 
   // All 9 gPTP tables populated (the 8 message kinds' 1-row-each, Announce x2, path_trace x3).
-  CHECK(tables.gptp.sync.rows() == 1);
-  CHECK(tables.gptp.delay_req.rows() == 1);
-  CHECK(tables.gptp.pdelay_req.rows() == 1);
-  CHECK(tables.gptp.pdelay_resp.rows() == 1);
-  CHECK(tables.gptp.follow_up.rows() == 1);
-  CHECK(tables.gptp.delay_resp.rows() == 1);
-  CHECK(tables.gptp.pdelay_resp_follow_up.rows() == 1);
-  CHECK(tables.gptp.announce.rows() == 2);
-  CHECK(tables.gptp.path_trace.rows() == 3);
+  CHECK(tables.get<"gptp_sync">().soa().rows() == 1);
+  CHECK(tables.get<"gptp_delay_req">().soa().rows() == 1);
+  CHECK(tables.get<"gptp_pdelay_req">().soa().rows() == 1);
+  CHECK(tables.get<"gptp_pdelay_resp">().soa().rows() == 1);
+  CHECK(tables.get<"gptp_follow_up">().soa().rows() == 1);
+  CHECK(tables.get<"gptp_delay_resp">().soa().rows() == 1);
+  CHECK(tables.get<"gptp_pdelay_resp_follow_up">().soa().rows() == 1);
+  CHECK(tables.get<"gptp_announce">().soa().rows() == 2);
+  CHECK(tables.get<"gptp_path_trace">().soa().rows() == 3);
 
   // Every kind is also visible in the JSON sink (one layer per message, from the same decode pass).
   bool saw[8] = {};
@@ -85,28 +85,28 @@ void test_gptp_all_kinds() {
 }
 
 void test_someip_default_ports() {
-  const char* testdata = NANO_SHARK_TESTDATA;
+  const char* testdata = NANOM_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
   CHECK(read_file(std::string(testdata) + "/someip_fixture.pcap", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};  // default someip_ports = {30490}; someip_tlv_ports empty
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};  // default someip_ports = {30490}; someip_tlv_ports empty
 
   std::string error;
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
 
   // request, response, SD message all ride on port 30490 -> 3 SomeipNode rows; the 4th packet (a
   // TLV message on port 30509) is NOT on a configured port, so it must be invisible by default.
-  CHECK(tables.someip.rows() == 3);
-  CHECK(tables.someip_tlv.rows() == 0);
+  CHECK(tables.get<"someip">().rows() == 3);
+  CHECK(tables.get<"someip_tlv">().rows() == 0);
 
   // Exactly one SD message -> FindService + OfferService entries, one IPv4 endpoint option.
-  CHECK(tables.someip_sd_entry.rows() == 2);
-  CHECK(tables.someip_sd_option.rows() == 1);
+  CHECK(tables.get<"someip_sd_entry">().rows() == 2);
+  CHECK(tables.get<"someip_sd_option">().rows() == 1);
 
   bool saw_someip = false, saw_sd_entry = false, saw_sd_option = false;
   for (const auto& pj : json_packets) {
@@ -121,7 +121,7 @@ void test_someip_default_ports() {
 
   // The endpoint option decodes to l4proto=17 (UDP), port=30509, address 192.168.1.10.
   bool found_option = false;
-  tables.someip_sd_option.soa().for_each_chunk([&](const auto& chunk) {
+  tables.get<"someip_sd_option">().soa().for_each_chunk([&](const auto& chunk) {
     auto l4 = chunk.template as<std::uint8_t>(4);   // packet_id,option_index,length,type,l4proto,...
     auto port = chunk.template as<std::uint16_t>(5);
     for (std::size_t i = 0; i < chunk.rows; ++i) {
@@ -132,27 +132,27 @@ void test_someip_default_ports() {
 }
 
 void test_someip_tlv_opt_in() {
-  const char* testdata = NANO_SHARK_TESTDATA;
+  const char* testdata = NANOM_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
   CHECK(read_file(std::string(testdata) + "/someip_fixture.pcap", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};
   opts.someip_ports.push_back(30509);
   opts.someip_tlv_ports.push_back(30509);
 
   std::string error;
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
 
-  CHECK(tables.someip.rows() == 4);       // now includes the TLV message
-  CHECK(tables.someip_tlv.rows() == 2);   // its two TLV members
+  CHECK(tables.get<"someip">().rows() == 4);       // now includes the TLV message
+  CHECK(tables.get<"someip_tlv">().rows() == 2);   // its two TLV members
 
   bool saw_data_id_1 = false, saw_data_id_2 = false;
-  tables.someip_tlv.soa().for_each_chunk([&](const auto& chunk) {
+  tables.get<"someip_tlv">().soa().for_each_chunk([&](const auto& chunk) {
     auto data_id = chunk.template as<std::uint16_t>(2);  // packet_id,tlv_index,data_id,...
     for (std::size_t i = 0; i < chunk.rows; ++i) {
       if (data_id[i] == 0x001) saw_data_id_1 = true;
@@ -166,25 +166,24 @@ void test_someip_tlv_opt_in() {
 void test_lldp_dpar_sample() {
   // Reuses the already-tested examples/nanotins_parity/testdata/dpar_sample.pcap fixture (proven
   // to contain LLDP frames via the existing parity_lldp ctest), rather than a new one.
-  const char* testdata = NANO_SHARK_TESTDATA;
   std::vector<std::uint8_t> bytes;
-  CHECK(read_file(std::string(testdata) + "/../../nanotins_parity/testdata/dpar_sample.pcap", bytes));
+  CHECK(read_file(std::string(NANOM_PARITY_TESTDATA) + "/dpar_sample.pcap", bytes));
   if (bytes.empty()) return;
 
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{&json_packets};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{&json_packets};
+  nanom_shark::DecodeOptions opts{};
   std::string error;
 
-  CHECK(nano_shark::run_decode_pass(file, tables, sink, opts, error));
-  CHECK(tables.lldp.rows() > 0);
+  CHECK(nanom_shark::run_decode_pass(file, tables, sink, opts, error));
+  CHECK(tables.get<"lldp">().rows() > 0);
 
   // Cross-checked against nanotins_parity/testdata/lldp_sample.ndjson's first row (packet 0's
   // Chassis ID TLV: type 1, length 7, subtype 4).
   bool found = false;
-  tables.lldp.soa().for_each_chunk([&](const auto& chunk) {
+  tables.get<"lldp">().soa().for_each_chunk([&](const auto& chunk) {
     auto tlv_type = chunk.template as<std::uint16_t>(2);
     auto tlv_length = chunk.template as<std::uint16_t>(3);
     auto subtype = chunk.template as<std::uint8_t>(4);
@@ -206,6 +205,6 @@ int main() {
     std::printf("%d failure(s)\n", failures);
     return 1;
   }
-  std::printf("nano_shark_protocols3_tests: OK\n");
+  std::printf("nanom_shark_protocols3_tests: OK\n");
   return 0;
 }

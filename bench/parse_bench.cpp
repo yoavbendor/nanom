@@ -23,8 +23,8 @@
 // right; for a hot classification walk, overlay<> is right and competitive with
 // a hand-tuned overlay parser.
 
-#include "../examples/nanotins_parity/nm_pcap.hpp"
-#include "../examples/nanotins_parity/nm_protocols.hpp"
+#include <nanom_shark/pcap.hpp>
+#include <nanom_shark/protocols.hpp>
 
 #include <chrono>
 #include <cstdint>

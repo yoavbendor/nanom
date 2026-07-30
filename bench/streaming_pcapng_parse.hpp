@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "nm_pcap.hpp"
+#include <nanom_shark/pcap.hpp>
 
 #include <nanom/nanom.hpp>
 

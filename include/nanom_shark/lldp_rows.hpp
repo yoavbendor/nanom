@@ -1,17 +1,17 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/lldp_rows.hpp — the LLDP TLV row, promoted from
+// nanom_shark/core/lldp_rows.hpp — the LLDP TLV row, promoted from
 // examples/nanotins_parity/dpar_lite.cpp's LldpTlvRow (that file is untouched; this is a copy).
 
-#include "node_row.hpp"
+#include <nanom_shark/node_row.hpp>
 
 #include <nanom/nanom.hpp>
 
 #include <array>
 #include <cstdint>
 
-namespace nano_shark {
+namespace nanom_shark {
 
 // One row per TLV. Variable-length values (a system name, a chassis id) can't be SoA columns
 // (columns are scalars or fixed-size byte arrays), so -- like nanotins' own LldpTlvRow -- this
@@ -33,8 +33,8 @@ struct LldpTlvRow {
   std::array<std::uint8_t, 32> value_head;
 };
 
-}  // namespace nano_shark
+}  // namespace nanom_shark
 
-NANOM_DESCRIBE(nano_shark::LldpTlvRow, packet_id, tlv_index, tlv_type, tlv_length, subtype,
+NANOM_DESCRIBE(nanom_shark::LldpTlvRow, packet_id, tlv_index, tlv_type, tlv_length, subtype,
               value_offset, ttl_seconds, caps_supported, caps_enabled, mgmt_addr_subtype,
               mgmt_iface_subtype, mgmt_iface_number, value_head);

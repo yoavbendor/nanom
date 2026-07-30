@@ -1,6 +1,6 @@
-# nano_shark: a textbook network analyzer
+# nanom_shark: a textbook network analyzer
 
-`examples/nano_shark/` is nanom's flagship example: a single pcap/pcapng decode pass — Ethernet,
+`nanom_shark` (headers in `include/nanom_shark/`, CLI in `apps/nanom_shark_cli.cpp`) is nanom's flagship decoder library: a single pcap/pcapng decode pass — Ethernet,
 VLAN 802.1Q/QinQ, IPv4/IPv6 (with fragment reassembly and the full IPv6 extension-header chain
 incl. SRv6), TCP/UDP, SOME/IP (incl. Service Discovery), all 8 gPTP message types, and LLDP — that
 drains into whichever sinks you ask for: a tshark-`-T json`-shaped NDJSON dump and a real Avro
@@ -10,19 +10,19 @@ Object Container File, both dependency-free. (Parquet and Lance sinks live in a 
 This page walks the architecture end to end. If you just want to run it:
 
 ```sh
-cmake -B build && cmake --build build --target nano_shark -j
-./build/nano_shark capture.pcapng --json out.ndjson
+cmake -B build && cmake --build build --target nanom_shark_cli -j
+./build/nanom_shark_cli capture.pcapng --json out.ndjson
 ```
 
 ## The core idea: reuse, don't re-type
 
 Every other pcap-to-columns tool in this space hand-writes a parallel "row" struct per protocol,
-duplicating every field name a wire struct already has. nano_shark doesn't: `Node<Body>` wraps an
+duplicating every field name a wire struct already has. nanom_shark doesn't: `Node<Body>` wraps an
 **existing** `NANOM_DESCRIBE`d wire struct as a nested field, and `nanom::soa<T>`'s dotted-name
 flattening already knows how to turn that nesting into `body.<field>` columns with no extra code:
 
 ```cpp
-// core/node_row.hpp
+// nanom_shark/node_row.hpp
 template <class Body>
 struct Node {
   packet_id_t   packet_id      = kNoPacket;
@@ -33,7 +33,7 @@ struct Node {
 ```
 
 ```cpp
-// core/l2l3_nodes.hpp — the entire per-protocol registration is one line:
+// nanom_shark/l2l3_nodes.hpp — the entire per-protocol registration is one line:
 using EthNode = Node<nmproto::Ethernet>;
 ```
 
@@ -46,19 +46,33 @@ identically whether nanom itself is built in C++23 macro mode or C++26 reflectio
 `node_table<Row>` is the columnar accumulator each protocol table uses — a name (the JSON layer
 key) plus the existing `nanom::soa<Row>`:
 
+The table SET is not hand-written — it is **derived from the registered protocol type list**. Each
+protocol declares its own named tables, and `tables_of<decoder<...>>` concatenates them:
+
 ```cpp
-struct AllTables {
-  node_table<PacketRow> packets{"packets"};  // one row per captured frame, decode-outcome-agnostic
-  node_table<EthNode>   eth{"eth"};
-  node_table<VlanNode>  vlan{"vlan"};
-  node_table<Ipv4Node>  ipv4{"ipv4"};
-  // ... ipv6, udp, tcp, defrag/datagram tables, someip*, gptp, lldp
+struct CoreL2L3 {                       // the base Eth/VLAN/IP/UDP/TCP walk's own tables
+  static constexpr auto tables = table_spec<
+      table_decl<"packets", PacketRow>,  // one row per captured frame, decode-outcome-agnostic
+      table_decl<"eth", EthNode>,
+      table_decl<"vlan", VlanNode>,
+      table_decl<"ipv4", Ipv4Node>,
+      /* ipv6, udp, tcp, ipv4_frag, ipv6_frag, datagram */>{};
 };
+
+using default_decoder = decoder<CoreL2L3, Someip, Gptp, Lldp>;  // the type list IS the registry
+using AllTables       = tables_of<default_decoder>;
+
+AllTables t;
+t.get<"eth">().push(row);                                    // compile-time name lookup
+t.for_each_table([](std::string_view name, const auto& soa) { ... });  // generic iteration
 ```
+
+`for_each_table` is what lets a sink be written once for every table that will ever exist —
+`dump_all_tables_avro` is a five-line loop over it.
 
 ## The decode pass
 
-`run_decode_pass()` (`core/decode_pass.hpp`) is the one entry point every sink drains from:
+`run_decode_pass()` (`nanom_shark/decode_pass.hpp`) is the one entry point every sink drains from:
 
 1. `nmpcap::scan_blocks()` walks the pcap/pcapng container structure (SHB/IDB/EPB or legacy pcap
    records) — reused verbatim from `examples/nanotins_parity/`.
@@ -71,16 +85,20 @@ struct AllTables {
    bytes throughout.
 4. A fragment-eligible IPv4/IPv6 packet is diverted into `defrag::ReassemblyTable<Key>` instead of
    falling through to L4 (see [Fragment reassembly](#fragment-reassembly)).
-5. UDP/TCP payloads reach `l4_dispatch.hpp`'s `dispatch_l4()` — the single L4 entry point used by
-   *both* the normal per-packet path and defrag's reassembly-completion re-entry, so there is never
-   a second, divergent copy of the UDP/TCP handling logic.
-6. `dispatch_l4()` additionally tries SOME/IP (Service Discovery is always attempted once a
-   `SomeipHeader` parses; port-gated for plain/TLV payloads via `DecodeOptions::someip_ports` /
-   `someip_tlv_ports`, since SOME/IP has no EtherType/magic-number tag of its own).
-7. Ethernet's ethertype also dispatches gPTP (`0x88F7`) and LLDP (`0x88CC`) directly, since both are
-   L2-terminal protocols with no IP layer underneath.
-8. Every row lands in `AllTables` always; when a JSON sink is attached, each layer *additionally*
-   renders straight into that packet's `PacketJson` at the same callback site.
+5. `walk_packet_ext()` reports each layer's **byte offset** (`on_offset` / `on_l2_done`) alongside
+   its decoded value, which is what fills in `decode_ctx` — the struct every trigger matches
+   against (`packet_id`, `datagram_id`, `is_reassembled`, `ethertype`, `ip_proto`,
+   `src_port`/`dst_port`, `link_type`, and the L2/L3/L4 offsets).
+6. There are two **dispatch points**, both of them the same `dispatch<Layer, Decoder>` fold over the
+   registered protocol type list: `layer::eth_payload` right after Ethernet + VLAN tags (gPTP
+   `0x88F7`, LLDP `0x88CC` — both L2-terminal, no IP underneath) and `layer::l4_payload` right after
+   the TCP/UDP header (SOME/IP). Every protocol whose trigger matches gets its `parse` called.
+7. The reassembly-completion re-entry reaches `layer::l4_payload` through the *same*
+   `dispatch_l4()`, over the reassembled datagram's zero-copy segment list — so the normal and
+   reassembled paths cannot drift apart. SOME/IP port matching, for instance, exists in exactly one
+   place: `Someip::trigger`.
+8. Every row lands in the decoder's table set always; when a JSON sink is attached, each layer
+   *additionally* renders straight into that packet's `PacketJson` at the same callback site.
 
 A malformed layer stops **that packet's** walk only (nanom's existing `walk_packet` contract) —
 `run_decode_pass()` itself returns `false` only when the pcap/pcapng container scan fails outright
@@ -88,7 +106,7 @@ A malformed layer stops **that packet's** walk only (nanom's existing `walk_pack
 
 ## Fragment reassembly
 
-`core/defrag.hpp` is the first heap-owning, cross-packet **stateful** table anywhere in the
+`nanom_shark/defrag.hpp` is the first heap-owning, cross-packet **stateful** table anywhere in the
 nano-family. A reassembled datagram's bytes are disjoint in the source file, but reassembly is
 **fully zero-copy**: every individual fragment's IP header is decoded over the file's own bytes,
 fragments are buffered as non-owning `std::span`s into that same source buffer, and on completion
@@ -127,7 +145,7 @@ surviving eviction, causing a crash on key reuse), now fixed and regression-test
 ## Segmented input: parsing across disjoint byte ranges
 
 `nanom/segmented.hpp` is the library layer that makes zero-copy reassembly possible — a general
-nanom feature, not nano_shark-specific, but reassembly is its motivating consumer. It parses a
+nanom feature, not nanom_shark-specific, but reassembly is its motivating consumer. It parses a
 logical buffer whose bytes live in an ordered list of **disjoint spans**, without ever copying
 them into one contiguous block.
 
@@ -157,7 +175,7 @@ differentially fuzzes segmented vs contiguous parses.
 
 ## The JSON sink
 
-`core/json_tree.hpp`'s `PacketJson` builds the tshark-shaped `{"_index":N,"_source":{"layers":{...}}}`
+`nanom_shark/json_tree.hpp`'s `PacketJson` builds the tshark-shaped `{"_index":N,"_source":{"layers":{...}}}`
 tree at runtime. `add_layer_json(name, json)` inserts a layer; a **second** call with the same name
 promotes it to a JSON array — this is what makes VLAN stacking, the IPv6 extension-header chain,
 LLDP TLVs, and SOME/IP SD entries render as repeated-field arrays, matching tshark's own shape,
@@ -165,7 +183,7 @@ without the caller needing to know in advance how many of a given layer a packet
 
 ## The Avro sink
 
-`core/avro_ocf.hpp` is a real Avro Object Container File writer — `"Obj\x01"` magic, a metadata map
+`nanom_shark/avro_ocf.hpp` is a real Avro Object Container File writer — `"Obj\x01"` magic, a metadata map
 (`avro.schema` = `nanom::avro_schema<T>()`, reused verbatim from `schema.hpp`; `avro.codec` =
 `"null"`), a random 16-byte sync marker, then one block per `nanom::soa<T>` chunk. The binary
 encoding itself is zigzag varints + raw IEEE-754 bytes + length-prefixed byte strings — no external
@@ -179,7 +197,7 @@ Parquet and Lance both need external libraries nanom itself never depends on, so
 sibling repo, [nanoshark](https://github.com/yoavbendor/nanoshark), which vendors nanom (plus
 [nanoarrow2parquet](https://github.com/yoavbendor/nanoarrow2parquet) and
 [nanolance](https://github.com/yoavbendor/nanolance)) as read-only git submodules. The bridge
-between nanom's columnar storage and either target schema is `core/soa_columns.hpp`'s
+between nanom's columnar storage and either target schema is `nanom_shark/soa_columns.hpp`'s
 `columns_of<T>` — a compile-time leaf-column **type list** that mirrors `nanom::soa<T>::columns()`'s
 own dotted-name flattening exactly (same names, same order, same per-row size — proven by
 `tests/test_soa_columns.cpp` across every current row shape), so nanoshark's Parquet and Lance
@@ -194,25 +212,58 @@ joins back to it by `packet_id` alone, never touching raw file bytes itself.
 
 ## Adding a new protocol
 
-Every step above composes the same way for a new protocol:
+**One new file. Zero edits to any library header.** That is the whole of it:
 
-1. A `NANOM_DESCRIBE`d (or, under C++26, plain) wire struct for its fixed header.
-2. `using FooNode = Node<Foo>;` if it fits the generic envelope, or a small synthesized row (with
-   its own `packet_id` field) if it doesn't — SOME/IP's SD entries/options and LLDP's per-TLV row
-   are both examples of the latter, since their shape varies by sub-type in a way `Node<Body>`
-   doesn't model.
-3. One `node_table<FooNode> foo{"foo"};` member on `AllTables`.
-4. A dispatch call from wherever the protocol is identifiable (an ethertype, an IP protocol number,
-   a UDP/TCP port, or a signature check on the payload itself) in `decode_pass.hpp` / `l4_dispatch.hpp`.
+```cpp
+struct FooHeader { nanom::be<std::uint32_t> id; nanom::be<std::uint16_t> len; };
+NANOM_DESCRIBE(FooHeader, id, len);
 
-Nothing else changes: the JSON sink renders it via the same `add_layer_json` call every other
-protocol uses, the Avro sink and `columns_of<T>` see it automatically (any `nanom::Described` type
-qualifies), and — once vendored via nanoshark — so do the Parquet and Lance sinks, with no changes
-needed in that repo at all.
+struct FooProto {
+  using trigger = udp_port<1234>;   // or ethertype<0x88F7>, ip_proto<17>, all_of<...>, ...
+  using state   = no_state;         // or a struct, for protocols that carry state across packets
+  static constexpr auto tables = table_spec<table_decl<"foo", Node<FooHeader>>>{};
+
+  static void parse(const decode_ctx& c, nanom::seg_input in, state&, auto& t, PacketJson* j) {
+    if (auto r = nanom::strct_seg<FooHeader>()(in))
+      t.template get<"foo">().push(Node<FooHeader>{c.packet_id, c.datagram_id, c.is_reassembled, r->value});
+  }
+};
+
+using my_decoder = decoder<CoreL2L3, Someip, Gptp, Lldp, FooProto>;   // register it
+tables_of<my_decoder> tables;                                          // and that is the call site
+run_decode_pass(file, tables, sink, opts, error);
+```
+
+`tests/nanom_shark_test_ergonomics.cpp` is exactly this, as an executable proof — including the
+same protocol receiving a datagram that arrived as two IPv4 fragments, decoded across the fragment
+seam, with no reassembly-aware code in `FooProto` at all.
+
+### The trigger DSL
+
+`ethertype<E>`, `ip_proto<P>`, `udp_port<Ports...>`, `tcp_port<Ports...>`, `link_type<L>`,
+`all_of<...>`, `any_of<...>`, `not_<T>`, `always`, `never`. Each is a compile-time predicate over
+`decode_ctx`; where the matched value is a constant it collapses to the same `==` a hand-written
+if-chain emits.
+
+The interesting case is a protocol with **no** EtherType and no magic number, identified only by a
+port agreed out-of-band — SOME/IP. `udp_port_cfg<&DecodeOptions::someip_ports>` names *which*
+runtime vector to consult with a **compile-time pointer-to-member**, so the protocol type list stays
+fully unrolled and only the port *values* are late-bound to the `DecodeOptions` the pass was given
+(`--someip-port` / `--someip-tlv-port` on the CLI).
+
+### What this buys
+
+Dispatch stays **compile-time only** — no type erasure, no virtual calls, no runtime registry. The
+`decoder<...>` fold is unrolled into the same if-chain the hand-written code used to be, and a
+dispatch point does not even instantiate a protocol whose trigger cannot match there. The JSON sink
+renders the new layer via the same `add_layer` every other protocol uses, and the Avro sink picks
+the new tables up through `for_each_table` with no edit. (The Parquet and Lance sinks in the
+nanoshark repo still carry a hand-written table list; collapsing them onto `for_each_table` is
+Phase 3.)
 
 ## See also
 
-- [Design](design.md) — the `describe<T>` seam, zero-copy views, error model (the ideas nano_shark
+- [Design](design.md) — the `describe<T>` seam, zero-copy views, error model (the ideas nanom_shark
   builds on).
 - [Memory safety](MEMORY_SAFETY.md) — `NANOM_GENERATION`/`NANOM_GUARD_VIEWS` and what they catch.
 - [nanoshark](https://github.com/yoavbendor/nanoshark) — the Parquet/Lance integration repo.

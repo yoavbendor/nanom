@@ -3,7 +3,7 @@
 // Microbenchmark for segmented (scatter-gather) input, quantifying the two claims the segmented
 // design rests on:
 //
-//   (A) STITCH vs SEGMENTS on the reassembly re-entry. When an IP datagram completes, nano_shark
+//   (A) STITCH vs SEGMENTS on the reassembly re-entry. When an IP datagram completes, nanom_shark
 //       re-parses its L4 header. The OLD path stitched every fragment into one owned buffer first
 //       (a copy of the whole datagram, up to 64 KiB) and parsed that; the NEW path parses straight
 //       over the fragment views (strct_seg gathers only the L4 header's bytes). For anything past a
@@ -24,7 +24,7 @@
 
 #include <nanom/nanom.hpp>
 
-#include "../examples/nanotins_parity/nm_protocols.hpp"
+#include <nanom_shark/protocols.hpp>
 
 #include <chrono>
 #include <cstdint>

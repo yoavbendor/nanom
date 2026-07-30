@@ -10,11 +10,11 @@
 // shows up as a crash. Build via -DNANOM_BUILD_FUZZERS with Clang; run:
 // ./fuzz_defrag -max_total_time=60 corpus/
 
-#include "../examples/nano_shark/core/defrag.hpp"
+#include <nanom_shark/defrag.hpp>
 
 #include <nanom/nanom.hpp>
 
-#include "../examples/nanotins_parity/nm_protocols.hpp"
+#include <nanom_shark/protocols.hpp>
 
 #include <algorithm>
 #include <cstddef>
@@ -23,8 +23,8 @@
 
 namespace {
 
-using nano_shark::defrag::Ipv4Key;
-using nano_shark::defrag::ReassemblyTable;
+using nanom_shark::defrag::Ipv4Key;
+using nanom_shark::defrag::ReassemblyTable;
 
 struct Cursor {
   const std::uint8_t* p;
@@ -58,7 +58,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
       Ipv4Key{{0, 0, 0, 0}, {0, 0, 0, 0}, 0, 0},
   };
 
-  nano_shark::packet_id_t pid = 0;
+  nanom_shark::packet_id_t pid = 0;
   while (c.p + 4 <= c.end) {
     const std::uint8_t ctrl = c.u8();
     if ((ctrl & 0x0F) == 0) {  // occasionally just age the table forward

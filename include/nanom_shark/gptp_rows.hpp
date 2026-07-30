@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 // gPTP (IEEE 802.1AS) row structs — promoted from bindings/python/gptp/gptp_rows.hpp into a
-// first-class part of the nano_shark decode core (that file is untouched; this is a copy, not a
+// first-class part of the nanom_shark decode core (that file is untouched; this is a copy, not a
 // move, since the Python bindings still use it).
 //
 // A comprehensive stress test of the pcapng example's claim ("change ~10 lines for your format"): gPTP
@@ -65,7 +65,7 @@ enum : std::uint8_t {
 
 // Every row carries these common-header fields flattened in. msg_index (assigned by the parser,
 // not read from the wire) is the cross-gPTP-table join key, since gPTP bodies are heterogeneous
-// and don't fit the Node<Body>/AllTables pattern the rest of nano_shark's protocols use;
+// and don't fit the Node<Body>/AllTables pattern the rest of nanom_shark's protocols use;
 // packet_id is additive context (which captured frame this message came from), not a key change.
 struct RowCommon {
   std::uint64_t  msg_index;

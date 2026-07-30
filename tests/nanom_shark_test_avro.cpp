@@ -6,7 +6,7 @@
 // verification isn't wired into ctest since it would be the first Python+pip test dependency in
 // nanom's own suite (nanoarrow2parquet's check_soa*.py precedent is a different repo/posture).
 
-#include "avro_ocf.hpp"
+#include <nanom_shark/avro_ocf.hpp>
 
 #include <array>
 #include <cstdio>
@@ -94,7 +94,7 @@ void test_field_encoding_round_trip() {
   const Row row{-1, 40000, -70000, 0xFFFFFFFFFFULL, 3.5f, -2.25, true, Inner{7, {1, 2, 3}}};
 
   std::vector<std::byte> bytes;
-  nano_shark::avro_encode_row(row, bytes);
+  nanom_shark::avro_encode_row(row, bytes);
 
   Reader r{bytes.data(), bytes.data() + bytes.size()};
   CHECK(r.zigzag() == row.i8v);
@@ -117,7 +117,7 @@ void test_varint_known_values() {
   // (not via Reader, so this doesn't just check the encoder against its own decode logic).
   auto encode_one = [](std::int64_t v) {
     std::vector<std::byte> out;
-    nano_shark::avro_put_long(out, v);
+    nanom_shark::avro_put_long(out, v);
     return out;
   };
   CHECK(encode_one(0) == std::vector<std::byte>{std::byte{0x00}});
@@ -129,9 +129,9 @@ void test_varint_known_values() {
 }
 
 void test_ocf_framing() {
-  const std::string path = "/tmp/nano_shark_test_avro_framing.avro";
+  const std::string path = "/tmp/nanom_shark_test_avro_framing.avro";
   {
-    nano_shark::AvroOcfWriter<Row> w(path);
+    nanom_shark::AvroOcfWriter<Row> w(path);
     CHECK(w.ok());
     w.write_row(Row{1, 2, 3, 4, 1.0f, 2.0, false, Inner{5, {6, 7, 8}}});
     w.write_row(Row{-1, 2, -3, 4, 1.0f, 2.0, true, Inner{5, {6, 7, 8}}});
@@ -195,6 +195,6 @@ int main() {
     std::printf("%d failure(s)\n", failures);
     return 1;
   }
-  std::printf("nano_shark_avro_tests: OK\n");
+  std::printf("nanom_shark_avro_tests: OK\n");
   return 0;
 }

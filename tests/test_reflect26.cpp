@@ -13,7 +13,7 @@
 #error "test_reflect26.cpp must be compiled with a P2996 reflection compiler (see NANOM_CXX26_REFLECTION)"
 #endif
 
-#include "../examples/nanotins_parity/nm_protocols.hpp"  // real wire structs incl. namespaced types
+#include <nanom_shark/protocols.hpp>  // real wire structs incl. namespaced types
 
 #include <cstdio>
 #include <string_view>

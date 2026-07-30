@@ -9,11 +9,23 @@ target_include_directories(nanom INTERFACE
   $<INSTALL_INTERFACE:include>)
 target_compile_features(nanom INTERFACE cxx_std_23)
 
+# ---- nanom_shark: the pcap/pcapng protocol-decoder library ----------------
+# Header-only, nanom-only (no third-party deps). Promoted out of examples/ so subproject /
+# FetchContent consumers get a real target — hence declared ABOVE the PROJECT_IS_TOP_LEVEL
+# return below. Headers ship via the same install(DIRECTORY include/) rule as nanom's.
+add_library(nanom_shark INTERFACE)
+add_library(nanom::shark ALIAS nanom_shark)
+target_link_libraries(nanom_shark INTERFACE nanom)
+target_compile_features(nanom_shark INTERFACE cxx_std_23)
+# Export as nanom::shark (not nanom::nanom_shark) so the installed package spells the target
+# exactly like the build-tree ALIAS above — consumers use one name either way.
+set_target_properties(nanom_shark PROPERTIES EXPORT_NAME shark)
+
 # ---- install + package config (so downstreams can find_package(nanom)) -----
 include(CMakePackageConfigHelpers)
 include(GNUInstallDirs)
 install(DIRECTORY include/ DESTINATION ${CMAKE_INSTALL_INCLUDEDIR})
-install(TARGETS nanom EXPORT nanomTargets)
+install(TARGETS nanom nanom_shark EXPORT nanomTargets)
 install(EXPORT nanomTargets NAMESPACE nanom:: DESTINATION ${CMAKE_INSTALL_LIBDIR}/cmake/nanom)
 file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/nanomConfig.cmake"
   "include(CMakeFindDependencyMacro)\nfind_dependency(Threads)\ninclude(\"\${CMAKE_CURRENT_LIST_DIR}/nanomTargets.cmake\")\n")
@@ -131,7 +143,6 @@ add_test(NAME nanom_tests COMMAND nanom_tests)
 # Segmented (scatter-gather) input: exhaustive boundary property (cursor primitives agree with
 # the contiguous cursor over every split) + strct_seg/overlay_seg differential parity.
 nanom_exe(nanom_segmented_tests tests/test_segmented.cpp)
-target_include_directories(nanom_segmented_tests PRIVATE ${parity_dir})
 add_test(NAME nanom_segmented_tests COMMAND nanom_segmented_tests)
 
 # Memory-safety regression suite: enforced guards (must pass).
@@ -147,8 +158,7 @@ nanom_exe(nanom_streaming_safety_tests tests/test_streaming_safety.cpp)
 target_compile_definitions(nanom_streaming_safety_tests PRIVATE
   NANOM_GENERATION_THROW=1
   NANOM_STREAMING_FIXTURE="${td}/SRL_front_left_51_short.pcapng")
-target_include_directories(nanom_streaming_safety_tests PRIVATE
-  ${CMAKE_SOURCE_DIR}/bench ${parity_dir})
+target_include_directories(nanom_streaming_safety_tests PRIVATE ${CMAKE_SOURCE_DIR}/bench)
 add_test(NAME nanom_streaming_safety_tests COMMAND nanom_streaming_safety_tests)
 
 # Strict "safe routes only" profile: compile-time restrictions + lean runtime.
@@ -242,76 +252,88 @@ add_test(NAME parity_lldp
     "-DARGS=${td}/lldp_rules.txt;${td}/dpar_sample.pcap"
     -DGOLDEN=${td}/lldp_sample.ndjson -P ${parity_dir}/diff_test.cmake)
 
-# ---- nano_shark: the textbook mega example (Phase 1: core walk + JSON sink) ----------------
-# Dependency-free (nanom only). Reuses nanotins_parity's pcap scanner + protocol structs verbatim
-# (parity_dir on the include path) rather than duplicating them.
-set(nano_shark_dir ${CMAKE_CURRENT_SOURCE_DIR}/examples/nano_shark)
-nanom_exe(nano_shark ${nano_shark_dir}/src/nano_shark_main.cpp)
-target_include_directories(nano_shark PRIVATE ${parity_dir} ${nano_shark_dir}/core)
+# ---- nanom_shark: the pcap/pcapng decoder library's CLI + test suite ----------------------
+# The library target (nanom::shark) is declared at the top of this file, above the
+# PROJECT_IS_TOP_LEVEL return. Its headers live in include/nanom_shark/, so the targets below
+# just link nanom::shark instead of hand-rolling include paths.
+set(nanom_shark_td ${CMAKE_CURRENT_SOURCE_DIR}/tests/testdata/nanom_shark)
+
+nanom_exe(nanom_shark_cli apps/nanom_shark_cli.cpp)
+target_link_libraries(nanom_shark_cli PRIVATE nanom::shark)
 
 # CLI-level regression test: with NO sink flag at all, the documented default ("--json is written to
 # stdout") must actually happen -- catches a real bug where json_to_stdout was computed before the
 # "default to JSON" fallback ran, so this exact no-flags invocation tried to fopen(nullptr, "wb").
-add_test(NAME nano_shark_cli_default_stdout
+add_test(NAME nanom_shark_cli_default_stdout
          COMMAND bash -c
-             "$<TARGET_FILE:nano_shark> ${nano_shark_dir}/testdata/ipv4_fragments_sample.pcap | \
+             "$<TARGET_FILE:nanom_shark_cli> ${nanom_shark_td}/ipv4_fragments_sample.pcap | \
               grep -q '\"_index\":0'")
 
-nanom_exe(nano_shark_tests ${nano_shark_dir}/tests/test_json_tree.cpp)
-target_include_directories(nano_shark_tests PRIVATE ${parity_dir} ${nano_shark_dir}/core)
-target_compile_definitions(nano_shark_tests PRIVATE NANO_SHARK_TESTDATA="${td}")
-add_test(NAME nano_shark_tests COMMAND nano_shark_tests)
+nanom_exe(nanom_shark_tests tests/nanom_shark_test_json_tree.cpp)
+target_link_libraries(nanom_shark_tests PRIVATE nanom::shark)
+target_compile_definitions(nanom_shark_tests PRIVATE NANOM_SHARK_TESTDATA="${td}")
+add_test(NAME nanom_shark_tests COMMAND nanom_shark_tests)
 
 # Phase 2: IPv4/IPv6 defragmentation, against fixtures synthesized by testdata/gen_fragments.py
 # (no scapy dependency -- see that script's own header comment).
-nanom_exe(nano_shark_defrag_tests ${nano_shark_dir}/tests/test_defrag.cpp)
-target_include_directories(nano_shark_defrag_tests PRIVATE ${parity_dir} ${nano_shark_dir}/core)
-target_compile_definitions(nano_shark_defrag_tests PRIVATE
-  NANO_SHARK_TESTDATA="${nano_shark_dir}/testdata")
-add_test(NAME nano_shark_defrag_tests COMMAND nano_shark_defrag_tests)
+nanom_exe(nanom_shark_defrag_tests tests/nanom_shark_test_defrag.cpp)
+target_link_libraries(nanom_shark_defrag_tests PRIVATE nanom::shark)
+target_compile_definitions(nanom_shark_defrag_tests PRIVATE
+  NANOM_SHARK_TESTDATA="${nanom_shark_td}")
+add_test(NAME nanom_shark_defrag_tests COMMAND nanom_shark_defrag_tests)
 
 # Phase 3: SOME/IP (header + SD entries/options + optional TLV members), gPTP (all 8 message
 # kinds), LLDP (reusing the existing dpar_sample.pcap fixture).
-nanom_exe(nano_shark_protocols3_tests ${nano_shark_dir}/tests/test_protocols3.cpp)
-target_include_directories(nano_shark_protocols3_tests PRIVATE ${parity_dir} ${nano_shark_dir}/core)
-target_compile_definitions(nano_shark_protocols3_tests PRIVATE
-  NANO_SHARK_TESTDATA="${nano_shark_dir}/testdata")
-add_test(NAME nano_shark_protocols3_tests COMMAND nano_shark_protocols3_tests)
+nanom_exe(nanom_shark_protocols3_tests tests/nanom_shark_test_protocols3.cpp)
+target_link_libraries(nanom_shark_protocols3_tests PRIVATE nanom::shark)
+target_compile_definitions(nanom_shark_protocols3_tests PRIVATE
+  NANOM_SHARK_TESTDATA="${nanom_shark_td}"
+  # The LLDP case reuses nanotins_parity's dpar_sample.pcap; pass that directory explicitly
+  # rather than walking up out of the nanom_shark testdata dir with a relative path.
+  NANOM_PARITY_TESTDATA="${td}")
+add_test(NAME nanom_shark_protocols3_tests COMMAND nanom_shark_protocols3_tests)
 
-# Phase 8: golden-diff regression tests for nano_shark's own JSON output on the defrag/SOME-IP/
+# Phase 8: golden-diff regression tests for nanom_shark's own JSON output on the defrag/SOME-IP/
 # gPTP/LLDP fixtures -- these were previously checked only programmatically (CHECK() assertions on
 # individual field values); this pins the exact NDJSON shape too, via the same diff_test.cmake
 # helper nanotins_parity's own golden tests already use.
 foreach(fx ipv4_fragments_sample ipv6_fragments_sample someip_fixture)
-  add_test(NAME nano_shark_golden_${fx}
-    COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nano_shark>
-      -DARGS=${nano_shark_dir}/testdata/${fx}.pcap -DGOLDEN=${nano_shark_dir}/testdata/${fx}.ndjson
+  add_test(NAME nanom_shark_golden_${fx}
+    COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nanom_shark_cli>
+      -DARGS=${nanom_shark_td}/${fx}.pcap -DGOLDEN=${nanom_shark_td}/${fx}.ndjson
       -P ${parity_dir}/diff_test.cmake)
 endforeach()
-add_test(NAME nano_shark_golden_gptp_fixture
-  COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nano_shark>
-    -DARGS=${nano_shark_dir}/testdata/gptp_fixture.pcapng
-    -DGOLDEN=${nano_shark_dir}/testdata/gptp_fixture.ndjson
+add_test(NAME nanom_shark_golden_gptp_fixture
+  COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nanom_shark_cli>
+    -DARGS=${nanom_shark_td}/gptp_fixture.pcapng
+    -DGOLDEN=${nanom_shark_td}/gptp_fixture.ndjson
     -P ${parity_dir}/diff_test.cmake)
 # LLDP reuses nanotins_parity's already-golden-tested dpar_sample.pcap fixture (see parity_lldp)
-# rather than a new one -- same fixture test_protocols3.cpp's test_lldp_dpar_sample() decodes.
-add_test(NAME nano_shark_golden_lldp_dpar_sample
-  COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nano_shark>
+# rather than a new one -- same fixture nanom_shark_test_protocols3.cpp's test_lldp_dpar_sample()
+# decodes.
+add_test(NAME nanom_shark_golden_lldp_dpar_sample
+  COMMAND ${CMAKE_COMMAND} -DEXE=$<TARGET_FILE:nanom_shark_cli>
     -DARGS=${parity_dir}/testdata/dpar_sample.pcap
-    -DGOLDEN=${nano_shark_dir}/testdata/dpar_sample_lldp.ndjson
+    -DGOLDEN=${nanom_shark_td}/dpar_sample_lldp.ndjson
     -P ${parity_dir}/diff_test.cmake)
 
 # Phase 4: the Avro Object Container File sink.
-nanom_exe(nano_shark_avro_tests ${nano_shark_dir}/tests/test_avro.cpp)
-target_include_directories(nano_shark_avro_tests PRIVATE ${nano_shark_dir}/core)
-add_test(NAME nano_shark_avro_tests COMMAND nano_shark_avro_tests)
+# Phase 2 acceptance test: a brand-new protocol defined in ONE new file (this .cpp), registered in
+# a decoder<...> type list, with ZERO edits to any header under include/nanom_shark/.
+nanom_exe(nanom_shark_ergonomics_tests tests/nanom_shark_test_ergonomics.cpp)
+target_link_libraries(nanom_shark_ergonomics_tests PRIVATE nanom::shark)
+add_test(NAME nanom_shark_ergonomics_tests COMMAND nanom_shark_ergonomics_tests)
+
+nanom_exe(nanom_shark_avro_tests tests/nanom_shark_test_avro.cpp)
+target_link_libraries(nanom_shark_avro_tests PRIVATE nanom::shark)
+add_test(NAME nanom_shark_avro_tests COMMAND nanom_shark_avro_tests)
 
 # Phase 5: soa_columns.hpp's columns_of<T> -- the compile-time leaf-column type list the sibling
 # `nanoshark` repo's Parquet/Lance sink bridges fold into their own column packs. Proves it agrees
 # with nanom::soa<T>::columns() (name, order, per-row size) for every current node/row shape.
-nanom_exe(nano_shark_soa_columns_tests ${nano_shark_dir}/tests/test_soa_columns.cpp)
-target_include_directories(nano_shark_soa_columns_tests PRIVATE ${parity_dir} ${nano_shark_dir}/core)
-add_test(NAME nano_shark_soa_columns_tests COMMAND nano_shark_soa_columns_tests)
+nanom_exe(nanom_shark_soa_columns_tests tests/nanom_shark_test_soa_columns.cpp)
+target_link_libraries(nanom_shark_soa_columns_tests PRIVATE nanom::shark)
+add_test(NAME nanom_shark_soa_columns_tests COMMAND nanom_shark_soa_columns_tests)
 
 # ---- robustness fuzzer (self-contained; also a ctest) ---------------------
 nanom_exe(nm_self_fuzz fuzz/self_fuzz.cpp)
@@ -323,7 +345,6 @@ nanom_exe(nm_parse_bench bench/parse_bench.cpp)
 nanom_exe(nm_safety_microbench bench/safety_microbench.cpp)
 nanom_exe(nm_bulk_bench  examples/nanotins_parity/pcap_bulk.cpp)  # reuse as bulk bench
 nanom_exe(nm_segmented_bench bench/segmented_bench.cpp)  # stitch-vs-segments + per-wrap overhead
-target_include_directories(nm_segmented_bench PRIVATE ${parity_dir})
 add_test(NAME bench_smoke_parse COMMAND nm_parse_bench ${td}/srv6_sample.pcap 2)
 add_test(NAME bench_smoke_safety COMMAND nm_safety_microbench 2)
 add_test(NAME bench_smoke_bulk  COMMAND nm_bulk_bench  ${td}/srv6_sample.pcap 50 2)
@@ -337,7 +358,7 @@ if(NANOM_BUILD_FUZZERS)
   foreach(fz scan_walk streaming_pcapng defrag segmented)
     add_executable(fuzz_${fz} fuzz/fuzz_${fz}.cpp)
     target_link_libraries(fuzz_${fz} PRIVATE nanom Threads::Threads)
-    target_include_directories(fuzz_${fz} PRIVATE ${CMAKE_SOURCE_DIR}/bench ${parity_dir})
+    target_include_directories(fuzz_${fz} PRIVATE ${CMAKE_SOURCE_DIR}/bench)
     target_compile_options(fuzz_${fz} PRIVATE -g -O1 -fsanitize=fuzzer,address,undefined)
     target_link_options(fuzz_${fz}    PRIVATE   -fsanitize=fuzzer,address,undefined)
     if(fz STREQUAL streaming_pcapng)

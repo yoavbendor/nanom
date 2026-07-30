@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/node_row.hpp — the one per-protocol row envelope + table container.
+// nanom_shark/core/node_row.hpp — the one per-protocol row envelope + table container.
 //
 // Every protocol layer's row reuses its EXISTING NANOM_DESCRIBE'd wire struct as a nested field
 // (nanom::soa<T>'s dotted-flattening already knows how to turn a nested Described member into
@@ -17,7 +17,7 @@
 #include <string>
 #include <string_view>
 
-namespace nano_shark {
+namespace nanom_shark {
 
 namespace nm = nanom;
 
@@ -53,7 +53,7 @@ class node_table {
   nm::soa<Row> table_;
 };
 
-}  // namespace nano_shark
+}  // namespace nanom_shark
 
 // Node<Body> is always exactly {packet_id, datagram_id, is_reassembled, body} regardless of Body,
 // so one partial specialization registers every protocol's Node<...> at once — no per-protocol
@@ -70,13 +70,13 @@ class node_table {
 // tests/test_reflect26.cpp's "override semantics" section), so it compiles identically whether
 // nanom itself is built with the C++23 macro provider or the C++26 reflection provider.
 template <class Body>
-struct nanom::describe<nano_shark::Node<Body>> {
-  static constexpr const char* name() { return "nano_shark::Node"; }
+struct nanom::describe<nanom_shark::Node<Body>> {
+  static constexpr const char* name() { return "nanom_shark::Node"; }
   static constexpr auto fields() {
     return std::make_tuple(
-        nanom::detail::fld<"packet_id", &nano_shark::Node<Body>::packet_id>{},
-        nanom::detail::fld<"datagram_id", &nano_shark::Node<Body>::datagram_id>{},
-        nanom::detail::fld<"is_reassembled", &nano_shark::Node<Body>::is_reassembled>{},
-        nanom::detail::fld<"body", &nano_shark::Node<Body>::body>{});
+        nanom::detail::fld<"packet_id", &nanom_shark::Node<Body>::packet_id>{},
+        nanom::detail::fld<"datagram_id", &nanom_shark::Node<Body>::datagram_id>{},
+        nanom::detail::fld<"is_reassembled", &nanom_shark::Node<Body>::is_reassembled>{},
+        nanom::detail::fld<"body", &nanom_shark::Node<Body>::body>{});
   }
 };

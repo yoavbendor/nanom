@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/json_tree.hpp — a tshark `-T json`-shaped nested JSON tree for one packet.
+// nanom_shark/core/json_tree.hpp — a tshark `-T json`-shaped nested JSON tree for one packet.
 //
 // tshark's own `-T json` output is, per packet, {"_index":N,"_source":{"layers":{<proto>:{...},...}}}
 // with protocol keys in decode order and a layer name repeated (VLAN stacking, IPv6 extension-header
@@ -18,14 +18,14 @@
 
 #include <nanom/nanom.hpp>
 
-#include "node_row.hpp"
+#include <nanom_shark/node_row.hpp>
 
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
-namespace nano_shark {
+namespace nanom_shark {
 
 class PacketJson {
  public:
@@ -97,4 +97,4 @@ inline void append_packet(std::string& out, const PacketJson& pj, bool array_mod
   }
 }
 
-}  // namespace nano_shark
+}  // namespace nanom_shark

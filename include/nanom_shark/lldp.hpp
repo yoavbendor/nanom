@@ -1,20 +1,21 @@
 // SPDX-License-Identifier: Apache-2.0
 #pragma once
 
-// nano_shark/core/lldp.hpp — LLDP (IEEE 802.1AB) TLV walk, promoted from
+// nanom_shark/core/lldp.hpp — LLDP (IEEE 802.1AB) TLV walk, promoted from
 // examples/nanotins_parity/dpar_lite.cpp's lldp_hdr/lldp_tlv/p_lldp_tlv and the "lldp" branch of
 // its run_kind() (that file is untouched; this factors the same decode logic into a reusable
 // walk() called directly from decode_pass.hpp rather than through the DPAR rule engine).
 
-#include "json_tree.hpp"
-#include "lldp_rows.hpp"
-#include "node_row.hpp"
+#include <nanom_shark/json_tree.hpp>
+#include <nanom_shark/lldp_rows.hpp>
+#include <nanom_shark/node_row.hpp>
+#include <nanom_shark/protocol.hpp>
 
 #include <nanom/nanom.hpp>
 
 #include <cstring>
 
-namespace nano_shark::lldp {
+namespace nanom_shark::lldp {
 
 namespace nm = nanom;
 
@@ -30,11 +31,11 @@ struct lldp_hdr {
   nm::ubits<9> length;
 };
 
-}  // namespace nano_shark::lldp
+}  // namespace nanom_shark::lldp
 
-NANOM_DESCRIBE(nano_shark::lldp::lldp_hdr, type, length);
+NANOM_DESCRIBE(nanom_shark::lldp::lldp_hdr, type, length);
 
-namespace nano_shark::lldp {
+namespace nanom_shark::lldp {
 
 struct lldp_tlv {
   std::uint16_t type;
@@ -110,4 +111,21 @@ inline void walk(nm::bytes region, packet_id_t pid, LldpTable& table, PacketJson
   }
 }
 
-}  // namespace nano_shark::lldp
+}  // namespace nanom_shark::lldp
+
+namespace nanom_shark {
+
+// LLDP rides directly on Ethernet (optionally under VLAN tags), so its trigger is a plain
+// compile-time ethertype compare -- codegen-identical to the `ethertype == 0x88CC` it replaces.
+struct Lldp {
+  using trigger = ethertype<lldp::kEtherTypeLldp>;
+  using state   = no_state;
+
+  static constexpr auto tables = table_spec<table_decl<"lldp", LldpTlvRow>>{};
+
+  static void parse(const decode_ctx& c, nanom::seg_input, no_state&, auto& t, PacketJson* json) {
+    lldp::walk(c.eth_payload_bytes(), c.packet_id, t.template get<"lldp">(), json);
+  }
+};
+
+}  // namespace nanom_shark

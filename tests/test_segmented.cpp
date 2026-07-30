@@ -7,7 +7,7 @@
 
 #include <nanom/nanom.hpp>
 
-#include "../examples/nanotins_parity/nm_protocols.hpp"  // real wire structs (Ethernet/Ipv4/...)
+#include <nanom_shark/protocols.hpp>  // real wire structs (Ethernet/Ipv4/...)
 
 #include <cstdio>
 #include <cstring>

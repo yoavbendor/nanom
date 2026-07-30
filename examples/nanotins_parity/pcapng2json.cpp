@@ -7,8 +7,8 @@
 // same walk, same JSON — different parsing core). Parse and emit are separate
 // functions so a benchmark can time decode without the JSON cost.
 
-#include "nm_pcap.hpp"
-#include "nm_protocols.hpp"
+#include <nanom_shark/pcap.hpp>
+#include <nanom_shark/protocols.hpp>
 
 #include <cstdio>
 #include <string>

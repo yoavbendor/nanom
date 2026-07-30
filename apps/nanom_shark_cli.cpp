@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: Apache-2.0
 
-// nano_shark — the textbook nanom network analyzer. Decodes pcap/pcapng end to end (Ethernet,
+// nanom_shark — the textbook nanom network analyzer. Decodes pcap/pcapng end to end (Ethernet,
 // VLAN 802.1Q/QinQ, IPv4 with defragmentation, IPv6 with its full extension-header chain incl.
 // SRv6, TCP/UDP, SOME/IP incl. Service Discovery, gPTP's all 8 message types, LLDP) in one pass,
 // then drains the same in-memory tables into whichever sinks were requested: a tshark `-T
@@ -8,8 +8,8 @@
 // per table (--avro) -- both dependency-free. Parquet and Lance sinks live in a separate,
 // dedicated repo that vendors this one, since they need heavier external libraries.
 
-#include "../core/avro_dump.hpp"
-#include "../core/decode_pass.hpp"
+#include <nanom_shark/avro_dump.hpp>
+#include <nanom_shark/decode_pass.hpp>
 
 #include <cstdio>
 #include <cstdlib>
@@ -35,6 +35,10 @@ void usage(const char* argv0) {
               "  --json-array out.json: one JSON array of per-packet objects\n"
               "  --avro out-stem      : one <out-stem>_<table>.avro Object Container File per\n"
               "                         non-empty table (eth/ipv4/.../someip/gptp_sync/lldp/...)\n"
+              "  --someip-port P      : also attempt a SOME/IP parse on UDP port P (repeatable;\n"
+              "                         replaces the default set {30490} on first use)\n"
+              "  --someip-tlv-port P  : treat UDP port P's SOME/IP payload as TLV-serialized\n"
+              "                         (repeatable; implies --someip-port P)\n"
               "  (with no sink flag at all, --json is written to stdout; --json and --avro may\n"
               "  both be given, draining the same decode pass into both)\n",
               argv0);
@@ -52,6 +56,9 @@ int main(int argc, char** argv) {
   const char* avro_stem = nullptr;
   bool array_mode = false;
   bool json_requested = false;
+  // DecodeOptions' SOME/IP port configuration used to be unreachable from here (the CLI always
+  // default-constructed DecodeOptions), so SOME/IP was only ever decoded on port 30490.
+  std::vector<std::uint16_t> someip_ports, someip_tlv_ports;
 
   for (int i = 1; i < argc; ++i) {
     const std::string a = argv[i];
@@ -59,20 +66,32 @@ int main(int argc, char** argv) {
       array_mode = (a == "--json-array");
       json_requested = true;
       if (i + 1 >= argc) {
-        std::fprintf(stderr, "nano_shark: %s requires a path\n", a.c_str());
+        std::fprintf(stderr, "nanom_shark: %s requires a path\n", a.c_str());
         return 2;
       }
       json_path = argv[++i];
+    } else if (a == "--someip-port" || a == "--someip-tlv-port") {
+      if (i + 1 >= argc) {
+        std::fprintf(stderr, "nanom_shark: %s requires a UDP port number\n", a.c_str());
+        return 2;
+      }
+      const long port = std::strtol(argv[++i], nullptr, 10);
+      if (port <= 0 || port > 65535) {
+        std::fprintf(stderr, "nanom_shark: %s: '%s' is not a UDP port\n", a.c_str(), argv[i]);
+        return 2;
+      }
+      someip_ports.push_back(std::uint16_t(port));
+      if (a == "--someip-tlv-port") someip_tlv_ports.push_back(std::uint16_t(port));
     } else if (a == "--avro") {
       if (i + 1 >= argc) {
-        std::fprintf(stderr, "nano_shark: --avro requires a path stem\n");
+        std::fprintf(stderr, "nanom_shark: --avro requires a path stem\n");
         return 2;
       }
       avro_stem = argv[++i];
     } else if (!input_path) {
       input_path = argv[i];
     } else {
-      std::fprintf(stderr, "nano_shark: unexpected argument '%s'\n", a.c_str());
+      std::fprintf(stderr, "nanom_shark: unexpected argument '%s'\n", a.c_str());
       usage(argv[0]);
       return 2;
     }
@@ -86,26 +105,28 @@ int main(int argc, char** argv) {
 
   std::vector<std::uint8_t> bytes;
   if (!read_file(input_path, bytes)) {
-    std::fprintf(stderr, "nano_shark: cannot open %s\n", input_path);
+    std::fprintf(stderr, "nanom_shark: cannot open %s\n", input_path);
     return 1;
   }
   const nanom::bytes file(reinterpret_cast<const std::byte*>(bytes.data()), bytes.size());
 
-  nano_shark::AllTables tables;
-  std::vector<nano_shark::PacketJson> json_packets;
-  nano_shark::SinkHub sink{json_requested ? &json_packets : nullptr};
-  nano_shark::DecodeOptions opts{};
+  nanom_shark::AllTables tables;
+  std::vector<nanom_shark::PacketJson> json_packets;
+  nanom_shark::SinkHub sink{json_requested ? &json_packets : nullptr};
+  nanom_shark::DecodeOptions opts{};
+  if (!someip_ports.empty()) opts.someip_ports = someip_ports;
+  opts.someip_tlv_ports = someip_tlv_ports;
 
   std::string error;
-  if (!nano_shark::run_decode_pass(file, tables, sink, opts, error)) {
-    std::fprintf(stderr, "nano_shark: %s\n", error.c_str());
+  if (!nanom_shark::run_decode_pass(file, tables, sink, opts, error)) {
+    std::fprintf(stderr, "nanom_shark: %s\n", error.c_str());
     return 1;
   }
 
   if (json_requested) {
     std::string out;
     if (array_mode) out += '[';
-    for (const nano_shark::PacketJson& pj : json_packets) nano_shark::append_packet(out, pj, array_mode);
+    for (const nanom_shark::PacketJson& pj : json_packets) nanom_shark::append_packet(out, pj, array_mode);
     if (array_mode) out += ']';
 
     if (json_to_stdout) {
@@ -113,7 +134,7 @@ int main(int argc, char** argv) {
     } else {
       std::FILE* f = std::fopen(json_path, "wb");
       if (!f) {
-        std::fprintf(stderr, "nano_shark: cannot open %s for writing\n", json_path);
+        std::fprintf(stderr, "nanom_shark: cannot open %s for writing\n", json_path);
         return 1;
       }
       std::fwrite(out.data(), 1, out.size(), f);
@@ -121,7 +142,7 @@ int main(int argc, char** argv) {
     }
   }
 
-  if (avro_stem) nano_shark::dump_all_tables_avro(avro_stem, tables);
+  if (avro_stem) nanom_shark::dump_all_tables_avro(avro_stem, tables);
 
   return 0;
 }
