@@ -105,7 +105,7 @@ $(document).ready(function(){initNavTree('segmented_8hpp_source.html',''); initR
 <div class="line"><a id="l00004" name="l00004"></a><span class="lineno">    4</span><span class="comment">// The core cursor (nom.hpp&#39;s `input`) is a contiguous [first,last) pointer pair, and stays that</span></div>
 <div class="line"><a id="l00005" name="l00005"></a><span class="lineno">    5</span><span class="comment">// way: this header is the opt-in sibling for the one case that model cannot express — a logical</span></div>
 <div class="line"><a id="l00006" name="l00006"></a><span class="lineno">    6</span><span class="comment">// buffer whose bytes live in several disjoint spans (the motivating consumer is IP fragment</span></div>
-<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="comment">// reassembly, examples/nano_shark/core/defrag.hpp, where a reassembled datagram&#39;s fragments sit</span></div>
+<div class="line"><a id="l00007" name="l00007"></a><span class="lineno">    7</span><span class="comment">// reassembly, include/nanom_shark/defrag.hpp, where a reassembled datagram&#39;s fragments sit</span></div>
 <div class="line"><a id="l00008" name="l00008"></a><span class="lineno">    8</span><span class="comment">// scattered through the capture file). Design contract, in order of priority:</span></div>
 <div class="line"><a id="l00009" name="l00009"></a><span class="lineno">    9</span><span class="comment">//</span></div>
 <div class="line"><a id="l00010" name="l00010"></a><span class="lineno">   10</span><span class="comment">//   1. ZERO COST WHEN UNUSED. Nothing in nom.hpp/reflect.hpp changes; `input`, its layout, and</span></div>

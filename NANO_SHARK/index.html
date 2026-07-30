@@ -27,7 +27,7 @@
     
     
       
-        <title>nano_shark tutorial - nanom</title>
+        <title>nanom_shark tutorial - nanom</title>
       
     
     
@@ -97,7 +97,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#nano_shark-a-textbook-network-analyzer" class="md-skip">
+        <a href="#nanom_shark-a-textbook-network-analyzer" class="md-skip">
           Skip to content
         </a>
       
@@ -133,7 +133,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              nano_shark tutorial
+              nanom_shark tutorial
             
           </span>
         </div>
@@ -567,7 +567,7 @@
   <span class="md-ellipsis">
     
   
-    nano_shark tutorial
+    nanom_shark tutorial
   
 
     
@@ -585,7 +585,7 @@
   <span class="md-ellipsis">
     
   
-    nano_shark tutorial
+    nanom_shark tutorial
   
 
     
@@ -695,6 +695,34 @@
       
     </span>
   </a>
+  
+    <nav class="md-nav" aria-label="Adding a new protocol">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-trigger-dsl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The trigger DSL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-buys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this buys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
   
 </li>
       
@@ -1026,6 +1054,34 @@
     </span>
   </a>
   
+    <nav class="md-nav" aria-label="Adding a new protocol">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#the-trigger-dsl" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        The trigger DSL
+      
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#what-this-buys" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        What this buys
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
 </li>
       
         <li class="md-nav__item">
@@ -1059,23 +1115,23 @@
   
 
 
-<h1 id="nano_shark-a-textbook-network-analyzer">nano_shark: a textbook network analyzer<a class="headerlink" href="#nano_shark-a-textbook-network-analyzer" title="Permanent link">&para;</a></h1>
-<p><code>examples/nano_shark/</code> is nanom's flagship example: a single pcap/pcapng decode pass — Ethernet,
+<h1 id="nanom_shark-a-textbook-network-analyzer">nanom_shark: a textbook network analyzer<a class="headerlink" href="#nanom_shark-a-textbook-network-analyzer" title="Permanent link">&para;</a></h1>
+<p><code>nanom_shark</code> (headers in <code>include/nanom_shark/</code>, CLI in <code>apps/nanom_shark_cli.cpp</code>) is nanom's flagship decoder library: a single pcap/pcapng decode pass — Ethernet,
 VLAN 802.1Q/QinQ, IPv4/IPv6 (with fragment reassembly and the full IPv6 extension-header chain
 incl. SRv6), TCP/UDP, SOME/IP (incl. Service Discovery), all 8 gPTP message types, and LLDP — that
 drains into whichever sinks you ask for: a tshark-<code>-T json</code>-shaped NDJSON dump and a real Avro
 Object Container File, both dependency-free. (Parquet and Lance sinks live in a companion repo,
 <a href="https://github.com/yoavbendor/nanoshark">nanoshark</a> — see <a href="#the-heavier-sinks-nanoshark">below</a>.)</p>
 <p>This page walks the architecture end to end. If you just want to run it:</p>
-<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"> </span>--target<span class="w"> </span>nano_shark<span class="w"> </span>-j
-<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>./build/nano_shark<span class="w"> </span>capture.pcapng<span class="w"> </span>--json<span class="w"> </span>out.ndjson
+<div class="language-sh highlight"><pre><span></span><code><a id="__codelineno-0-1" name="__codelineno-0-1" href="#__codelineno-0-1"></a>cmake<span class="w"> </span>-B<span class="w"> </span>build<span class="w"> </span><span class="o">&amp;&amp;</span><span class="w"> </span>cmake<span class="w"> </span>--build<span class="w"> </span>build<span class="w"> </span>--target<span class="w"> </span>nanom_shark_cli<span class="w"> </span>-j
+<a id="__codelineno-0-2" name="__codelineno-0-2" href="#__codelineno-0-2"></a>./build/nanom_shark_cli<span class="w"> </span>capture.pcapng<span class="w"> </span>--json<span class="w"> </span>out.ndjson
 </code></pre></div>
 <h2 id="the-core-idea-reuse-dont-re-type">The core idea: reuse, don't re-type<a class="headerlink" href="#the-core-idea-reuse-dont-re-type" title="Permanent link">&para;</a></h2>
 <p>Every other pcap-to-columns tool in this space hand-writes a parallel "row" struct per protocol,
-duplicating every field name a wire struct already has. nano_shark doesn't: <code>Node&lt;Body&gt;</code> wraps an
+duplicating every field name a wire struct already has. nanom_shark doesn't: <code>Node&lt;Body&gt;</code> wraps an
 <strong>existing</strong> <code>NANOM_DESCRIBE</code>d wire struct as a nested field, and <code>nanom::soa&lt;T&gt;</code>'s dotted-name
 flattening already knows how to turn that nesting into <code>body.&lt;field&gt;</code> columns with no extra code:</p>
-<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// core/node_row.hpp</span>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-1-1" name="__codelineno-1-1" href="#__codelineno-1-1"></a><span class="c1">// nanom_shark/node_row.hpp</span>
 <a id="__codelineno-1-2" name="__codelineno-1-2" href="#__codelineno-1-2"></a><span class="k">template</span><span class="w"> </span><span class="o">&lt;</span><span class="k">class</span><span class="w"> </span><span class="nc">Body</span><span class="o">&gt;</span>
 <a id="__codelineno-1-3" name="__codelineno-1-3" href="#__codelineno-1-3"></a><span class="k">struct</span><span class="w"> </span><span class="nc">Node</span><span class="w"> </span><span class="p">{</span>
 <a id="__codelineno-1-4" name="__codelineno-1-4" href="#__codelineno-1-4"></a><span class="w">  </span><span class="n">packet_id_t</span><span class="w">   </span><span class="n">packet_id</span><span class="w">      </span><span class="o">=</span><span class="w"> </span><span class="n">kNoPacket</span><span class="p">;</span>
@@ -1084,7 +1140,7 @@ flattening already knows how to turn that nesting into <code>body.&lt;field&gt;<
 <a id="__codelineno-1-7" name="__codelineno-1-7" href="#__codelineno-1-7"></a><span class="w">  </span><span class="n">Body</span><span class="w">          </span><span class="n">body</span><span class="p">;</span><span class="w">                    </span><span class="c1">// an EXISTING wire struct, reused verbatim</span>
 <a id="__codelineno-1-8" name="__codelineno-1-8" href="#__codelineno-1-8"></a><span class="p">};</span>
 </code></pre></div>
-<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// core/l2l3_nodes.hpp — the entire per-protocol registration is one line:</span>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-2-1" name="__codelineno-2-1" href="#__codelineno-2-1"></a><span class="c1">// nanom_shark/l2l3_nodes.hpp — the entire per-protocol registration is one line:</span>
 <a id="__codelineno-2-2" name="__codelineno-2-2" href="#__codelineno-2-2"></a><span class="k">using</span><span class="w"> </span><span class="n">EthNode</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">Node</span><span class="o">&lt;</span><span class="n">nmproto</span><span class="o">::</span><span class="n">Ethernet</span><span class="o">&gt;</span><span class="p">;</span>
 </code></pre></div>
 <p>A single shared partial specialization (<code>nanom::describe&lt;Node&lt;Body&gt;&gt;</code>, in <code>node_row.hpp</code>) registers
@@ -1094,16 +1150,28 @@ written as a plain partial specialization rather than through <code>NANOM_DESCRI
 identically whether nanom itself is built in C++23 macro mode or C++26 reflection mode.</p>
 <p><code>node_table&lt;Row&gt;</code> is the columnar accumulator each protocol table uses — a name (the JSON layer
 key) plus the existing <code>nanom::soa&lt;Row&gt;</code>:</p>
-<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">AllTables</span><span class="w"> </span><span class="p">{</span>
-<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="n">node_table</span><span class="o">&lt;</span><span class="n">PacketRow</span><span class="o">&gt;</span><span class="w"> </span><span class="n">packets</span><span class="p">{</span><span class="s">&quot;packets&quot;</span><span class="p">};</span><span class="w">  </span><span class="c1">// one row per captured frame, decode-outcome-agnostic</span>
-<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">  </span><span class="n">node_table</span><span class="o">&lt;</span><span class="n">EthNode</span><span class="o">&gt;</span><span class="w">   </span><span class="n">eth</span><span class="p">{</span><span class="s">&quot;eth&quot;</span><span class="p">};</span>
-<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">  </span><span class="n">node_table</span><span class="o">&lt;</span><span class="n">VlanNode</span><span class="o">&gt;</span><span class="w">  </span><span class="n">vlan</span><span class="p">{</span><span class="s">&quot;vlan&quot;</span><span class="p">};</span>
-<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">  </span><span class="n">node_table</span><span class="o">&lt;</span><span class="n">Ipv4Node</span><span class="o">&gt;</span><span class="w">  </span><span class="n">ipv4</span><span class="p">{</span><span class="s">&quot;ipv4&quot;</span><span class="p">};</span>
-<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">  </span><span class="c1">// ... ipv6, udp, tcp, defrag/datagram tables, someip*, gptp, lldp</span>
-<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="p">};</span>
+<p>The table SET is not hand-written — it is <strong>derived from the registered protocol type list</strong>. Each
+protocol declares its own named tables, and <code>tables_of&lt;decoder&lt;...&gt;&gt;</code> concatenates them:</p>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-3-1" name="__codelineno-3-1" href="#__codelineno-3-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">CoreL2L3</span><span class="w"> </span><span class="p">{</span><span class="w">                       </span><span class="c1">// the base Eth/VLAN/IP/UDP/TCP walk&#39;s own tables</span>
+<a id="__codelineno-3-2" name="__codelineno-3-2" href="#__codelineno-3-2"></a><span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">tables</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">table_spec</span><span class="o">&lt;</span>
+<a id="__codelineno-3-3" name="__codelineno-3-3" href="#__codelineno-3-3"></a><span class="w">      </span><span class="n">table_decl</span><span class="o">&lt;</span><span class="s">&quot;packets&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">PacketRow</span><span class="o">&gt;</span><span class="p">,</span><span class="w">  </span><span class="c1">// one row per captured frame, decode-outcome-agnostic</span>
+<a id="__codelineno-3-4" name="__codelineno-3-4" href="#__codelineno-3-4"></a><span class="w">      </span><span class="n">table_decl</span><span class="o">&lt;</span><span class="s">&quot;eth&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">EthNode</span><span class="o">&gt;</span><span class="p">,</span>
+<a id="__codelineno-3-5" name="__codelineno-3-5" href="#__codelineno-3-5"></a><span class="w">      </span><span class="n">table_decl</span><span class="o">&lt;</span><span class="s">&quot;vlan&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">VlanNode</span><span class="o">&gt;</span><span class="p">,</span>
+<a id="__codelineno-3-6" name="__codelineno-3-6" href="#__codelineno-3-6"></a><span class="w">      </span><span class="n">table_decl</span><span class="o">&lt;</span><span class="s">&quot;ipv4&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Ipv4Node</span><span class="o">&gt;</span><span class="p">,</span>
+<a id="__codelineno-3-7" name="__codelineno-3-7" href="#__codelineno-3-7"></a><span class="w">      </span><span class="cm">/* ipv6, udp, tcp, ipv4_frag, ipv6_frag, datagram */</span><span class="o">&gt;</span><span class="p">{};</span>
+<a id="__codelineno-3-8" name="__codelineno-3-8" href="#__codelineno-3-8"></a><span class="p">};</span>
+<a id="__codelineno-3-9" name="__codelineno-3-9" href="#__codelineno-3-9"></a>
+<a id="__codelineno-3-10" name="__codelineno-3-10" href="#__codelineno-3-10"></a><span class="k">using</span><span class="w"> </span><span class="n">default_decoder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">decoder</span><span class="o">&lt;</span><span class="n">CoreL2L3</span><span class="p">,</span><span class="w"> </span><span class="n">Someip</span><span class="p">,</span><span class="w"> </span><span class="n">Gptp</span><span class="p">,</span><span class="w"> </span><span class="n">Lldp</span><span class="o">&gt;</span><span class="p">;</span><span class="w">  </span><span class="c1">// the type list IS the registry</span>
+<a id="__codelineno-3-11" name="__codelineno-3-11" href="#__codelineno-3-11"></a><span class="k">using</span><span class="w"> </span><span class="n">AllTables</span><span class="w">       </span><span class="o">=</span><span class="w"> </span><span class="n">tables_of</span><span class="o">&lt;</span><span class="n">default_decoder</span><span class="o">&gt;</span><span class="p">;</span>
+<a id="__codelineno-3-12" name="__codelineno-3-12" href="#__codelineno-3-12"></a>
+<a id="__codelineno-3-13" name="__codelineno-3-13" href="#__codelineno-3-13"></a><span class="n">AllTables</span><span class="w"> </span><span class="n">t</span><span class="p">;</span>
+<a id="__codelineno-3-14" name="__codelineno-3-14" href="#__codelineno-3-14"></a><span class="n">t</span><span class="p">.</span><span class="n">get</span><span class="o">&lt;</span><span class="s">&quot;eth&quot;</span><span class="o">&gt;</span><span class="p">().</span><span class="n">push</span><span class="p">(</span><span class="n">row</span><span class="p">);</span><span class="w">                                    </span><span class="c1">// compile-time name lookup</span>
+<a id="__codelineno-3-15" name="__codelineno-3-15" href="#__codelineno-3-15"></a><span class="n">t</span><span class="p">.</span><span class="n">for_each_table</span><span class="p">([](</span><span class="n">std</span><span class="o">::</span><span class="n">string_view</span><span class="w"> </span><span class="n">name</span><span class="p">,</span><span class="w"> </span><span class="k">const</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">soa</span><span class="p">)</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="p">...</span><span class="w"> </span><span class="p">});</span><span class="w">  </span><span class="c1">// generic iteration</span>
 </code></pre></div>
+<p><code>for_each_table</code> is what lets a sink be written once for every table that will ever exist —
+<code>dump_all_tables_avro</code> is a five-line loop over it.</p>
 <h2 id="the-decode-pass">The decode pass<a class="headerlink" href="#the-decode-pass" title="Permanent link">&para;</a></h2>
-<p><code>run_decode_pass()</code> (<code>core/decode_pass.hpp</code>) is the one entry point every sink drains from:</p>
+<p><code>run_decode_pass()</code> (<code>nanom_shark/decode_pass.hpp</code>) is the one entry point every sink drains from:</p>
 <ol>
 <li><code>nmpcap::scan_blocks()</code> walks the pcap/pcapng container structure (SHB/IDB/EPB or legacy pcap
    records) — reused verbatim from <code>examples/nanotins_parity/</code>.</li>
@@ -1116,22 +1184,26 @@ key) plus the existing <code>nanom::soa&lt;Row&gt;</code>:</p>
    bytes throughout.</li>
 <li>A fragment-eligible IPv4/IPv6 packet is diverted into <code>defrag::ReassemblyTable&lt;Key&gt;</code> instead of
    falling through to L4 (see <a href="#fragment-reassembly">Fragment reassembly</a>).</li>
-<li>UDP/TCP payloads reach <code>l4_dispatch.hpp</code>'s <code>dispatch_l4()</code> — the single L4 entry point used by
-   <em>both</em> the normal per-packet path and defrag's reassembly-completion re-entry, so there is never
-   a second, divergent copy of the UDP/TCP handling logic.</li>
-<li><code>dispatch_l4()</code> additionally tries SOME/IP (Service Discovery is always attempted once a
-   <code>SomeipHeader</code> parses; port-gated for plain/TLV payloads via <code>DecodeOptions::someip_ports</code> /
-   <code>someip_tlv_ports</code>, since SOME/IP has no EtherType/magic-number tag of its own).</li>
-<li>Ethernet's ethertype also dispatches gPTP (<code>0x88F7</code>) and LLDP (<code>0x88CC</code>) directly, since both are
-   L2-terminal protocols with no IP layer underneath.</li>
-<li>Every row lands in <code>AllTables</code> always; when a JSON sink is attached, each layer <em>additionally</em>
-   renders straight into that packet's <code>PacketJson</code> at the same callback site.</li>
+<li><code>walk_packet_ext()</code> reports each layer's <strong>byte offset</strong> (<code>on_offset</code> / <code>on_l2_done</code>) alongside
+   its decoded value, which is what fills in <code>decode_ctx</code> — the struct every trigger matches
+   against (<code>packet_id</code>, <code>datagram_id</code>, <code>is_reassembled</code>, <code>ethertype</code>, <code>ip_proto</code>,
+   <code>src_port</code>/<code>dst_port</code>, <code>link_type</code>, and the L2/L3/L4 offsets).</li>
+<li>There are two <strong>dispatch points</strong>, both of them the same <code>dispatch&lt;Layer, Decoder&gt;</code> fold over the
+   registered protocol type list: <code>layer::eth_payload</code> right after Ethernet + VLAN tags (gPTP
+   <code>0x88F7</code>, LLDP <code>0x88CC</code> — both L2-terminal, no IP underneath) and <code>layer::l4_payload</code> right after
+   the TCP/UDP header (SOME/IP). Every protocol whose trigger matches gets its <code>parse</code> called.</li>
+<li>The reassembly-completion re-entry reaches <code>layer::l4_payload</code> through the <em>same</em>
+   <code>dispatch_l4()</code>, over the reassembled datagram's zero-copy segment list — so the normal and
+   reassembled paths cannot drift apart. SOME/IP port matching, for instance, exists in exactly one
+   place: <code>Someip::trigger</code>.</li>
+<li>Every row lands in the decoder's table set always; when a JSON sink is attached, each layer
+   <em>additionally</em> renders straight into that packet's <code>PacketJson</code> at the same callback site.</li>
 </ol>
 <p>A malformed layer stops <strong>that packet's</strong> walk only (nanom's existing <code>walk_packet</code> contract) —
 <code>run_decode_pass()</code> itself returns <code>false</code> only when the pcap/pcapng container scan fails outright
 (a corrupt file, not a corrupt packet).</p>
 <h2 id="fragment-reassembly">Fragment reassembly<a class="headerlink" href="#fragment-reassembly" title="Permanent link">&para;</a></h2>
-<p><code>core/defrag.hpp</code> is the first heap-owning, cross-packet <strong>stateful</strong> table anywhere in the
+<p><code>nanom_shark/defrag.hpp</code> is the first heap-owning, cross-packet <strong>stateful</strong> table anywhere in the
 nano-family. A reassembled datagram's bytes are disjoint in the source file, but reassembly is
 <strong>fully zero-copy</strong>: every individual fragment's IP header is decoded over the file's own bytes,
 fragments are buffered as non-owning <code>std::span</code>s into that same source buffer, and on completion
@@ -1164,7 +1236,7 @@ returned segment list) — within its first run it found a real bug (a stale key
 surviving eviction, causing a crash on key reuse), now fixed and regression-tested.</p>
 <h2 id="segmented-input-parsing-across-disjoint-byte-ranges">Segmented input: parsing across disjoint byte ranges<a class="headerlink" href="#segmented-input-parsing-across-disjoint-byte-ranges" title="Permanent link">&para;</a></h2>
 <p><code>nanom/segmented.hpp</code> is the library layer that makes zero-copy reassembly possible — a general
-nanom feature, not nano_shark-specific, but reassembly is its motivating consumer. It parses a
+nanom feature, not nanom_shark-specific, but reassembly is its motivating consumer. It parses a
 logical buffer whose bytes live in an ordered list of <strong>disjoint spans</strong>, without ever copying
 them into one contiguous block.</p>
 <ul>
@@ -1192,13 +1264,13 @@ cursor agrees with the contiguous cursor over every split, <code>strct_seg</code
 <code>strct</code>/<code>overlay</code> over every split of six real wire structs, and <code>fuzz/fuzz_segmented.cpp</code>
 differentially fuzzes segmented vs contiguous parses.</p>
 <h2 id="the-json-sink">The JSON sink<a class="headerlink" href="#the-json-sink" title="Permanent link">&para;</a></h2>
-<p><code>core/json_tree.hpp</code>'s <code>PacketJson</code> builds the tshark-shaped <code>{"_index":N,"_source":{"layers":{...}}}</code>
+<p><code>nanom_shark/json_tree.hpp</code>'s <code>PacketJson</code> builds the tshark-shaped <code>{"_index":N,"_source":{"layers":{...}}}</code>
 tree at runtime. <code>add_layer_json(name, json)</code> inserts a layer; a <strong>second</strong> call with the same name
 promotes it to a JSON array — this is what makes VLAN stacking, the IPv6 extension-header chain,
 LLDP TLVs, and SOME/IP SD entries render as repeated-field arrays, matching tshark's own shape,
 without the caller needing to know in advance how many of a given layer a packet will have.</p>
 <h2 id="the-avro-sink">The Avro sink<a class="headerlink" href="#the-avro-sink" title="Permanent link">&para;</a></h2>
-<p><code>core/avro_ocf.hpp</code> is a real Avro Object Container File writer — <code>"Obj\x01"</code> magic, a metadata map
+<p><code>nanom_shark/avro_ocf.hpp</code> is a real Avro Object Container File writer — <code>"Obj\x01"</code> magic, a metadata map
 (<code>avro.schema</code> = <code>nanom::avro_schema&lt;T&gt;()</code>, reused verbatim from <code>schema.hpp</code>; <code>avro.codec</code> =
 <code>"null"</code>), a random 16-byte sync marker, then one block per <code>nanom::soa&lt;T&gt;</code> chunk. The binary
 encoding itself is zigzag varints + raw IEEE-754 bytes + length-prefixed byte strings — no external
@@ -1210,7 +1282,7 @@ value first, since <code>soa&lt;T&gt;</code> never stores rows any other way.</p
 sibling repo, <a href="https://github.com/yoavbendor/nanoshark">nanoshark</a>, which vendors nanom (plus
 <a href="https://github.com/yoavbendor/nanoarrow2parquet">nanoarrow2parquet</a> and
 <a href="https://github.com/yoavbendor/nanolance">nanolance</a>) as read-only git submodules. The bridge
-between nanom's columnar storage and either target schema is <code>core/soa_columns.hpp</code>'s
+between nanom's columnar storage and either target schema is <code>nanom_shark/soa_columns.hpp</code>'s
 <code>columns_of&lt;T&gt;</code> — a compile-time leaf-column <strong>type list</strong> that mirrors <code>nanom::soa&lt;T&gt;::columns()</code>'s
 own dotted-name flattening exactly (same names, same order, same per-row size — proven by
 <code>tests/test_soa_columns.cpp</code> across every current row shape), so nanoshark's Parquet and Lance
@@ -1222,24 +1294,49 @@ for every fixed-width column, including MAC/IP-shaped <code>fixed_size_binary</c
 (<code>uri</code> = the file, <code>position</code>/<code>size</code> = that packet's <code>file_offset</code>/<code>caplen</code>) — every other table
 joins back to it by <code>packet_id</code> alone, never touching raw file bytes itself.</p>
 <h2 id="adding-a-new-protocol">Adding a new protocol<a class="headerlink" href="#adding-a-new-protocol" title="Permanent link">&para;</a></h2>
-<p>Every step above composes the same way for a new protocol:</p>
-<ol>
-<li>A <code>NANOM_DESCRIBE</code>d (or, under C++26, plain) wire struct for its fixed header.</li>
-<li><code>using FooNode = Node&lt;Foo&gt;;</code> if it fits the generic envelope, or a small synthesized row (with
-   its own <code>packet_id</code> field) if it doesn't — SOME/IP's SD entries/options and LLDP's per-TLV row
-   are both examples of the latter, since their shape varies by sub-type in a way <code>Node&lt;Body&gt;</code>
-   doesn't model.</li>
-<li>One <code>node_table&lt;FooNode&gt; foo{"foo"};</code> member on <code>AllTables</code>.</li>
-<li>A dispatch call from wherever the protocol is identifiable (an ethertype, an IP protocol number,
-   a UDP/TCP port, or a signature check on the payload itself) in <code>decode_pass.hpp</code> / <code>l4_dispatch.hpp</code>.</li>
-</ol>
-<p>Nothing else changes: the JSON sink renders it via the same <code>add_layer_json</code> call every other
-protocol uses, the Avro sink and <code>columns_of&lt;T&gt;</code> see it automatically (any <code>nanom::Described</code> type
-qualifies), and — once vendored via nanoshark — so do the Parquet and Lance sinks, with no changes
-needed in that repo at all.</p>
+<p><strong>One new file. Zero edits to any library header.</strong> That is the whole of it:</p>
+<div class="language-cpp highlight"><pre><span></span><code><a id="__codelineno-5-1" name="__codelineno-5-1" href="#__codelineno-5-1"></a><span class="k">struct</span><span class="w"> </span><span class="nc">FooHeader</span><span class="w"> </span><span class="p">{</span><span class="w"> </span><span class="n">nanom</span><span class="o">::</span><span class="n">be</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="kt">uint32_t</span><span class="o">&gt;</span><span class="w"> </span><span class="n">id</span><span class="p">;</span><span class="w"> </span><span class="n">nanom</span><span class="o">::</span><span class="n">be</span><span class="o">&lt;</span><span class="n">std</span><span class="o">::</span><span class="kt">uint16_t</span><span class="o">&gt;</span><span class="w"> </span><span class="n">len</span><span class="p">;</span><span class="w"> </span><span class="p">};</span>
+<a id="__codelineno-5-2" name="__codelineno-5-2" href="#__codelineno-5-2"></a><span class="n">NANOM_DESCRIBE</span><span class="p">(</span><span class="n">FooHeader</span><span class="p">,</span><span class="w"> </span><span class="n">id</span><span class="p">,</span><span class="w"> </span><span class="n">len</span><span class="p">);</span>
+<a id="__codelineno-5-3" name="__codelineno-5-3" href="#__codelineno-5-3"></a>
+<a id="__codelineno-5-4" name="__codelineno-5-4" href="#__codelineno-5-4"></a><span class="k">struct</span><span class="w"> </span><span class="nc">FooProto</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-5" name="__codelineno-5-5" href="#__codelineno-5-5"></a><span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">trigger</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">udp_port</span><span class="o">&lt;</span><span class="mi">1234</span><span class="o">&gt;</span><span class="p">;</span><span class="w">   </span><span class="c1">// or ethertype&lt;0x88F7&gt;, ip_proto&lt;17&gt;, all_of&lt;...&gt;, ...</span>
+<a id="__codelineno-5-6" name="__codelineno-5-6" href="#__codelineno-5-6"></a><span class="w">  </span><span class="k">using</span><span class="w"> </span><span class="n">state</span><span class="w">   </span><span class="o">=</span><span class="w"> </span><span class="n">no_state</span><span class="p">;</span><span class="w">         </span><span class="c1">// or a struct, for protocols that carry state across packets</span>
+<a id="__codelineno-5-7" name="__codelineno-5-7" href="#__codelineno-5-7"></a><span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="k">constexpr</span><span class="w"> </span><span class="k">auto</span><span class="w"> </span><span class="n">tables</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">table_spec</span><span class="o">&lt;</span><span class="n">table_decl</span><span class="o">&lt;</span><span class="s">&quot;foo&quot;</span><span class="p">,</span><span class="w"> </span><span class="n">Node</span><span class="o">&lt;</span><span class="n">FooHeader</span><span class="o">&gt;&gt;&gt;</span><span class="p">{};</span>
+<a id="__codelineno-5-8" name="__codelineno-5-8" href="#__codelineno-5-8"></a>
+<a id="__codelineno-5-9" name="__codelineno-5-9" href="#__codelineno-5-9"></a><span class="w">  </span><span class="k">static</span><span class="w"> </span><span class="kt">void</span><span class="w"> </span><span class="nf">parse</span><span class="p">(</span><span class="k">const</span><span class="w"> </span><span class="n">decode_ctx</span><span class="o">&amp;</span><span class="w"> </span><span class="n">c</span><span class="p">,</span><span class="w"> </span><span class="n">nanom</span><span class="o">::</span><span class="n">seg_input</span><span class="w"> </span><span class="n">in</span><span class="p">,</span><span class="w"> </span><span class="n">state</span><span class="o">&amp;</span><span class="p">,</span><span class="w"> </span><span class="k">auto</span><span class="o">&amp;</span><span class="w"> </span><span class="n">t</span><span class="p">,</span><span class="w"> </span><span class="n">PacketJson</span><span class="o">*</span><span class="w"> </span><span class="n">j</span><span class="p">)</span><span class="w"> </span><span class="p">{</span>
+<a id="__codelineno-5-10" name="__codelineno-5-10" href="#__codelineno-5-10"></a><span class="w">    </span><span class="k">if</span><span class="w"> </span><span class="p">(</span><span class="k">auto</span><span class="w"> </span><span class="n">r</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">nanom</span><span class="o">::</span><span class="n">strct_seg</span><span class="o">&lt;</span><span class="n">FooHeader</span><span class="o">&gt;</span><span class="p">()(</span><span class="n">in</span><span class="p">))</span>
+<a id="__codelineno-5-11" name="__codelineno-5-11" href="#__codelineno-5-11"></a><span class="w">      </span><span class="n">t</span><span class="p">.</span><span class="k">template</span><span class="w"> </span><span class="n">get</span><span class="o">&lt;</span><span class="s">&quot;foo&quot;</span><span class="o">&gt;</span><span class="p">().</span><span class="n">push</span><span class="p">(</span><span class="n">Node</span><span class="o">&lt;</span><span class="n">FooHeader</span><span class="o">&gt;</span><span class="p">{</span><span class="n">c</span><span class="p">.</span><span class="n">packet_id</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">datagram_id</span><span class="p">,</span><span class="w"> </span><span class="n">c</span><span class="p">.</span><span class="n">is_reassembled</span><span class="p">,</span><span class="w"> </span><span class="n">r</span><span class="o">-&gt;</span><span class="n">value</span><span class="p">});</span>
+<a id="__codelineno-5-12" name="__codelineno-5-12" href="#__codelineno-5-12"></a><span class="w">  </span><span class="p">}</span>
+<a id="__codelineno-5-13" name="__codelineno-5-13" href="#__codelineno-5-13"></a><span class="p">};</span>
+<a id="__codelineno-5-14" name="__codelineno-5-14" href="#__codelineno-5-14"></a>
+<a id="__codelineno-5-15" name="__codelineno-5-15" href="#__codelineno-5-15"></a><span class="k">using</span><span class="w"> </span><span class="n">my_decoder</span><span class="w"> </span><span class="o">=</span><span class="w"> </span><span class="n">decoder</span><span class="o">&lt;</span><span class="n">CoreL2L3</span><span class="p">,</span><span class="w"> </span><span class="n">Someip</span><span class="p">,</span><span class="w"> </span><span class="n">Gptp</span><span class="p">,</span><span class="w"> </span><span class="n">Lldp</span><span class="p">,</span><span class="w"> </span><span class="n">FooProto</span><span class="o">&gt;</span><span class="p">;</span><span class="w">   </span><span class="c1">// register it</span>
+<a id="__codelineno-5-16" name="__codelineno-5-16" href="#__codelineno-5-16"></a><span class="n">tables_of</span><span class="o">&lt;</span><span class="n">my_decoder</span><span class="o">&gt;</span><span class="w"> </span><span class="n">tables</span><span class="p">;</span><span class="w">                                          </span><span class="c1">// and that is the call site</span>
+<a id="__codelineno-5-17" name="__codelineno-5-17" href="#__codelineno-5-17"></a><span class="n">run_decode_pass</span><span class="p">(</span><span class="n">file</span><span class="p">,</span><span class="w"> </span><span class="n">tables</span><span class="p">,</span><span class="w"> </span><span class="n">sink</span><span class="p">,</span><span class="w"> </span><span class="n">opts</span><span class="p">,</span><span class="w"> </span><span class="n">error</span><span class="p">);</span>
+</code></pre></div>
+<p><code>tests/nanom_shark_test_ergonomics.cpp</code> is exactly this, as an executable proof — including the
+same protocol receiving a datagram that arrived as two IPv4 fragments, decoded across the fragment
+seam, with no reassembly-aware code in <code>FooProto</code> at all.</p>
+<h3 id="the-trigger-dsl">The trigger DSL<a class="headerlink" href="#the-trigger-dsl" title="Permanent link">&para;</a></h3>
+<p><code>ethertype&lt;E&gt;</code>, <code>ip_proto&lt;P&gt;</code>, <code>udp_port&lt;Ports...&gt;</code>, <code>tcp_port&lt;Ports...&gt;</code>, <code>link_type&lt;L&gt;</code>,
+<code>all_of&lt;...&gt;</code>, <code>any_of&lt;...&gt;</code>, <code>not_&lt;T&gt;</code>, <code>always</code>, <code>never</code>. Each is a compile-time predicate over
+<code>decode_ctx</code>; where the matched value is a constant it collapses to the same <code>==</code> a hand-written
+if-chain emits.</p>
+<p>The interesting case is a protocol with <strong>no</strong> EtherType and no magic number, identified only by a
+port agreed out-of-band — SOME/IP. <code>udp_port_cfg&lt;&amp;DecodeOptions::someip_ports&gt;</code> names <em>which</em>
+runtime vector to consult with a <strong>compile-time pointer-to-member</strong>, so the protocol type list stays
+fully unrolled and only the port <em>values</em> are late-bound to the <code>DecodeOptions</code> the pass was given
+(<code>--someip-port</code> / <code>--someip-tlv-port</code> on the CLI).</p>
+<h3 id="what-this-buys">What this buys<a class="headerlink" href="#what-this-buys" title="Permanent link">&para;</a></h3>
+<p>Dispatch stays <strong>compile-time only</strong> — no type erasure, no virtual calls, no runtime registry. The
+<code>decoder&lt;...&gt;</code> fold is unrolled into the same if-chain the hand-written code used to be, and a
+dispatch point does not even instantiate a protocol whose trigger cannot match there. The JSON sink
+renders the new layer via the same <code>add_layer</code> every other protocol uses, and the Avro sink picks
+the new tables up through <code>for_each_table</code> with no edit. (The Parquet and Lance sinks in the
+nanoshark repo still carry a hand-written table list; collapsing them onto <code>for_each_table</code> is
+Phase 3.)</p>
 <h2 id="see-also">See also<a class="headerlink" href="#see-also" title="Permanent link">&para;</a></h2>
 <ul>
-<li><a href="../design/">Design</a> — the <code>describe&lt;T&gt;</code> seam, zero-copy views, error model (the ideas nano_shark
+<li><a href="../design/">Design</a> — the <code>describe&lt;T&gt;</code> seam, zero-copy views, error model (the ideas nanom_shark
   builds on).</li>
 <li><a href="../MEMORY_SAFETY/">Memory safety</a> — <code>NANOM_GENERATION</code>/<code>NANOM_GUARD_VIEWS</code> and what they catch.</li>
 <li><a href="https://github.com/yoavbendor/nanoshark">nanoshark</a> — the Parquet/Lance integration repo.</li>
