@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
-// gPTP (IEEE 802.1AS) dispatch + TLV walking, built on nanom. Promoted from
-// bindings/python/gptp/gptp_parse.hpp into nanom_shark's decode core (that file is untouched); the
-// only substantive change is dropping this file's own pcap/pcapng scanning (parse_pcapng_with_gptp
-// and its detail::EthHdr/png_block_hdr/png_epb_body structs) since decode_pass.hpp's PacketVisitor
-// already scans blocks and decodes Ethernet/VLAN via nmpcap/nm_protocols.hpp — parse_gptp_message
-// is called directly from there once ethertype 0x88F7 is seen (see decode_pass.hpp).
+// gPTP (IEEE 802.1AS) dispatch + TLV walking, built on nanom. Originally promoted from a
+// standalone Python-binding example's hand-rolled parser (later retired once
+// bindings/python/nanom_shark/ could produce the same tables generically); the only substantive
+// difference from that origin was dropping the example's own pcap/pcapng scanning, since
+// decode_pass.hpp's PacketVisitor already scans blocks and decodes Ethernet/VLAN via
+// nmpcap/nm_protocols.hpp — parse_gptp_message is called directly from there once ethertype
+// 0x88F7 is seen (see decode_pass.hpp).
 //
 // Tagged-union dispatch pattern: nanom's alt()/flat_map() both require ONE common return type across
 // every branch (see include/nanom/nom.hpp — alt's `std::common_type_t<parsed_t<P>, parsed_t<Ps>...>`,
@@ -13,7 +14,7 @@
 // examples/nanotins_parity/nm_pcap.hpp uses for pcapng's SHB/IDB/EPB, and nanolance's
 // pcapng2lance_nanom uses for its 10 PDU types): parse the common header once via strct<>(), plain C++
 // `switch` on the discriminant field, call a separate function per kind, push into that kind's own
-// soa<T>. See bindings/python/gptp/README.md for the full writeup of this pattern.
+// soa<T>.
 #pragma once
 
 #include <nanom_shark/gptp_rows.hpp>
