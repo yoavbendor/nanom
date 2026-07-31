@@ -32,6 +32,26 @@ mkdir -p corpus_streaming && cp examples/nanotins_parity/testdata/*.pcapng corpu
 ./build/fuzz_streaming_pcapng -max_total_time=60 corpus_streaming/
 ```
 
+## `fuzz_streaming_defrag.cpp` — streaming buffer-release contract (libFuzzer + standalone, in CI)
+
+Differential fuzz of `nanom_shark::StreamingDecodeSession`'s **buffer-release contract**: the
+fuzzer input becomes a capture full of IPv4 fragments (out-of-order, overlapping, gapped,
+oversized, never-completing), which is then decoded twice — whole-file via `run_decode_pass`, and
+one block at a time via the streaming session with **every buffer poisoned and freed the instant
+its token is reported released**. The two decodes must be byte-identical; a premature release shows
+up either as an ASan heap-use-after-free on the stale fragment span or as an output divergence.
+
+Runs in ctest as `streaming_defrag_fuzz` via a standalone PRNG driver (no libFuzzer runtime
+needed), and as a coverage-guided target when `NANOM_BUILD_FUZZERS=ON`:
+
+```sh
+./build/nm_streaming_defrag_fuzz 60000        # standalone; [iterations] [seed]
+./build/fuzz_streaming_defrag -max_total_time=60 corpus/   # libFuzzer (Clang)
+```
+
+The deterministic counterpart is `tests/nanom_shark_test_streaming.cpp`, which drives a fixed
+capture through a fixed 8-slot pool and additionally asserts the memory bound.
+
 ## `differential_fuzz.cpp` — parity with nanotins (manual)
 
 Asserts **nanom and nanotins decode identically** on every input. Needs nanotins

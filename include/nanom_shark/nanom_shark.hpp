@@ -31,11 +31,14 @@
 #include <nanom_shark/someip.hpp>
 #include <nanom_shark/someip_rows.hpp>
 
-// -- the decode pass ---------------------------------------------------------
+// -- the decode pass: one packet (packet_visitor), one block at a time
+//    (streaming), or a whole file (decode_pass, a driver over streaming) -----
 #include <nanom_shark/decode_options.hpp>
 #include <nanom_shark/decode_pass.hpp>
 #include <nanom_shark/l2l3_nodes.hpp>
 #include <nanom_shark/l4_dispatch.hpp>
+#include <nanom_shark/packet_visitor.hpp>
+#include <nanom_shark/streaming.hpp>
 
 // -- sinks -------------------------------------------------------------------
 #include <nanom_shark/avro_dump.hpp>

@@ -5,6 +5,8 @@
 
 #include <nanom_shark/decode_pass.hpp>
 
+#include <algorithm>
+#include <array>
 #include <cstdio>
 #include <fstream>
 #include <string>
@@ -257,6 +259,202 @@ void test_overlap_semantics() {
   }
 }
 
+// ---------------------------------------------------------------------------------------------
+// The Token / retire() release contract (defrag.hpp's file header). Three properties, each of
+// which the streaming session's buffer-reuse safety rests on:
+//   (a) an IN-FLIGHT reassembly never gives its tokens back -- not from retire(), not from
+//       evict_stale() -- until it genuinely completes or ages out;
+//   (b) retire()'s tokens are EXACTLY the fragments that contributed to THAT datagram, not some
+//       other datagram's in-flight ones;
+//   (c) after retire() the entry's span storage is GENUINELY empty -- inspected directly through
+//       find(), because a returned token list proves nothing about whether the spans are gone.
+// ---------------------------------------------------------------------------------------------
+
+void test_retire_does_not_release_in_flight_tokens() {
+  using nanom_shark::defrag::Ipv4Key;
+  using nanom_shark::defrag::ReassemblyTable;
+
+  std::array<std::byte, 64> src{};
+  for (std::size_t i = 0; i < src.size(); ++i) src[i] = std::byte(i);
+
+  ReassemblyTable<Ipv4Key>::Config cfg;
+  cfg.timeout_ticks = 5;
+  ReassemblyTable<Ipv4Key> table(cfg);
+  const Ipv4Key key{{1, 2, 3, 4}, {5, 6, 7, 8}, 17, 900};
+
+  // One non-terminal fragment: the datagram cannot complete, so token 77 stays pinned.
+  const auto r1 = table.add_fragment(key, 0, 0, /*more=*/true,
+                                     std::span<const std::byte>(src.data(), 8), /*token=*/77);
+  CHECK(!r1.completed);
+  CHECK(r1.retained);  // the span WAS stored, so the buffer is pinned
+
+  // retire() on an incomplete datagram must be a no-op: nothing released, spans untouched.
+  CHECK(table.retire(r1.datagram_id).empty());
+  const auto* e1 = table.find(r1.datagram_id);
+  CHECK(e1 != nullptr);
+  if (e1) CHECK(e1->fragments.size() == 1);  // still holding the span -- correctly
+
+  // A too-early eviction sweep (well inside the timeout) must not release it either.
+  CHECK(table.evict_stale(/*now=*/1).empty());
+  CHECK(table.find(r1.datagram_id) != nullptr);
+
+  // Only when it genuinely ages out does the token come back, on the eviction summary.
+  const auto evicted = table.evict_stale(/*now=*/50);
+  CHECK(evicted.size() == 1);
+  if (evicted.size() == 1) {
+    CHECK(evicted[0].completion_status == 1);  // timed_out, never completed
+    CHECK(evicted[0].tokens.size() == 1);
+    if (evicted[0].tokens.size() == 1) CHECK(evicted[0].tokens[0] == 77);
+    CHECK(evicted[0].fragment_count == 1);  // summary integers survive without the spans
+  }
+  CHECK(table.find(r1.datagram_id) == nullptr);  // really erased
+}
+
+void test_retire_tokens_match_contributing_fragments() {
+  using nanom_shark::defrag::Ipv4Key;
+  using nanom_shark::defrag::ReassemblyTable;
+
+  std::array<std::byte, 64> src{};
+  for (std::size_t i = 0; i < src.size(); ++i) src[i] = std::byte(i);
+
+  ReassemblyTable<Ipv4Key> table;
+  const Ipv4Key finishing{{10, 0, 0, 1}, {10, 0, 0, 2}, 17, 11};
+  const Ipv4Key in_flight{{10, 0, 0, 3}, {10, 0, 0, 4}, 17, 22};
+
+  // Interleave a SECOND, never-completing datagram between the first one's fragments, so a
+  // retire() that mixed up whose fragments are whose would be caught.
+  CHECK(!table.add_fragment(finishing, 0, 0, true, std::span<const std::byte>(src.data(), 8), 101)
+             .completed);
+  CHECK(!table.add_fragment(in_flight, 1, 0, true, std::span<const std::byte>(src.data(), 8), 202)
+             .completed);
+  CHECK(!table.add_fragment(finishing, 2, 8, true, std::span<const std::byte>(src.data() + 8, 8), 103)
+             .completed);
+  const auto done =
+      table.add_fragment(finishing, 3, 16, false, std::span<const std::byte>(src.data() + 16, 8), 104);
+  CHECK(done.completed);
+  CHECK(done.parts.size() == 24);
+
+  // Dispatch first (this is what the streaming session does), THEN retire.
+  nanom::seg_input in = nanom::from(done.parts);
+  for (std::size_t i = 0; i < 24; ++i) CHECK(in[i] == std::uint8_t(i));
+
+  auto freed = table.retire(done.datagram_id);
+  std::sort(freed.begin(), freed.end());
+  CHECK(freed.size() == 3);
+  if (freed.size() == 3) {
+    CHECK(freed[0] == 101);
+    CHECK(freed[1] == 103);
+    CHECK(freed[2] == 104);
+  }
+  // 202 belongs to the still-open datagram and must NOT be in there.
+  CHECK(std::find(freed.begin(), freed.end(), nanom_shark::defrag::Token{202}) == freed.end());
+
+  // retire() is idempotent: a second call releases nothing (no double-free of a token).
+  CHECK(table.retire(done.datagram_id).empty());
+
+  // The other datagram is untouched and still pinning its buffer.
+  const auto* open_entry = table.find(2);  // datagram ids are handed out 1,2,... in creation order
+  CHECK(open_entry != nullptr);
+  if (open_entry) {
+    CHECK(open_entry->fragments.size() == 1);
+    CHECK(open_entry->fragments[0].token == 202);
+  }
+}
+
+void test_retire_actually_clears_spans() {
+  using nanom_shark::defrag::Ipv4Key;
+  using nanom_shark::defrag::ReassemblyTable;
+
+  std::array<std::byte, 32> src{};
+  for (std::size_t i = 0; i < src.size(); ++i) src[i] = std::byte(i);
+
+  ReassemblyTable<Ipv4Key> table;
+  const Ipv4Key key{{7, 7, 7, 7}, {8, 8, 8, 8}, 17, 33};
+  CHECK(!table.add_fragment(key, 0, 0, true, std::span<const std::byte>(src.data(), 16), 5)
+             .completed);
+  const auto done =
+      table.add_fragment(key, 1, 16, false, std::span<const std::byte>(src.data() + 16, 16), 6);
+  CHECK(done.completed);
+
+  // Before retire: the entry holds two fragment spans and a two-part parts list.
+  {
+    const auto* e = table.find(done.datagram_id);
+    CHECK(e != nullptr);
+    if (e) {
+      CHECK(e->fragments.size() == 2);
+      CHECK(!e->parts.empty());
+      CHECK(!e->retired);
+    }
+  }
+
+  const auto freed = table.retire(done.datagram_id);
+  CHECK(freed.size() == 2);
+
+  // After retire: inspect the ENTRY, not the returned token list -- the spans must be gone, so
+  // there is nothing left in this table that could read the caller's buffer.
+  {
+    const auto* e = table.find(done.datagram_id);
+    CHECK(e != nullptr);
+    if (e) {
+      CHECK(e->fragments.empty());
+      CHECK(e->parts.empty());
+      CHECK(e->retired);
+      CHECK(e->completed);              // still known to have completed
+      CHECK(e->fragment_count == 2);    // summary integers deliberately survive
+      CHECK(e->total_length == 32);
+    }
+  }
+
+  // materialize() must refuse rather than silently report a 0-byte datagram now that the source
+  // spans it would stitch from are gone.
+  CHECK(table.materialize(done.datagram_id) == nullptr);
+
+  // Eviction of an already-retired entry reports no tokens (they were released at retire time),
+  // but still reports the correct summary.
+  const auto evicted = table.evict_stale(/*now=*/1000);
+  CHECK(evicted.size() == 1);
+  if (evicted.size() == 1) {
+    CHECK(evicted[0].tokens.empty());
+    CHECK(evicted[0].completion_status == 0);
+    CHECK(evicted[0].fragment_count == 2);
+    CHECK(evicted[0].gap_bytes == 0);
+  }
+}
+
+// A fragment that add_fragment DROPS (at capacity, or oversized) must report retained == false --
+// the streaming session relies on that to know the buffer was never pinned.
+void test_dropped_fragment_is_not_retained() {
+  using nanom_shark::defrag::Ipv4Key;
+  using nanom_shark::defrag::ReassemblyTable;
+
+  std::array<std::byte, 64> src{};
+
+  ReassemblyTable<Ipv4Key>::Config cfg;
+  cfg.max_concurrent = 1;
+  cfg.max_datagram_bytes = 16;
+  ReassemblyTable<Ipv4Key> table(cfg);
+
+  const Ipv4Key a{{1, 1, 1, 1}, {2, 2, 2, 2}, 17, 1};
+  const Ipv4Key b{{1, 1, 1, 1}, {2, 2, 2, 2}, 17, 2};
+
+  const auto r1 = table.add_fragment(a, 0, 0, true, std::span<const std::byte>(src.data(), 8), 1);
+  CHECK(r1.retained);
+  // second key: at capacity (max_concurrent == 1) -> dropped, nothing stored, token 2 free
+  const auto r2 = table.add_fragment(b, 1, 0, true, std::span<const std::byte>(src.data(), 8), 2);
+  CHECK(!r2.retained);
+  CHECK(r2.datagram_id == 0);
+  // oversized for the existing datagram (8 stored + 32 > max_datagram_bytes 16) -> dropped too
+  const auto r3 = table.add_fragment(a, 2, 8, false, std::span<const std::byte>(src.data(), 32), 3);
+  CHECK(!r3.retained);
+
+  const auto evicted = table.evict_stale(/*now=*/1000);
+  CHECK(evicted.size() == 1);
+  if (evicted.size() == 1) {
+    CHECK(evicted[0].tokens.size() == 1);  // only the fragment that was actually stored
+    if (evicted[0].tokens.size() == 1) CHECK(evicted[0].tokens[0] == 1);
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -265,6 +463,10 @@ int main() {
   test_key_reuse_after_eviction();
   test_zero_copy_completion();
   test_overlap_semantics();
+  test_retire_does_not_release_in_flight_tokens();
+  test_retire_tokens_match_contributing_fragments();
+  test_retire_actually_clears_spans();
+  test_dropped_fragment_is_not_retained();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;
