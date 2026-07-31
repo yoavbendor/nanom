@@ -60,7 +60,11 @@ namespace nanom::arrow {
 // A fully domain-erased snapshot of an soa: column names/formats + per-chunk borrowed column pointers,
 // plus a shared_ptr that keeps the underlying soa (and thus those pointers) alive.
 struct export_state {
-  std::shared_ptr<void>                 keepalive;  // owns the soa<T>
+  // `const void` (not `void`) so a table that is only reachable as `const soa<T>&` -- e.g. every
+  // table nanom_shark's `table_set::for_each_table` hands out -- can be exported without a
+  // const_cast: the keepalive is never dereferenced or interpreted here, only kept alive. Every
+  // existing `shared_ptr<soa<T>>` call site still converts implicitly.
+  std::shared_ptr<const void>           keepalive;  // owns the soa<T>
   std::vector<std::string>              names;
   std::vector<std::string>              formats;
   struct batch { int64_t rows; std::vector<const void*> col_ptrs; };
@@ -92,18 +96,27 @@ inline void init_leaf_schema(ArrowSchema* s, const char* format, const char* nam
 }
 }  // namespace detail
 
-inline int export_get_schema(ArrowArrayStream* self, ArrowSchema* out) {
-  auto* st = static_cast<export_state*>(self->private_data);
+// The struct-schema builder, factored out of export_get_schema so a stream whose batches do NOT come
+// from a pre-snapshotted `export_state` (the streaming/producer-consumer binding: batches arrive from
+// a queue at run time) can build the identical schema from the same column names + format strings.
+// `names` and `formats` must be the same length.
+inline void build_struct_schema(const std::vector<std::string>& names,
+                                const std::vector<std::string>& formats, ArrowSchema* out) {
   *out = {};
   out->format = strdup("+s");  // struct
   out->name = strdup("");
-  out->n_children = static_cast<int64_t>(st->names.size());
-  out->children = new ArrowSchema*[st->names.size()];
-  for (std::size_t i = 0; i < st->names.size(); ++i) {
+  out->n_children = static_cast<int64_t>(names.size());
+  out->children = new ArrowSchema*[names.size()];
+  for (std::size_t i = 0; i < names.size(); ++i) {
     out->children[i] = new ArrowSchema();
-    detail::init_leaf_schema(out->children[i], st->formats[i].c_str(), st->names[i].c_str());
+    detail::init_leaf_schema(out->children[i], formats[i].c_str(), names[i].c_str());
   }
   out->release = detail::release_schema;
+}
+
+inline int export_get_schema(ArrowArrayStream* self, ArrowSchema* out) {
+  auto* st = static_cast<export_state*>(self->private_data);
+  build_struct_schema(st->names, st->formats, out);
   return 0;
 }
 
@@ -123,10 +136,38 @@ inline void release_struct_array(ArrowArray* a) {
     }
   delete[] a->children;
   delete[] a->buffers;
-  delete static_cast<std::shared_ptr<void>*>(a->private_data);  // drop the soa keepalive
+  delete static_cast<std::shared_ptr<const void>*>(a->private_data);  // drop the soa keepalive
   a->release = nullptr;
 }
 }  // namespace detail
+
+// One struct RecordBatch over borrowed column buffers, factored out of export_get_next for the same
+// reason as build_struct_schema above: the streaming binding holds the very same (rows, col_ptrs,
+// keepalive) triple, it just obtains it from a queue rather than from a pre-built vector. `col_ptrs`
+// must have one entry per column, in schema order, each pointing at `rows` contiguous elements that
+// stay valid for as long as `keepalive` does.
+inline void build_struct_array(int64_t rows, const std::vector<const void*>& col_ptrs,
+                               std::shared_ptr<const void> keepalive, ArrowArray* out) {
+  *out = {};
+  out->length = rows;
+  out->null_count = 0;
+  out->n_buffers = 1;              // struct: [validity], null (no nulls)
+  out->buffers = new const void*[1]{nullptr};
+  out->n_children = static_cast<int64_t>(col_ptrs.size());
+  out->children = new ArrowArray*[col_ptrs.size()];
+  for (std::size_t i = 0; i < col_ptrs.size(); ++i) {
+    auto* c = new ArrowArray();
+    *c = {};
+    c->length = rows;
+    c->null_count = 0;
+    c->n_buffers = 2;             // primitive / fixed-size-binary: [validity=null, data]
+    c->buffers = new const void*[2]{nullptr, col_ptrs[i]};
+    c->release = detail::release_leaf_array;
+    out->children[i] = c;
+  }
+  out->private_data = new std::shared_ptr<const void>(std::move(keepalive));  // keeps the data alive
+  out->release = detail::release_struct_array;
+}
 
 inline int export_get_next(ArrowArrayStream* self, ArrowArray* out) {
   auto* st = static_cast<export_state*>(self->private_data);
@@ -135,25 +176,7 @@ inline int export_get_next(ArrowArrayStream* self, ArrowArray* out) {
     return 0;
   }
   const export_state::batch& b = st->batches[st->next++];
-  *out = {};
-  out->length = b.rows;
-  out->null_count = 0;
-  out->n_buffers = 1;              // struct: [validity], null (no nulls)
-  out->buffers = new const void*[1]{nullptr};
-  out->n_children = static_cast<int64_t>(b.col_ptrs.size());
-  out->children = new ArrowArray*[b.col_ptrs.size()];
-  for (std::size_t i = 0; i < b.col_ptrs.size(); ++i) {
-    auto* c = new ArrowArray();
-    *c = {};
-    c->length = b.rows;
-    c->null_count = 0;
-    c->n_buffers = 2;             // primitive / fixed-size-binary: [validity=null, data]
-    c->buffers = new const void*[2]{nullptr, b.col_ptrs[i]};
-    c->release = detail::release_leaf_array;
-    out->children[i] = c;
-  }
-  out->private_data = new std::shared_ptr<void>(st->keepalive);  // keep the borrowed data alive
-  out->release = detail::release_struct_array;
+  build_struct_array(b.rows, b.col_ptrs, st->keepalive, out);
   return 0;
 }
 
@@ -167,18 +190,19 @@ inline void export_release_stream(ArrowArrayStream* self) {
   self->release = nullptr;
 }
 
-// Build a self-contained ArrowArrayStream from an soa<T>. The stream (and every batch it yields) keeps
-// `table` alive; the caller/importer owns the returned stream and must call its release (Arrow's
-// PyCapsule consumer does this automatically).
+namespace detail {
+// Snapshot a table's columns + per-chunk borrowed pointers into a fresh export_state, then wire it
+// up as an ArrowArrayStream. Shared verbatim by both export_stream overloads below.
 template <class T>
-void export_stream(std::shared_ptr<nanom::soa<T>> table, ArrowArrayStream* out) {
+void build_stream(const nanom::soa<T>& table, std::shared_ptr<const void> keepalive,
+                  ArrowArrayStream* out) {
   auto* st = new export_state();
-  st->keepalive = table;
-  for (const auto& c : table->columns()) {
+  st->keepalive = std::move(keepalive);
+  for (const auto& c : table.columns()) {
     st->names.push_back(c.name);
     st->formats.push_back(c.arrow);
   }
-  table->for_each_chunk([&](const auto& ch) {
+  table.for_each_chunk([&](const auto& ch) {
     export_state::batch b;
     b.rows = static_cast<int64_t>(ch.rows);
     for (std::size_t i = 0; i < ch.cols.size(); ++i) b.col_ptrs.push_back(ch.cols[i].data());
@@ -190,6 +214,28 @@ void export_stream(std::shared_ptr<nanom::soa<T>> table, ArrowArrayStream* out) 
   out->get_last_error = export_get_last_error;
   out->release = export_release_stream;
   out->private_data = st;
+}
+}  // namespace detail
+
+// Build a self-contained ArrowArrayStream from an soa<T>. The stream (and every batch it yields) keeps
+// `table` alive; the caller/importer owns the returned stream and must call its release (Arrow's
+// PyCapsule consumer does this automatically).
+template <class T>
+void export_stream(std::shared_ptr<nanom::soa<T>> table, ArrowArrayStream* out) {
+  const nanom::soa<T>& ref = *table;  // sequenced BEFORE the move below (separate statements)
+  detail::build_stream(ref, std::shared_ptr<const void>(std::move(table)), out);
+}
+
+// Same, for a table the caller can only reach as a `const soa<T>&` -- e.g. a sub-object of some
+// larger owning aggregate, as nanom_shark's `table_set::for_each_table` hands out. Ownership is
+// supplied separately: `keepalive` is any shared_ptr that keeps `table`'s storage alive for at
+// least as long as the exported stream and every batch it yields (typically the shared_ptr to the
+// enclosing aggregate). This file never dereferences or interprets it. The caller is responsible
+// for `table` being a stable sub-object of whatever `keepalive` owns.
+template <class T>
+void export_stream(const nanom::soa<T>& table, std::shared_ptr<const void> keepalive,
+                   ArrowArrayStream* out) {
+  detail::build_stream(table, std::move(keepalive), out);
 }
 
 }  // namespace nanom::arrow

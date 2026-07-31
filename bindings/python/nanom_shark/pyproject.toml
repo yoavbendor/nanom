@@ -1,0 +1,23 @@
+[build-system]
+requires = ["scikit-build-core >=0.10", "nanobind >=2.0"]
+build-backend = "scikit_build_core.build"
+
+[project]
+name = "nanom-shark"
+version = "0.0.1"
+description = "Decode pcap/pcapng end to end with nanom_shark (C++) and hand Python every table as a zero-copy Arrow stream"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "Apache-2.0" }
+# Runtime needs nothing but an Arrow consumer of your choice; these power the demo/tests:
+[project.optional-dependencies]
+demo = ["pyarrow>=14", "polars>=1.0"]
+test = ["pyarrow>=14"]
+
+[tool.scikit-build]
+minimum-version = "0.10"
+build-dir = "build/{wheel_tag}"
+# CMakeLists.txt lives here and pulls in ../../../include (nanom + nanom_shark headers) and
+# ../nanom_arrow.hpp (the shared soa<T> -> Arrow bridge).
+cmake.source-dir = "."
+wheel.license-files = []

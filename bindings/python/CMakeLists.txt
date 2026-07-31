@@ -24,4 +24,10 @@ target_include_directories(nanom_pcap PRIVATE
   "${CMAKE_CURRENT_SOURCE_DIR}/../../include"   # <nanom/...>
   "${CMAKE_CURRENT_SOURCE_DIR}")                # nanom_arrow.hpp
 
-install(TARGETS nanom_pcap LIBRARY DESTINATION nanom_pcap)
+# DESTINATION "." (not "nanom_pcap"): the compiled module IS the top-level importable unit
+# (`import nanom_pcap`), not a package with a same-named submodule. Installing it into a
+# same-named subdirectory instead makes `import nanom_pcap` resolve to an empty namespace
+# package (no `parse`/`PcapTable`) under `pip install .` / `uv pip install .` — CI never caught
+# this because it manually copies the built .so next to the test scripts instead of exercising
+# the real wheel path (see bindings/python/nanom_shark/CMakeLists.txt, which does this correctly).
+install(TARGETS nanom_pcap LIBRARY DESTINATION .)

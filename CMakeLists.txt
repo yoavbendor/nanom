@@ -284,6 +284,15 @@ add_test(NAME nanom_shark_defrag_tests COMMAND nanom_shark_defrag_tests)
 
 # Phase 3: SOME/IP (header + SD entries/options + optional TLV members), gPTP (all 8 message
 # kinds), LLDP (reusing the existing dpar_sample.pcap fixture).
+# Phase 4: the EPB-at-a-time streaming session's buffer-reuse proof. Feeds the same synthetic
+# capture through run_decode_pass (whole file resident) and through StreamingDecodeSession backed by
+# an 8-slot pool that poisons + frees each buffer the instant the session reports its token
+# released, then asserts the two decodes are byte-identical. Also built as nanom_shark_streaming_asan
+# below, where ASan/UBSan turn any stale span into a hard failure instead of just wrong output.
+nanom_exe(nanom_shark_streaming_tests tests/nanom_shark_test_streaming.cpp)
+target_link_libraries(nanom_shark_streaming_tests PRIVATE nanom::shark)
+add_test(NAME nanom_shark_streaming_tests COMMAND nanom_shark_streaming_tests)
+
 nanom_exe(nanom_shark_protocols3_tests tests/nanom_shark_test_protocols3.cpp)
 target_link_libraries(nanom_shark_protocols3_tests PRIVATE nanom::shark)
 target_compile_definitions(nanom_shark_protocols3_tests PRIVATE
@@ -339,23 +348,35 @@ add_test(NAME nanom_shark_soa_columns_tests COMMAND nanom_shark_soa_columns_test
 nanom_exe(nm_self_fuzz fuzz/self_fuzz.cpp)
 add_test(NAME self_fuzz COMMAND nm_self_fuzz)
 
+# Differential fuzz of the streaming session's buffer-release contract: the same fuzzer-built
+# capture decoded whole-file vs one-block-at-a-time with every buffer poisoned + freed the instant
+# its token is reported released. Built standalone (a PRNG driver instead of libFuzzer) so it runs
+# in ctest; also in the libFuzzer target list below for coverage-guided runs.
+nanom_exe(nm_streaming_defrag_fuzz fuzz/fuzz_streaming_defrag.cpp)
+target_link_libraries(nm_streaming_defrag_fuzz PRIVATE nanom::shark)
+target_compile_definitions(nm_streaming_defrag_fuzz PRIVATE NANOM_FUZZ_STANDALONE=1)
+add_test(NAME streaming_defrag_fuzz COMMAND nm_streaming_defrag_fuzz 400)
+
 # ---- benchmarks: built always (so they can't rot) and smoke-tested with a
 #      tiny iteration count; the bench.yml workflow runs them for real numbers.
 nanom_exe(nm_parse_bench bench/parse_bench.cpp)
 nanom_exe(nm_safety_microbench bench/safety_microbench.cpp)
 nanom_exe(nm_bulk_bench  examples/nanotins_parity/pcap_bulk.cpp)  # reuse as bulk bench
 nanom_exe(nm_segmented_bench bench/segmented_bench.cpp)  # stitch-vs-segments + per-wrap overhead
+nanom_exe(nm_streaming_bench bench/streaming_bench.cpp)  # whole-file vs EPB-at-a-time: memory bound + ns/pkt
+target_link_libraries(nm_streaming_bench PRIVATE nanom::shark)
 add_test(NAME bench_smoke_parse COMMAND nm_parse_bench ${td}/srv6_sample.pcap 2)
 add_test(NAME bench_smoke_safety COMMAND nm_safety_microbench 2)
 add_test(NAME bench_smoke_bulk  COMMAND nm_bulk_bench  ${td}/srv6_sample.pcap 50 2)
 add_test(NAME bench_smoke_segmented COMMAND nm_segmented_bench 2)
+add_test(NAME bench_smoke_streaming COMMAND nm_streaming_bench 1 1)
 
 # ---- libFuzzer coverage-guided targets (Clang only, opt-in) ---------------
 if(NANOM_BUILD_FUZZERS)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(FATAL_ERROR "NANOM_BUILD_FUZZERS requires Clang (libFuzzer)")
   endif()
-  foreach(fz scan_walk streaming_pcapng defrag segmented)
+  foreach(fz scan_walk streaming_pcapng defrag segmented streaming_defrag)
     add_executable(fuzz_${fz} fuzz/fuzz_${fz}.cpp)
     target_link_libraries(fuzz_${fz} PRIVATE nanom Threads::Threads)
     target_include_directories(fuzz_${fz} PRIVATE ${CMAKE_SOURCE_DIR}/bench)

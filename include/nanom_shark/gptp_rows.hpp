@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// gPTP (IEEE 802.1AS) row structs — promoted from bindings/python/gptp/gptp_rows.hpp into a
-// first-class part of the nanom_shark decode core (that file is untouched; this is a copy, not a
-// move, since the Python bindings still use it).
+// gPTP (IEEE 802.1AS) row structs — a first-class part of the nanom_shark decode core, originally
+// promoted from a standalone Python-binding example (later retired once
+// bindings/python/nanom_shark/ could produce the same tables generically).
 //
 // A comprehensive stress test of the pcapng example's claim ("change ~10 lines for your format"): gPTP
 // has 8 message kinds with genuinely different bodies dispatched from a bit-packed tag byte, a 48-bit
