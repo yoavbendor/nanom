@@ -14,12 +14,14 @@
 // soa<Row> chunk buffers; the owning `AllTables` aggregate is kept alive by the shared_ptr every
 // exported batch carries.
 #include "nanom_arrow.hpp"
+#include "streaming_arrow.hpp"
 
 #include <nanom_shark/decode_pass.hpp>
 
 #include <nanobind/nanobind.h>
 #include <nanobind/stl/optional.h>
 #include <nanobind/stl/string.h>
+#include <nanobind/stl/unique_ptr.h>
 #include <nanobind/stl/vector.h>
 
 #include <cstdint>
@@ -164,6 +166,34 @@ DecodeResult parse(nb::bytes capture,
   return result;
 }
 
+// ---- true incremental streaming: parse_streaming() ------------------------------------------
+//
+// Batch parse() decodes everything before Python sees anything. parse_streaming() starts a
+// background decode thread immediately and hands back live, blocking Arrow streams — a consumer
+// using `for batch in pa.RecordBatchReader.from_stream(handle): ...` genuinely processes chunk N
+// while the producer thread is still decoding the rest of the file (NOT `pa.table(handle)`, which
+// drains the whole stream internally before returning anything — see streaming_arrow.hpp's header
+// comment and the binding's docstring below).
+std::unique_ptr<nanom_shark_py::StreamingArrowSession> parse_streaming(
+    nb::bytes capture, std::optional<std::vector<std::uint16_t>> someip_ports,
+    std::optional<std::vector<std::uint16_t>> someip_tlv_ports, std::size_t queue_bound) {
+  ns::DecodeOptions opts{};
+  if (someip_ports && !someip_ports->empty()) opts.someip_ports = *someip_ports;
+  if (someip_tlv_ports) {
+    opts.someip_tlv_ports = *someip_tlv_ports;
+    for (std::uint16_t p : *someip_tlv_ports) {
+      bool known = false;
+      for (std::uint16_t q : opts.someip_ports) known = known || (q == p);
+      if (!known) opts.someip_ports.push_back(p);
+    }
+  }
+  std::vector<std::uint8_t> bytes(reinterpret_cast<const std::uint8_t*>(capture.c_str()),
+                                  reinterpret_cast<const std::uint8_t*>(capture.c_str()) +
+                                      capture.size());
+  return std::make_unique<nanom_shark_py::StreamingArrowSession>(std::move(bytes), std::move(opts),
+                                                                 queue_bound);
+}
+
 }  // namespace
 
 NB_MODULE(nanom_shark, m) {
@@ -199,6 +229,37 @@ NB_MODULE(nanom_shark, m) {
         "Decode pcap/pcapng bytes in one pass and return a DecodeResult.\n\n"
         "someip_ports: UDP ports to attempt a SOME/IP parse on (default: {30490}).\n"
         "someip_tlv_ports: which of those carry the TLV serialization (implies someip_ports).");
+
+  namespace nsp = nanom_shark_py;
+  nb::class_<nsp::StreamingTable>(
+      m, "StreamingTable",
+      "One table of a streaming decode. Import with pa.RecordBatchReader.from_stream(t) for "
+      "genuine incremental consumption (blocks per batch, releasing the GIL, as the background "
+      "decode thread produces more) -- pa.table(t) also works but drains the whole stream first, "
+      "showing no incremental behavior.")
+      .def_ro("name", &nsp::StreamingTable::name)
+      .def("__repr__", &nsp::StreamingTable::repr)
+      .def("__arrow_c_stream__", &nsp::StreamingTable::arrow_c_stream,
+           nb::arg("requested_schema") = nb::none());
+
+  nb::class_<nsp::StreamingArrowSession>(
+      m, "StreamingSession",
+      "A background decode in progress. `.tables` is a dict[str, StreamingTable]; each table's "
+      "Arrow stream blocks for more data as the decode thread produces it, and backpressure keeps "
+      "the producer from racing arbitrarily far ahead of a slow consumer. Dropping this object "
+      "(or letting it go out of scope) requests cancellation and joins the background thread.")
+      .def_prop_ro("tables", &nsp::StreamingArrowSession::table_dict)
+      .def_prop_ro("table_names", &nsp::StreamingArrowSession::table_names)
+      .def("__len__", &nsp::StreamingArrowSession::size);
+
+  m.def("parse_streaming", &parse_streaming, nb::arg("capture_bytes"),
+        nb::arg("someip_ports") = nb::none(), nb::arg("someip_tlv_ports") = nb::none(),
+        nb::arg("queue_bound") = 8,
+        "Start a background decode and return a StreamingSession immediately. Each table's Arrow "
+        "stream yields batches as the background thread produces them, with per-table backpressure "
+        "(queue_bound) throttling the decode to the pace of the slowest actively-consumed table. "
+        "Use pa.RecordBatchReader.from_stream(session.tables[name]) and iterate it explicitly for "
+        "genuine incremental consumption.");
 
   m.attr("table_count") = int(ns::AllTables::table_count);
 }
