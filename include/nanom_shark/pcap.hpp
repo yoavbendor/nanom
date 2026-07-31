@@ -93,6 +93,18 @@ inline constexpr std::endian order_of(bool little) {
 }
 inline constexpr std::size_t pad4(std::size_t n) { return (n + 3U) & ~std::size_t{3}; }
 
+// A pcapng section's endianness is declared by the SHB's own byte_order_magic, 8 bytes into the
+// block (past type + total_len) -- and it has to be read BEFORE the block header itself, since the
+// header's own fields need that order. Peeks it and writes the answer to `little`; false (leaving
+// `little` untouched) if the block is too short to tell. Used by both scan_blocks' inline walk and
+// the streaming session's feed_shb, which sees one block at a time and has no file to scan.
+inline bool shb_byte_order(nm::input at, bool& little) {
+  auto bom = nm::preceded(nm::take(8), nm::le_u32)(at);
+  if (!bom) return false;
+  little = (bom->value == kByteOrderMagic);
+  return true;
+}
+
 // ---- Phase A: boundary scan (whole buffer). Same contract as nanotins
 // scan_blocks: BlockRefs out, false + error on a malformed frame. ----
 inline bool scan_blocks(nm::bytes file, std::vector<BlockRef>& out, std::string& error) {
@@ -109,9 +121,7 @@ inline bool scan_blocks(nm::bytes file, std::vector<BlockRef>& out, std::string&
       // The SHB's own header endianness is revealed by its byte_order_magic —
       // peek it before deciding how to read total_len.
       if (auto t = nm::peek(nm::le_u32)(cur); t && t->value == kShb) {
-        auto bom = nm::preceded(nm::take(8), nm::le_u32)(cur);
-        if (!bom) return (error = "truncated SHB", false);
-        little = (bom->value == kByteOrderMagic);
+        if (!shb_byte_order(cur, little)) return (error = "truncated SHB", false);
       }
       auto hdr = nm::strct<png_block_hdr>(order_of(little))(cur);
       if (!hdr) return (error = "truncated block header at offset " + std::to_string(off), false);

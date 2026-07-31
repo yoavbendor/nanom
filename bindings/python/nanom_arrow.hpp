@@ -96,18 +96,27 @@ inline void init_leaf_schema(ArrowSchema* s, const char* format, const char* nam
 }
 }  // namespace detail
 
-inline int export_get_schema(ArrowArrayStream* self, ArrowSchema* out) {
-  auto* st = static_cast<export_state*>(self->private_data);
+// The struct-schema builder, factored out of export_get_schema so a stream whose batches do NOT come
+// from a pre-snapshotted `export_state` (the streaming/producer-consumer binding: batches arrive from
+// a queue at run time) can build the identical schema from the same column names + format strings.
+// `names` and `formats` must be the same length.
+inline void build_struct_schema(const std::vector<std::string>& names,
+                                const std::vector<std::string>& formats, ArrowSchema* out) {
   *out = {};
   out->format = strdup("+s");  // struct
   out->name = strdup("");
-  out->n_children = static_cast<int64_t>(st->names.size());
-  out->children = new ArrowSchema*[st->names.size()];
-  for (std::size_t i = 0; i < st->names.size(); ++i) {
+  out->n_children = static_cast<int64_t>(names.size());
+  out->children = new ArrowSchema*[names.size()];
+  for (std::size_t i = 0; i < names.size(); ++i) {
     out->children[i] = new ArrowSchema();
-    detail::init_leaf_schema(out->children[i], st->formats[i].c_str(), st->names[i].c_str());
+    detail::init_leaf_schema(out->children[i], formats[i].c_str(), names[i].c_str());
   }
   out->release = detail::release_schema;
+}
+
+inline int export_get_schema(ArrowArrayStream* self, ArrowSchema* out) {
+  auto* st = static_cast<export_state*>(self->private_data);
+  build_struct_schema(st->names, st->formats, out);
   return 0;
 }
 
@@ -132,6 +141,34 @@ inline void release_struct_array(ArrowArray* a) {
 }
 }  // namespace detail
 
+// One struct RecordBatch over borrowed column buffers, factored out of export_get_next for the same
+// reason as build_struct_schema above: the streaming binding holds the very same (rows, col_ptrs,
+// keepalive) triple, it just obtains it from a queue rather than from a pre-built vector. `col_ptrs`
+// must have one entry per column, in schema order, each pointing at `rows` contiguous elements that
+// stay valid for as long as `keepalive` does.
+inline void build_struct_array(int64_t rows, const std::vector<const void*>& col_ptrs,
+                               std::shared_ptr<const void> keepalive, ArrowArray* out) {
+  *out = {};
+  out->length = rows;
+  out->null_count = 0;
+  out->n_buffers = 1;              // struct: [validity], null (no nulls)
+  out->buffers = new const void*[1]{nullptr};
+  out->n_children = static_cast<int64_t>(col_ptrs.size());
+  out->children = new ArrowArray*[col_ptrs.size()];
+  for (std::size_t i = 0; i < col_ptrs.size(); ++i) {
+    auto* c = new ArrowArray();
+    *c = {};
+    c->length = rows;
+    c->null_count = 0;
+    c->n_buffers = 2;             // primitive / fixed-size-binary: [validity=null, data]
+    c->buffers = new const void*[2]{nullptr, col_ptrs[i]};
+    c->release = detail::release_leaf_array;
+    out->children[i] = c;
+  }
+  out->private_data = new std::shared_ptr<const void>(std::move(keepalive));  // keeps the data alive
+  out->release = detail::release_struct_array;
+}
+
 inline int export_get_next(ArrowArrayStream* self, ArrowArray* out) {
   auto* st = static_cast<export_state*>(self->private_data);
   if (st->next >= st->batches.size()) {  // end of stream: a released (empty) array
@@ -139,25 +176,7 @@ inline int export_get_next(ArrowArrayStream* self, ArrowArray* out) {
     return 0;
   }
   const export_state::batch& b = st->batches[st->next++];
-  *out = {};
-  out->length = b.rows;
-  out->null_count = 0;
-  out->n_buffers = 1;              // struct: [validity], null (no nulls)
-  out->buffers = new const void*[1]{nullptr};
-  out->n_children = static_cast<int64_t>(b.col_ptrs.size());
-  out->children = new ArrowArray*[b.col_ptrs.size()];
-  for (std::size_t i = 0; i < b.col_ptrs.size(); ++i) {
-    auto* c = new ArrowArray();
-    *c = {};
-    c->length = b.rows;
-    c->null_count = 0;
-    c->n_buffers = 2;             // primitive / fixed-size-binary: [validity=null, data]
-    c->buffers = new const void*[2]{nullptr, b.col_ptrs[i]};
-    c->release = detail::release_leaf_array;
-    out->children[i] = c;
-  }
-  out->private_data = new std::shared_ptr<const void>(st->keepalive);  // keep the borrowed data alive
-  out->release = detail::release_struct_array;
+  build_struct_array(b.rows, b.col_ptrs, st->keepalive, out);
   return 0;
 }
 
