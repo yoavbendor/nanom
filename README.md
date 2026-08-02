@@ -345,3 +345,5 @@ python3 bench/collect.py b                             # benchmark numbers as JS
 
 Licensed under [Apache-2.0](LICENSE) — see [NOTICE](NOTICE) and [THIRD-PARTY.md](THIRD-PARTY.md).
 The library has no third-party code dependencies (C++ standard library only).
+
+<!-- CI storage-quota check: trivial commit, safe to squash/revert -->
