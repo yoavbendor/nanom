@@ -233,42 +233,53 @@ jobs:
           print("ok: zero-copy nanom -> pyarrow, values verified")
           PY
           python3 bench.py
-      # ---- gptp/: the comprehensive stress test — 8 message kinds, tagged dispatch, bit-packed tag
-      # byte, a 48-bit timestamp, and two TLV kinds, landing in 9 zero-copy Arrow tables. ----
-      - name: sanitize the gPTP dispatch/TLV parser (pure C++, no Python)
+      # ---- nanom_shark/: the batteries-included binding — nanom_shark's whole decode pass, all 24
+      # tables, through ONE type-erased nanobind class. Replaces the retired gptp/ binding (whose
+      # parser was promoted into include/nanom_shark/gptp.hpp); test_nanom_shark.py carries that
+      # binding's exact gPTP correctness assertions forward, re-pointed at the gptp_* tables. ----
+      - name: build the nanom_shark extension
         run: |
-          cat > /tmp/gptp_asan_smoke.cpp <<'EOF'
-          #include "gptp_parse.hpp"
-          #include <cassert>
-          int main() {
-            // A minimal Sync message is enough to exercise the header parse + dispatch + soa push
-            // under the sanitizers; the full 8-kind + TLV correctness suite runs in Python below.
-            std::vector<std::uint8_t> msg = {
-              0x00,0x02, 0x00,44, 0,0, 0,0, 0,0,0,0,0,0,0,0, 0,0,0,0,
-              0xA0,0xA1,0xA2,0xA3,0xA4,0xA5,0xA6,0xA7, 0,1, 0,100, 0,0,
-              0,0,0,0,0,0, 0,0,0,0,
-            };
-            nmgptp::GptpTables t;
-            bool ok = nmgptp::parse_gptp_message(t, nanom::from(msg.data(), msg.size()));
-            assert(ok && t.sync.rows() == 1);
-            return 0;
-          }
-          EOF
-          g++-13 -std=c++23 -fsanitize=address,undefined -fno-sanitize-recover=all \
-            -Wall -Wextra -I include -I bindings/python/gptp \
-            /tmp/gptp_asan_smoke.cpp -o /tmp/gptp_asan_smoke
-          /tmp/gptp_asan_smoke
-      - name: build the nanom_gptp extension
-        run: |
-          cmake -S bindings/python/gptp -B /tmp/nbgptp -DCMAKE_BUILD_TYPE=Release \
+          cmake -S bindings/python/nanom_shark -B /tmp/nspybuild -DCMAKE_BUILD_TYPE=Release \
             -DPython_EXECUTABLE="$(which python3)" -Dnanobind_DIR="$(python3 -m nanobind --cmake_dir)"
-          cmake --build /tmp/nbgptp -j
-      - name: gPTP correctness suite + demo
+          cmake --build /tmp/nspybuild -j
+      - name: nanom_shark correctness suite (gPTP + golden cross-check + stream freshness)
         run: |
-          cp /tmp/nbgptp/nanom_gptp*.so bindings/python/gptp/
-          cd bindings/python/gptp
-          python3 test_gptp.py
-          python3 demo.py
+          cp /tmp/nspybuild/nanom_shark*.so bindings/python/nanom_shark/
+          cd bindings/python/nanom_shark
+          python3 test_nanom_shark.py
+          python3 demo.py ../../../examples/nanotins_parity/testdata/SRL_front_left_51_short.pcapng
+      # Cross-check the binding against nanom_shark's OWN native decode pass rather than against
+      # hardcoded numbers alone: build the CLI, dump NDJSON for the same capture, and re-derive
+      # every golden constant from it (--ndjson mode asserts the constants still match exactly).
+      - name: cross-check against the native decode pass (nanom_shark_cli NDJSON)
+        run: |
+          cmake -S . -B /tmp/nsclibuild -DCMAKE_BUILD_TYPE=Release
+          cmake --build /tmp/nsclibuild --target nanom_shark_cli -j
+          /tmp/nsclibuild/nanom_shark_cli \
+            examples/nanotins_parity/testdata/SRL_front_left_51_short.pcapng --json /tmp/srl.ndjson
+          cd bindings/python/nanom_shark
+          python3 test_nanom_shark.py --ndjson /tmp/srl.ndjson
+      # The FIRST real packaging test in this repo: every step above shells out to cmake and copies
+      # the .so into place, which never exercises pyproject.toml / scikit-build-core at all.
+      - name: uv wheel build + install (exercises the real packaging path)
+        run: |
+          curl -LsSf https://astral.sh/uv/install.sh | sh
+          export PATH="$HOME/.local/bin:$PATH"
+          uv venv /tmp/nsvenv
+          uv pip install --python /tmp/nsvenv/bin/python 'bindings/python/nanom_shark[demo]'
+          # Run from a directory with no stray .so, so this can only be the installed wheel.
+          cd /tmp && CAPTURE="$GITHUB_WORKSPACE/examples/nanotins_parity/testdata/SRL_front_left_51_short.pcapng" \
+            /tmp/nsvenv/bin/python - <<'PY'
+          import os
+          import nanom_shark, pyarrow as pa
+          assert "site-packages" in nanom_shark.__file__, nanom_shark.__file__
+          data = open(os.environ["CAPTURE"], "rb").read()
+          r = nanom_shark.parse(data)
+          t = pa.table(r["packets"]); t.validate(full=True)
+          assert len(r) == nanom_shark.table_count == 24, len(r)
+          assert t.num_rows == 224 and sum(t["caplen"].to_pylist()) == 331884, t.num_rows
+          print(f"ok: installed wheel at {nanom_shark.__file__} decodes 224 packets, 24 tables")
+          PY
 
   # ---- portability check on macOS via Homebrew LLVM (AppleClang's C++23 is
   #      too old for nanom; advisory so it can never block main) -------------

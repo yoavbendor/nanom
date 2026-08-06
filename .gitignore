@@ -17,5 +17,6 @@ try/godbolt_tour.cpp
 bindings/python/build/
 bindings/python/*.so
 bindings/python/**/__pycache__/
-bindings/python/gptp/build/
-bindings/python/gptp/*.so
+bindings/python/nanom_shark/build/
+bindings/python/nanom_shark/*.so
+.venv-nstest/

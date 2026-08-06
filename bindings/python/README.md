@@ -85,8 +85,15 @@ to the decoded header fields.)
 - [`demo.py`](demo.py) / [`bench.py`](bench.py) — the Python demo and the benchmark.
 - [`test_arrow_cpp.cpp`](test_arrow_cpp.cpp) — pure-C++ ASan/UBSan check of the exporter's lifetime.
 
-## Want a harder example?
+## Want the batteries-included version?
 
-[`gptp/`](gptp/) is the comprehensive version: a full gPTP (IEEE 802.1AS) parser — 8 message kinds,
-runtime tagged dispatch, a bit-packed tag byte, a 48-bit timestamp, and two kinds of TLV — landing in 9
-zero-copy Arrow tables. Same `nanom_arrow.hpp` bridge, unchanged.
+This directory is a **tutorial**: how to write your own nanom-based Python binding for your own
+struct. [`nanom_shark/`](nanom_shark/) is the finished product — nanom_shark's complete decoder
+(Ethernet, VLAN, IPv4+defrag, IPv6+extension headers, TCP/UDP, SOME/IP, gPTP, LLDP) exposed as all
+24 of its tables at once, through the same `nanom_arrow.hpp` bridge, with no per-table binding code
+at all.
+
+(A third binding, `gptp/`, used to sit here as a comprehensive stress test — a hand-rolled gPTP
+parser landing in 9 Arrow tables. Its parser was promoted into the library proper as
+`include/nanom_shark/gptp.hpp`, so the binding had become a duplicate fork; it was retired once
+`nanom_shark/`'s test suite took over its exact correctness assertions.)
