@@ -1,0 +1,23 @@
+version = 1
+revision = 3
+requires-python = ">=3.10"
+
+[[package]]
+name = "someip"
+version = "0.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/59/8d/f4b8f451069098ebfe7b06324d8ad7a9eccd1c444dee8513ad44a67e63c4/someip-0.3.0.tar.gz", hash = "sha256:b3f68da9a3240420bf520efe3697ff84247c7007040ac0a7671043b676a7ecd7", size = 50020, upload-time = "2022-08-09T15:20:03.123Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/32/c0/466592688bebefa3c71206856607e85ebd76b68dc427e704510870490647/someip-0.3.0-py3-none-any.whl", hash = "sha256:80cf06b022aff077032c1b3ee4a19cb6a3306c6ad4c97c06bdf3eb5db3366ddd", size = 28605, upload-time = "2022-08-09T15:19:59.862Z" },
+]
+
+[[package]]
+name = "someip-sd-demo"
+version = "0.1.0"
+source = { editable = "." }
+dependencies = [
+    { name = "someip" },
+]
+
+[package.metadata]
+requires-dist = [{ name = "someip", specifier = ">=0.3.0" }]
