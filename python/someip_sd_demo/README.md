@@ -296,6 +296,40 @@ constraint (it's rootless by design, not rootless-as-a-mode-on-top-of-a
 normally-rootful-daemon like Docker), so once the host kernel has IPv6,
 it's a reasonable first thing to try.
 
+**Confirmed broken on Podman 4.2.1's CNI network backend specifically:**
+IPv6 static address assignment (`--network NET:ip6=ADDR`) silently does
+nothing on this Podman version -- the container's `eth0` only ever gets
+the kernel's automatic link-local address (`fe80::...`), never the
+requested global address, which then makes any `sendto()` to a
+global/ULA-scoped destination fail with `OSError: [Errno 99] Cannot
+assign requested address` (`EADDRNOTAVAIL`), since the interface has no
+source address in that scope at all. Confirmed directly:
+
+```sh
+podman run --rm --network "someip-sd-net:ip6=fd53:7cb8:383:2::99" \
+  --entrypoint cat someip-sd-sim /proc/net/if_inet6
+# only fe80:: (eth0) and ::1 (lo) -- the requested ::99 never shows up
+```
+
+This lines up with the recurring `plugin firewall does not support
+config version "1.0.0"` warning Podman 4.2.1 prints on every network
+command -- its bundled CNI plugin config is generating a config version
+its installed CNI plugin binaries don't understand, and it's plausible
+that's breaking more than just the named `firewall` plugin (the IPAM
+plugin included). This is a Podman/CNI installation issue, not something
+`docker_run_demo.sh`/`docker_smoke_test.sh` can work around by changing
+flags -- the network namespace genuinely has no usable address. Fixing
+it for real needs either a newer Podman (the `netavark` backend replaces
+CNI and doesn't have this bug) or matching/upgrading the host's
+`containernetworking-plugins` package to what Podman 4.2.1 expects.
+
+If you're already running as root and the host kernel has IPv6 (check
+the prerequisite above) -- e.g. exactly this WSL2-as-root case -- skip
+containers entirely and use the plain `uv run` path from "Running it"
+above instead: it needs neither Docker's IPv6-bridge support nor
+Podman's CNI networking, and is already the most-verified path (proven
+locally and in CI).
+
 ## CI
 
 `.github/workflows/ci.yml` runs on every push/PR:
