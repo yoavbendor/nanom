@@ -6,7 +6,8 @@
 # if not. Prints both containers' logs either way.
 #
 # Works with Docker or Podman: set CONTAINER_ENGINE=podman to use
-# Podman (defaults to docker).
+# Podman (defaults to docker). Static-IPv6-per-container syntax differs
+# between the two -- see docker_run_demo.sh's net_args() comment.
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
@@ -15,6 +16,14 @@ IMAGE=someip-sd-sim
 NET=someip-sd-net
 SUBNET="fd53:7cb8:383:2::/64"
 
+net_args() {  # net_args <ipv6-addr> -- prints the --network... args for this engine
+  if [ "$ENGINE" = "podman" ]; then
+    printf -- '--network\n%s:ip6=%s\n' "$NET" "$1"
+  else
+    printf -- '--network\n%s\n--ip6\n%s\n' "$NET" "$1"
+  fi
+}
+
 "$ENGINE" build -t "$IMAGE" .
 
 "$ENGINE" network inspect "$NET" >/dev/null 2>&1 || \
@@ -22,12 +31,14 @@ SUBNET="fd53:7cb8:383:2::/64"
 
 "$ENGINE" rm -f mcast-recv mcast-send >/dev/null 2>&1 || true
 
-"$ENGINE" run -d --name mcast-recv --network "$NET" --ip6 "fd53:7cb8:383:2::10" \
+mapfile -t RECV_NET_ARGS < <(net_args "fd53:7cb8:383:2::10")
+"$ENGINE" run -d --name mcast-recv "${RECV_NET_ARGS[@]}" \
   -e MCAST_IFACE=eth0 --entrypoint python3 "$IMAGE" scripts/mcast_smoke_test.py recv
 
 sleep 1
 
-"$ENGINE" run --name mcast-send --network "$NET" --ip6 "fd53:7cb8:383:2::11" \
+mapfile -t SEND_NET_ARGS < <(net_args "fd53:7cb8:383:2::11")
+"$ENGINE" run --name mcast-send "${SEND_NET_ARGS[@]}" \
   -e MCAST_IFACE=eth0 --entrypoint python3 "$IMAGE" scripts/mcast_smoke_test.py send || true
 
 STATUS="$("$ENGINE" wait mcast-recv)"
