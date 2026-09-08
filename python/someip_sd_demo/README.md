@@ -1,11 +1,13 @@
-# someip-sd-demo
+# someip-sd-sim
 
 A local SOME/IP Service Discovery (SD) demo: an independent server process
 and client process, both built on [pysomeip](https://github.com/afflux/pysomeip)
 (`someip` on PyPI), negotiating a real AUTOSAR SD handshake over IPv6
 loopback and logging every step. This is a rehearsal for the C++
-`nanom_someip_sd` sensor simulator, not the simulator itself -- see the
-project plan for the bigger picture.
+`nanom_someip_sd` sensor simulator (planned in
+[nanom](https://github.com/yoavbendor/nanom)), not the simulator itself.
+
+[![CI](https://github.com/yoavbendor/someip-sd-sim/actions/workflows/ci.yml/badge.svg)](https://github.com/yoavbendor/someip-sd-sim/actions/workflows/ci.yml)
 
 ## Real network configuration this demo models
 
@@ -77,6 +79,15 @@ doesn't need them:
 
 ## Running it
 
+Linux's `lo` interface gets no IPv6 multicast route (`ff00::/8`) by
+default, so any multicast `sendto()` over loopback fails with
+`ENETUNREACH` until you add one (real network interfaces don't need
+this -- it's loopback-testing-only, and it's what CI does too):
+
+```sh
+sudo ip -6 route add ff00::/8 dev lo
+```
+
 ```sh
 uv sync
 uv run sd-server        # terminal 1
@@ -131,17 +142,31 @@ uv run sd-server --local-addr fd53:7cb8:383:2::56   --unicast-port 30490
 uv run sd-client --local-addr fd53:7cb8:383:2::1:117 --unicast-port 30490
 ```
 
+## CI
+
+`.github/workflows/ci.yml` runs this end-to-end on every push/PR: it
+installs `uv`, syncs the project, starts `sd-server` and `sd-client` as
+real background processes talking over the runner's actual IPv6 loopback
+(GitHub's `ubuntu-latest` runners have working IPv6, unlike some sandboxed
+dev environments), and greps both logs for the expected sequence --
+`Offer`, `Subscribe`, `SubscribeAck`, and at least one received
+notification for each of Measurements and Status. The job fails (and
+uploads both full logs as artifacts) if any expected line is missing
+within the timeout.
+
 ## Verifying against nanom_shark's own SOME/IP-SD decoder
 
 For an independent sanity check that the wire bytes this demo produces are
 actually spec-correct SOME/IP-SD, capture the loopback traffic and decode
-it with this repo's own decoder:
+it with [nanom_shark's](https://github.com/yoavbendor/nanom) decoder
+(clone that repo separately -- it's not a dependency of this one):
 
 ```sh
 tcpdump -i lo -w /tmp/sd_demo.pcap 'udp port 30490 or udp port 42809' &
 # run the demo for a few seconds, then stop tcpdump
-cmake -B ../../build -S ../.. && cmake --build ../../build --target nanom_shark_cli -j
-../../build/nanom_shark_cli /tmp/sd_demo.pcap --json /tmp/sd_demo.ndjson
+git clone https://github.com/yoavbendor/nanom /tmp/nanom
+cmake -B /tmp/nanom/build -S /tmp/nanom && cmake --build /tmp/nanom/build --target nanom_shark_cli -j
+/tmp/nanom/build/nanom_shark_cli /tmp/sd_demo.pcap --json /tmp/sd_demo.ndjson
 ```
 
 ## Relationship to the C++ port
