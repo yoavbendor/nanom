@@ -4,11 +4,19 @@ Both server.py and client.py are independent scripts (each drives its own
 someip.sd.ServiceDiscoveryProtocol instance); this module only holds the
 config both sides must agree on out-of-band -- exactly like two real ECUs
 agree on service/instance/eventgroup IDs via their ARXML, not over the wire.
+
+Values below come from a real vSomeIP-based LRR sensor simulator / QNX ECU
+integration doc (service IDs, eventgroup IDs, multicast addresses and ports
+all confirmed there -- ff14::4:0 for SD also independently matches what the
+tshark reverse-engineering pass found in a real capture). Two pieces are
+NOT in that doc and are placeholders until confirmed: the two events' own
+method/event IDs (the doc gives service/eventgroup IDs, not method IDs).
 """
 
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import ipaddress
 import logging
 import socket
@@ -16,24 +24,71 @@ import struct
 
 from someip.sd import ServiceDiscoveryProtocol
 
-# --- SOME/IP service identity (arbitrary demo values; the real vendor IDs
-# come from the tshark/ARXML reverse-engineering work, not from here) ---
-SERVICE_ID = 0x1234
 INSTANCE_ID = 0x0001
 MAJOR_VERSION = 1
 MINOR_VERSION = 0
-EVENTGROUP_ID = 0x0001
+
+
+@dataclasses.dataclass(frozen=True)
+class SensorService:
+    """One of the sensor's offered services: one SOME/IP service, one
+    eventgroup, one dedicated IPv6 multicast group for its event data.
+    """
+
+    name: str
+    service_id: int
+    eventgroup_id: int
+    event_id: int  # TODO: placeholder -- doc gives service/eventgroup IDs, not this
+    multicast_addr: str
+    payload_size: int  # fixed size used for this demo's synthetic payload
+    cycle_ms: int  # nominal notification cadence
+    static_session_id: int | None  # None = normal incrementing session id
+
+
+# Real service/eventgroup IDs, real per-eventgroup multicast groups, real
+# data-plane port (42809, "ECU" / subscriber side) -- see README's network
+# configuration table.
+MEASUREMENTS = SensorService(
+    name="Measurements",
+    service_id=0x60D4,
+    eventgroup_id=0x8002,
+    event_id=0x8004,  # TODO: placeholder method/event ID, not given by the doc
+    multicast_addr="ff14::4:5",
+    payload_size=64,  # real payload is 1444+ bytes, TP-segmented; see README
+    cycle_ms=65,
+    static_session_id=None,
+)
+STATUS = SensorService(
+    name="Status",
+    service_id=0x60D6,
+    eventgroup_id=0x8001,
+    event_id=0x8006,  # TODO: placeholder method/event ID, not given by the doc
+    multicast_addr="ff14::4:3",
+    payload_size=116,  # real Status notification is exactly 116 bytes
+    cycle_ms=65,  # sent ~30ms after each Measurements notification
+    static_session_id=0x0000,  # real sensor uses a static session id here
+)
+SERVICES = (MEASUREMENTS, STATUS)
+
+DATA_PORT = 42809  # ECU's data port: destination for both eventgroups' streams
+SENSOR_DATA_SRC_PORT = 42810  # sensor's own source port for outgoing data
 
 # --- SD control plane ---
 SD_PORT = 30490  # AUTOSAR well-known SOME/IP-SD port
-SD_MULTICAST_ADDR = "ff14::930:490"  # arbitrary demo SD multicast group
+SD_MULTICAST_ADDR = "ff14::4:0"  # real SD multicast group (confirmed against a live capture)
 INTERFACE = "lo"
+
+# The real network's actual addresses, for reference / for pointing this
+# demo directly at the real VLAN once reachable (pass these as --local-addr;
+# real hosts don't need --unicast-port, since they don't share an address).
+REAL_SENSOR_ADDR = "fd53:7cb8:383:2::56"
+REAL_ECU_ADDR = "fd53:7cb8:383:2::1:117"
 
 # Running two SD participants as two processes on ONE host means they'd
 # normally collide trying to each bind a unicast SD socket to the same
 # (::1, 30490): SO_REUSEPORT would then load-balance packets between them
 # unpredictably instead of routing them correctly (see create_split_endpoints
-# below and the README). Two *real* ECUs don't have this problem because
+# below and the README). Two *real* hosts don't have this problem because
 # each has its own IP address; here we sidestep it by giving each role its
 # own unicast SD port while still sharing the multicast port (30490) that SD
 # itself requires everyone to use.
@@ -42,26 +97,26 @@ SERVER_SD_UNICAST_PORT = 30490
 CLIENT_LOCAL_ADDR = "::1"
 CLIENT_SD_UNICAST_PORT = 30491
 
-# --- sensor data plane ---
-DATA_MULTICAST_ADDR = "ff14::5"
-DATA_PORT = 30510
+# event_id(H), session_id(H), sequence(I), synthetic reading(f), padding to
+# the service's real payload_size.
+_PAYLOAD_HEADER = struct.Struct("!HHIf")
 
-# The five sensor source addresses from the real vehicle network. In this
-# demo they're carried as payload metadata (which simulated sensor an event
-# belongs to), not used as socket source addresses -- see the plan/README
-# for why (it would require provisioning 5 more loopback addresses for no
-# protocol-relevant benefit; SD subscription is per-eventgroup, not per
-# source address).
-SENSORS = [
-    (0x0001, "fd53:7cb8:383:2::bd"),
-    (0x0002, "fd53:7cb8:383:2::56"),
-    (0x0003, "fd53:7cb8:383:2::bb"),
-    (0x0004, "fd53:7cb8:383:2::be"),
-    (0x0005, "fd53:7cb8:383:2::bc"),
-]
 
-# event_id(H), sequence(I), synthetic reading(f)
-SENSOR_PAYLOAD = struct.Struct("!HIf")
+def pack_payload(service: SensorService, session_id: int, seq: int, value: float) -> bytes:
+    head = _PAYLOAD_HEADER.pack(service.event_id, session_id, seq, value)
+    pad = service.payload_size - len(head)
+    if pad < 0:
+        raise ValueError(f"{service.name}: payload_size too small for header ({len(head)} bytes)")
+    return head + b"\x00" * pad
+
+
+def unpack_payload(data: bytes) -> tuple[int, int, int, float]:
+    event_id, session_id, seq, value = _PAYLOAD_HEADER.unpack(data[: _PAYLOAD_HEADER.size])
+    return event_id, session_id, seq, value
+
+
+def service_by_event_id(event_id: int) -> SensorService | None:
+    return next((s for s in SERVICES if s.event_id == event_id), None)
 
 
 def configure_logging(role: str, level: int = logging.INFO) -> logging.Logger:
@@ -140,14 +195,19 @@ def if_index(interface: str) -> int:
     return socket.if_nametoindex(interface)
 
 
-def open_data_send_socket(interface: str = INTERFACE, ttl: int = 1) -> socket.socket:
+def open_data_send_socket(
+    local_addr: str, src_port: int = SENSOR_DATA_SRC_PORT, interface: str = INTERFACE, ttl: int = 1
+) -> socket.socket:
     """A plain send-only IPv6 UDP socket for streaming sensor payloads to
-    the data-plane multicast group. Deliberately outside pysomeip: the SD
+    the data-plane multicast groups. Deliberately outside pysomeip: the SD
     negotiation is the protocol-critical part; once a subscription is
     confirmed, the data itself is just sendto() to the address the Offer
-    already advertised.
+    already advertised. Bound to the real sensor's own documented source
+    port (42810) for fidelity, even though nothing here depends on it.
     """
     sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind((local_addr, src_port))
     sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_IF, if_index(interface))
     sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, ttl)
     sock.setblocking(False)
@@ -155,17 +215,21 @@ def open_data_send_socket(interface: str = INTERFACE, ttl: int = 1) -> socket.so
 
 
 def open_data_recv_socket(
-    multicast_addr: str = DATA_MULTICAST_ADDR,
+    multicast_addrs: tuple[str, ...],
     port: int = DATA_PORT,
     interface: str = INTERFACE,
 ) -> socket.socket:
-    """A plain receive socket joined to the data-plane multicast group."""
+    """A plain receive socket bound once to the shared data port and joined
+    to every multicast group listed (both eventgroups' streams arrive on
+    the same port, distinguished only by which group they were sent to).
+    """
     sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
     if hasattr(socket, "SO_REUSEPORT"):
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     sock.bind(("::", port))
-    mreq = struct.pack("16sI", socket.inet_pton(socket.AF_INET6, multicast_addr), if_index(interface))
-    sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, mreq)
+    for addr in multicast_addrs:
+        mreq = struct.pack("16sI", socket.inet_pton(socket.AF_INET6, addr), if_index(interface))
+        sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, mreq)
     sock.setblocking(False)
     return sock

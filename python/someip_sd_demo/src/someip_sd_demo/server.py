@@ -1,8 +1,14 @@
-"""SOME/IP-SD server ("the sensor gateway"): offers a service with one
-eventgroup carrying an IPv6 multicast option, answers FindService/
-Subscribe per the real AUTOSAR SD state machine (via pysomeip), and once
-at least one client has subscribed, streams 5 synthetic sensor events to
-the advertised multicast group.
+"""SOME/IP-SD server ("the LRR sensor simulator"): offers two real
+services -- Measurements (0x60d4) and Status (0x60d6) -- each with its
+own eventgroup and dedicated IPv6 multicast option, answers
+FindService/Subscribe per the real AUTOSAR SD state machine (via
+pysomeip), and once each eventgroup has a subscriber, streams that
+service's notifications to its advertised multicast group.
+
+Service IDs, eventgroup IDs, multicast addresses/ports and the two
+documented real-sensor quirks (Status's static session id, Measurements'
+large/TP-segmented payload) come from a real vSomeIP LRR sensor
+simulator / QNX ECU integration doc -- see README.md.
 """
 
 from __future__ import annotations
@@ -12,40 +18,43 @@ import asyncio
 import ipaddress
 import logging
 
+import someip.header as h
 from someip.config import Service
 from someip.header import IPv6EndpointOption, IPv6MulticastOption, L4Protocols
 from someip.sd import EventgroupSubscription, ServiceInstance, ServerServiceListener, format_address
 
 from someip_sd_demo.common import (
-    DATA_MULTICAST_ADDR,
     DATA_PORT,
-    EVENTGROUP_ID,
     INSTANCE_ID,
     MAJOR_VERSION,
     MINOR_VERSION,
-    SENSOR_PAYLOAD,
-    SENSORS,
     SERVER_LOCAL_ADDR,
     SERVER_SD_UNICAST_PORT,
-    SERVICE_ID,
+    SERVICES,
+    SensorService,
     configure_logging,
     create_split_endpoints,
     open_data_send_socket,
+    pack_payload,
 )
 
 
 class SensorEventgroupListener(ServerServiceListener):
-    """Logs Subscribe/Unsubscribe and gates whether the data loop sends."""
+    """Logs Subscribe/Unsubscribe for one service and gates whether the
+    data loop sends that service's notifications.
+    """
 
-    def __init__(self, log: logging.Logger):
+    def __init__(self, service: SensorService, log: logging.Logger):
+        self.service = service
         self.log = log
         self.active = 0
 
     def client_subscribed(self, subscription: EventgroupSubscription, source) -> None:
         self.active += 1
         self.log.info(
-            "SubscribeEventgroup accepted from %s (eventgroup=0x%04x ttl=%d) "
+            "%s: SubscribeEventgroup accepted from %s (eventgroup=0x%04x ttl=%d) "
             "-> %d active subscriber(s)",
+            self.service.name,
             format_address(source),
             subscription.id,
             subscription.ttl,
@@ -55,11 +64,34 @@ class SensorEventgroupListener(ServerServiceListener):
     def client_unsubscribed(self, subscription: EventgroupSubscription, source) -> None:
         self.active = max(0, self.active - 1)
         self.log.info(
-            "client %s unsubscribed/expired (eventgroup=0x%04x) -> %d active subscriber(s)",
+            "%s: client %s unsubscribed/expired -> %d active subscriber(s)",
+            self.service.name,
             format_address(source),
-            subscription.id,
             self.active,
         )
+
+
+def build_offered_service(service: SensorService, local_addr: str, unicast_port: int) -> Service:
+    return Service(
+        service.service_id,
+        INSTANCE_ID,
+        MAJOR_VERSION,
+        MINOR_VERSION,
+        options_1=(
+            # the service's own (conventional) unicast SD endpoint
+            IPv6EndpointOption(
+                address=ipaddress.IPv6Address(local_addr), l4proto=L4Protocols.UDP, port=unicast_port
+            ),
+            # the actual point of this demo: an IPv6 multicast option
+            # telling subscribers where this eventgroup's data will be sent
+            IPv6MulticastOption(
+                address=ipaddress.IPv6Address(service.multicast_addr),
+                l4proto=L4Protocols.UDP,
+                port=DATA_PORT,
+            ),
+        ),
+        eventgroups=frozenset({service.eventgroup_id}),
+    )
 
 
 async def run(args: argparse.Namespace) -> None:
@@ -80,71 +112,79 @@ async def run(args: argparse.Namespace) -> None:
     timings.ANNOUNCE_TTL = 6
     timings.SUBSCRIBE_TTL = 5
 
-    service = Service(
-        SERVICE_ID,
-        INSTANCE_ID,
-        MAJOR_VERSION,
-        MINOR_VERSION,
-        options_1=(
-            # the service's own (conventional) unicast SD endpoint
-            IPv6EndpointOption(
-                address=ipaddress.IPv6Address(args.local_addr),
-                l4proto=L4Protocols.UDP,
-                port=args.unicast_port,
-            ),
-            # the actual point of this demo: an IPv6 multicast option
-            # telling subscribers where the sensor data will be sent
-            IPv6MulticastOption(
-                address=ipaddress.IPv6Address(DATA_MULTICAST_ADDR),
-                l4proto=L4Protocols.UDP,
-                port=DATA_PORT,
-            ),
-        ),
-        eventgroups=frozenset({EVENTGROUP_ID}),
-    )
+    listeners: dict[int, SensorEventgroupListener] = {}
+    instances: list[ServiceInstance] = []
+    for service in SERVICES:
+        offered = build_offered_service(service, args.local_addr, args.unicast_port)
+        listener = SensorEventgroupListener(service, log)
+        listeners[service.service_id] = listener
+        instance = ServiceInstance(offered, listener, sd_prot.announcer, timings)
+        sd_prot.announcer.announce_service(instance)
+        instances.append(instance)
+        log.info(
+            "offering %s: service=0x%04x instance=0x%04x eventgroup=0x%04x "
+            "-> data multicast [%s]:%d once subscribed",
+            service.name,
+            service.service_id,
+            INSTANCE_ID,
+            service.eventgroup_id,
+            service.multicast_addr,
+            DATA_PORT,
+        )
 
-    listener = SensorEventgroupListener(log)
-    instance = ServiceInstance(service, listener, sd_prot.announcer, timings)
-    sd_prot.announcer.announce_service(instance)
     sd_prot.start()
 
-    log.info(
-        "offering service=0x%04x instance=0x%04x eventgroup=0x%04x; "
-        "sensor data will multicast to [%s]:%d once subscribed",
-        SERVICE_ID,
-        INSTANCE_ID,
-        EVENTGROUP_ID,
-        DATA_MULTICAST_ADDR,
-        DATA_PORT,
-    )
-
-    data_sock = open_data_send_socket()
+    data_sock = open_data_send_socket(args.local_addr)
+    session_ids = {service.service_id: 1 for service in SERVICES}
     seq = 0
     try:
         while True:
-            await asyncio.sleep(1.0)
-            if listener.active <= 0:
-                log.debug("no active subscribers yet, not sending sensor data")
-                continue
+            await asyncio.sleep(SERVICES[0].cycle_ms / 1000.0)
             seq += 1
-            for event_id, source_addr in SENSORS:
-                value = 20.0 + event_id + 0.1 * (seq % 10)
-                payload = SENSOR_PAYLOAD.pack(event_id, seq, value)
-                data_sock.sendto(payload, (DATA_MULTICAST_ADDR, DATA_PORT))
+            for i, service in enumerate(SERVICES):
+                if listeners[service.service_id].active <= 0:
+                    log.debug("%s: no active subscribers yet, not sending", service.name)
+                    continue
+                if service.static_session_id is not None:
+                    session_id = service.static_session_id
+                else:
+                    session_id = session_ids[service.service_id]
+                    session_ids[service.service_id] = (session_id % 0xFFFF) + 1
+
+                value = 20.0 + service.service_id % 16 + 0.1 * (seq % 10)
+                payload = pack_payload(service, session_id, seq, value)
+                msg = h.SOMEIPHeader(
+                    service_id=service.service_id,
+                    method_id=service.event_id,
+                    client_id=0,
+                    session_id=session_id,
+                    interface_version=MAJOR_VERSION,
+                    message_type=h.SOMEIPMessageType.NOTIFICATION,
+                    return_code=h.SOMEIPReturnCode.E_OK,
+                    payload=payload,
+                )
+                wire = msg.build()
+                # stagger Status ~30ms after Measurements, as documented
+                if i > 0:
+                    await asyncio.sleep(0.03)
+                data_sock.sendto(wire, (service.multicast_addr, DATA_PORT))
                 log.info(
-                    "sent sensor event=0x%04x (sensor=%s) seq=%d value=%.2f -> [%s]:%d",
-                    event_id,
-                    source_addr,
+                    "%s: sent notification seq=%d session=0x%04x value=%.2f "
+                    "(%d bytes) -> [%s]:%d",
+                    service.name,
                     seq,
+                    session_id,
                     value,
-                    DATA_MULTICAST_ADDR,
+                    len(wire),
+                    service.multicast_addr,
                     DATA_PORT,
                 )
     except asyncio.CancelledError:
         pass
     finally:
         log.info("shutting down: sending StopOffer and closing sockets")
-        sd_prot.announcer.stop_announce_service(instance)
+        for instance in instances:
+            sd_prot.announcer.stop_announce_service(instance)
         sd_prot.stop()
         data_sock.close()
         trsp_u.close()

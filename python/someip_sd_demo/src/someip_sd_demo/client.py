@@ -1,7 +1,9 @@
-"""SOME/IP-SD client ("the MCU stand-in"): finds the offered service,
-auto-subscribes to its eventgroup per the real AUTOSAR SD state machine
-(via pysomeip), joins the IPv6 multicast group advertised in the Offer,
-and logs every sensor event it receives.
+"""SOME/IP-SD client ("the QNX ECU stand-in"): finds both real sensor
+services (Measurements 0x60d4, Status 0x60d6), auto-subscribes to each
+eventgroup per the real AUTOSAR SD state machine (via pysomeip), joins
+both advertised IPv6 multicast groups on the shared data port, and logs
+every notification it receives -- decoded as a real SOME/IP header, so
+the documented static session-id quirk on Status is directly visible.
 """
 
 from __future__ import annotations
@@ -10,6 +12,7 @@ import argparse
 import asyncio
 import logging
 
+import someip.header as h
 from someip.config import Eventgroup, Service
 from someip.header import L4Protocols
 from someip.sd import ClientServiceListener, format_address
@@ -17,17 +20,14 @@ from someip.sd import ClientServiceListener, format_address
 from someip_sd_demo.common import (
     CLIENT_LOCAL_ADDR,
     CLIENT_SD_UNICAST_PORT,
-    DATA_MULTICAST_ADDR,
     DATA_PORT,
-    EVENTGROUP_ID,
     INSTANCE_ID,
     MAJOR_VERSION,
-    SENSOR_PAYLOAD,
-    SENSORS,
-    SERVICE_ID,
+    SERVICES,
     configure_logging,
     create_split_endpoints,
     open_data_recv_socket,
+    unpack_payload,
 )
 
 
@@ -76,47 +76,58 @@ async def run(args: argparse.Namespace) -> None:
 
     sd_prot.start()
 
-    service = Service(SERVICE_ID, INSTANCE_ID, MAJOR_VERSION)
     watch_listener = LoggingServiceListener(log)
-    sd_prot.discovery.watch_service(service, watch_listener)
+    for service in SERVICES:
+        watched = Service(service.service_id, INSTANCE_ID, MAJOR_VERSION)
+        sd_prot.discovery.watch_service(watched, watch_listener)
 
-    eventgroup = Eventgroup(
-        service_id=SERVICE_ID,
-        instance_id=INSTANCE_ID,
-        major_version=MAJOR_VERSION,
-        eventgroup_id=EVENTGROUP_ID,
-        sockname=trsp_u.get_extra_info("sockname"),
-        protocol=L4Protocols.UDP,
-    )
-    sd_prot.discovery.find_subscribe_eventgroup(eventgroup)
+        eventgroup = Eventgroup(
+            service_id=service.service_id,
+            instance_id=INSTANCE_ID,
+            major_version=MAJOR_VERSION,
+            eventgroup_id=service.eventgroup_id,
+            sockname=trsp_u.get_extra_info("sockname"),
+            protocol=L4Protocols.UDP,
+        )
+        sd_prot.discovery.find_subscribe_eventgroup(eventgroup)
+        log.info(
+            "%s: watching for service=0x%04x instance=0x%04x; will auto-subscribe "
+            "eventgroup=0x%04x and join [%s]:%d for its data",
+            service.name,
+            service.service_id,
+            INSTANCE_ID,
+            service.eventgroup_id,
+            service.multicast_addr,
+            DATA_PORT,
+        )
 
-    log.info(
-        "watching for service=0x%04x instance=0x%04x; will auto-subscribe "
-        "eventgroup=0x%04x and join [%s]:%d for sensor data",
-        SERVICE_ID,
-        INSTANCE_ID,
-        EVENTGROUP_ID,
-        DATA_MULTICAST_ADDR,
-        DATA_PORT,
-    )
-
-    data_sock = open_data_recv_socket()
+    data_sock = open_data_recv_socket(tuple(s.multicast_addr for s in SERVICES))
+    by_service_id = {s.service_id: s for s in SERVICES}
     loop = asyncio.get_event_loop()
 
     async def receive_loop() -> None:
         while True:
-            data = await loop.sock_recv(data_sock, 2048)
-            if len(data) != SENSOR_PAYLOAD.size:
-                log.warning("received %d bytes of unexpected size on data multicast group", len(data))
+            data = await loop.sock_recv(data_sock, 4096)
+            try:
+                msg, rest = h.SOMEIPHeader.parse(data)
+            except h.ParseError as exc:
+                log.warning("failed to parse notification (%d bytes): %r", len(data), exc)
                 continue
-            event_id, seq, value = SENSOR_PAYLOAD.unpack(data)
-            label = next((addr for eid, addr in SENSORS if eid == event_id), "unknown")
+            service = by_service_id.get(msg.service_id)
+            if service is None:
+                log.warning("notification for unknown service=0x%04x", msg.service_id)
+                continue
+            event_id, payload_session, seq, value = unpack_payload(msg.payload)
             log.info(
-                "received sensor event=0x%04x (sensor=%s) seq=%d value=%.2f",
-                event_id,
-                label,
+                "%s: received notification seq=%d header_session=0x%04x "
+                "payload_session=0x%04x value=%.2f (%d bytes)%s",
+                service.name,
                 seq,
+                msg.session_id,
+                payload_session,
                 value,
+                len(data),
+                " [static session id, as documented]" if service.static_session_id is not None else "",
             )
 
     try:
@@ -125,7 +136,16 @@ async def run(args: argparse.Namespace) -> None:
         pass
     finally:
         log.info("shutting down: unsubscribing and closing sockets")
-        sd_prot.discovery.stop_find_subscribe_eventgroup(eventgroup)
+        for service in SERVICES:
+            eventgroup = Eventgroup(
+                service_id=service.service_id,
+                instance_id=INSTANCE_ID,
+                major_version=MAJOR_VERSION,
+                eventgroup_id=service.eventgroup_id,
+                sockname=trsp_u.get_extra_info("sockname"),
+                protocol=L4Protocols.UDP,
+            )
+            sd_prot.discovery.stop_find_subscribe_eventgroup(eventgroup)
         sd_prot.stop()
         data_sock.close()
         trsp_u.close()
