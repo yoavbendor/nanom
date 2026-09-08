@@ -22,7 +22,7 @@ import logging
 import socket
 import struct
 
-from someip.sd import ServiceDiscoveryProtocol
+from someip.sd import DatagramProtocolAdapter, ServiceDiscoveryProtocol
 
 INSTANCE_ID = 0x0001
 MAJOR_VERSION = 1
@@ -164,9 +164,6 @@ async def create_split_endpoints(
 
     prot = ServiceDiscoveryProtocol((multicast_addr, multicast_port))
 
-    # order matters (see pysomeip's own create_endpoints): create the
-    # unicast socket first so unicast traffic isn't captured by the
-    # multicast socket on platforms where that matters.
     trsp_u = await ServiceDiscoveryProtocol._create_endpoint(
         loop,
         prot,
@@ -176,16 +173,35 @@ async def create_split_endpoints(
         multicast_interface=multicast_interface,
         ttl=ttl,
     )
-    trsp_m = await ServiceDiscoveryProtocol._create_endpoint(
-        loop,
-        prot,
-        family,
-        local_addr,
-        multicast_port,
-        multicast_addr=multicast_addr,
-        multicast_interface=multicast_interface,
-        ttl=ttl,
+
+    # The multicast socket is built ourselves rather than via pysomeip's
+    # own _create_endpoint: on Linux, that binds to "<addr>%<interface>",
+    # and glibc's getaddrinfo only accepts a zone-id suffix for LINK-LOCAL
+    # scope addresses (ff02::/16) -- it fails with EAI_NONAME for any other
+    # scope, including the admin-local ff14::/16 addresses this project's
+    # real SD multicast group actually uses (confirmed the hard way: this
+    # broke CI). Binding the wildcard address and joining the group
+    # explicitly via IPV6_JOIN_GROUP + if_nametoindex works for every
+    # multicast scope -- this mirrors open_data_recv_socket below, and is
+    # the same root lesson as the real project's own "if_nametoindex(),
+    # not scope_id()" vSomeIP patch (see README).
+    mc_sock = socket.socket(family, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    mc_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    if hasattr(socket, "SO_REUSEPORT"):
+        mc_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
+    mc_sock.bind(("::", multicast_port))
+    mreq = struct.pack(
+        "16sI", socket.inet_pton(family, multicast_addr), if_index(multicast_interface)
     )
+    mc_sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_JOIN_GROUP, mreq)
+    mc_sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_IF, if_index(multicast_interface))
+    mc_sock.setsockopt(socket.IPPROTO_IPV6, socket.IPV6_MULTICAST_HOPS, ttl)
+    mc_sock.setblocking(False)
+    trsp_m, _ = await loop.create_datagram_endpoint(
+        lambda: DatagramProtocolAdapter(prot, is_multicast=True),
+        sock=mc_sock,
+    )
+
     prot.transport = trsp_u
 
     return trsp_u, trsp_m, prot
