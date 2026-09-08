@@ -265,6 +265,37 @@ rootless specifically on your host; please let me know what it reports so
 this section can be corrected if rootless Docker's multicast support turns
 out to be more restricted than rootful.
 
+### Podman instead of Docker
+
+`scripts/docker_run_demo.sh`, `docker_smoke_test.sh` and
+`docker_stop_demo.sh` all work with Podman too -- set `CONTAINER_ENGINE=podman`
+(they default to `docker`; Podman's CLI is close enough to Docker's that
+the exact same `build`/`network create`/`run`/`wait`/`logs` calls apply):
+
+```sh
+module load podman/<version>   # however your site activates it
+export CONTAINER_ENGINE=podman
+scripts/docker_smoke_test.sh    # validate first
+scripts/docker_run_demo.sh      # then the real demo
+podman logs -f sd-server
+podman logs -f sd-client
+scripts/docker_stop_demo.sh     # stop and clean up
+```
+
+If your site's Podman ships `podman-compose` or a `podman compose`
+subcommand, `docker-compose.yml` works there too (same commands as the
+Docker case, swap `docker compose`/`docker-compose` for `podman
+compose`/`podman-compose`).
+
+Podman doesn't change anything about the IPv6 prerequisite above:
+containers share the host kernel's network stack directly regardless of
+which engine manages them, so if `AF_INET6` socket creation fails on the
+host, it fails identically under Podman -- this isn't a Docker-specific
+gap. Podman is, if anything, slightly better suited to the no-sudo
+constraint (it's rootless by design, not rootless-as-a-mode-on-top-of-a
+normally-rootful-daemon like Docker), so once the host kernel has IPv6,
+it's a reasonable first thing to try.
+
 ## CI
 
 `.github/workflows/ci.yml` runs on every push/PR:
