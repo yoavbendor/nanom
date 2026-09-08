@@ -88,7 +88,13 @@ jobs:
 
           # Let the full Initial-Wait/Repetition/Main-phase SD handshake
           # play out and several notification cycles (~65ms cadence) run.
-          sleep 20
+          # 45s (not 20s): the first CI run to reach this point showed
+          # Status subscribing/refreshing cleanly every ~3s cycle while
+          # Measurements' subscribe only succeeded once, right at the very
+          # end of a 20s window -- more real run time is the cheapest way
+          # to tell whether that's just a slow first success or a deeper,
+          # per-service asymmetry worth root-causing separately.
+          sleep 45
 
           # Graceful shutdown first (SIGINT, same path as local Ctrl+C:
           # StopOffer / unsubscribe), then force-kill as a safety net.
