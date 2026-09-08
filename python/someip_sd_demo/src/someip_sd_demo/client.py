@@ -23,10 +23,13 @@ from someip_sd_demo.common import (
     DATA_PORT,
     INSTANCE_ID,
     MAJOR_VERSION,
+    SERVER_SD_UNICAST_PORT,
     SERVICES,
     configure_logging,
     create_split_endpoints,
+    create_unicast_sd_endpoint,
     open_data_recv_socket,
+    open_unicast_data_recv_socket,
     unpack_payload,
 )
 
@@ -61,9 +64,24 @@ class LoggingServiceListener(ClientServiceListener):
 async def run(args: argparse.Namespace) -> None:
     log = configure_logging("client", level=getattr(logging, args.log_level.upper()))
 
-    trsp_u, trsp_m, sd_prot = await create_split_endpoints(
-        local_addr=args.local_addr, unicast_port=args.unicast_port
-    )
+    unicast_mode = args.peer_addr is not None
+    trsp_m = None
+    if unicast_mode:
+        log.info(
+            "--peer-addr given: running SD unicast, point-to-point with %s "
+            "(CI-only fallback -- see README's CI section)",
+            args.peer_addr,
+        )
+        trsp_u, sd_prot = await create_unicast_sd_endpoint(
+            local_addr=args.local_addr,
+            local_port=args.unicast_port,
+            peer_addr=args.peer_addr,
+            peer_port=SERVER_SD_UNICAST_PORT,
+        )
+    else:
+        trsp_u, trsp_m, sd_prot = await create_split_endpoints(
+            local_addr=args.local_addr, unicast_port=args.unicast_port
+        )
 
     timings = sd_prot.timings
     timings.INITIAL_DELAY_MIN = 0.1
@@ -101,7 +119,10 @@ async def run(args: argparse.Namespace) -> None:
             DATA_PORT,
         )
 
-    data_sock = open_data_recv_socket(tuple(s.multicast_addr for s in SERVICES))
+    if unicast_mode:
+        data_sock = open_unicast_data_recv_socket(args.local_addr)
+    else:
+        data_sock = open_data_recv_socket(tuple(s.multicast_addr for s in SERVICES))
     by_service_id = {s.service_id: s for s in SERVICES}
     loop = asyncio.get_event_loop()
 
@@ -149,13 +170,20 @@ async def run(args: argparse.Namespace) -> None:
         sd_prot.stop()
         data_sock.close()
         trsp_u.close()
-        trsp_m.close()
+        if trsp_m is not None:
+            trsp_m.close()
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--local-addr", default=CLIENT_LOCAL_ADDR)
     parser.add_argument("--unicast-port", type=int, default=CLIENT_SD_UNICAST_PORT)
+    parser.add_argument(
+        "--peer-addr",
+        default=None,
+        help="CI-only fallback: run SD+data unicast, point-to-point with this "
+        "server address, instead of multicast (see README's CI section)",
+    )
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
 

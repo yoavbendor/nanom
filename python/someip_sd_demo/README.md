@@ -144,15 +144,35 @@ uv run sd-client --local-addr fd53:7cb8:383:2::1:117 --unicast-port 30490
 
 ## CI
 
-`.github/workflows/ci.yml` runs this end-to-end on every push/PR: it
-installs `uv`, syncs the project, starts `sd-server` and `sd-client` as
-real background processes talking over the runner's actual IPv6 loopback
-(GitHub's `ubuntu-latest` runners have working IPv6, unlike some sandboxed
-dev environments), and greps both logs for the expected sequence --
-`Offer`, `Subscribe`, `SubscribeAck`, and at least one received
-notification for each of Measurements and Status. The job fails (and
-uploads both full logs as artifacts) if any expected line is missing
-within the timeout.
+`.github/workflows/ci.yml` runs on every push/PR:
+
+1. **Offline SD wire round-trip check** (`scripts/offline_roundtrip_check.py`)
+   -- builds the same OfferService/Subscribe entries and data notifications
+   the demo builds and confirms they round-trip through pysomeip's own SD
+   serialize/parse. No networking, runs anywhere.
+2. **A live run of `sd-server`/`sd-client`** as real background processes,
+   over real IPv6 sockets on the runner's loopback -- but **unicast**, via
+   `--peer-addr ::1` on both, not the demo's default multicast. GitHub-hosted
+   `ubuntu-latest` runners were found, empirically, not to deliver IPv6
+   multicast traffic on `lo` between processes **at all** -- confirmed with
+   a raw, pysomeip-independent socket test (`scripts/mcast_smoke_test.py`,
+   still run as a non-blocking diagnostic in CI): join succeeds, send
+   succeeds, receive times out with zero packets, even with the multicast
+   route added and `IPV6_MULTICAST_LOOP` explicitly enabled. That's a
+   runner/hypervisor networking limitation, not something fixable from
+   inside the VM. `--peer-addr` (see `create_unicast_sd_endpoint` in
+   `common.py`) sidesteps it entirely: `ServiceDiscoveryProtocol`'s
+   `default_addr` is pointed at the known peer instead of a multicast
+   group, so every send that would otherwise go to the multicast group goes
+   directly to that peer -- still 100% real sockets/asyncio/pysomeip SD
+   code and the real timing state machine, just not real multicast fan-out.
+   The demo's default (no `--peer-addr`) behavior is untouched and stays
+   multicast-based, matching the real vendor deployment, for local or
+   self-hosted-runner use where multicast actually works.
+3. Both logs are grepped for the expected sequence -- `Offer`, `Subscribe`,
+   `SubscribeAck`, and at least one received notification for each of
+   Measurements and Status. The job fails (and uploads all logs as
+   artifacts) if any expected line is missing within the timeout.
 
 ## Verifying against nanom_shark's own SOME/IP-SD decoder
 

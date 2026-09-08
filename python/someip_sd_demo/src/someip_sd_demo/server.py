@@ -24,6 +24,7 @@ from someip.header import IPv6EndpointOption, IPv6MulticastOption, L4Protocols
 from someip.sd import EventgroupSubscription, ServiceInstance, ServerServiceListener, format_address
 
 from someip_sd_demo.common import (
+    CLIENT_SD_UNICAST_PORT,
     DATA_PORT,
     INSTANCE_ID,
     MAJOR_VERSION,
@@ -34,7 +35,9 @@ from someip_sd_demo.common import (
     SensorService,
     configure_logging,
     create_split_endpoints,
+    create_unicast_sd_endpoint,
     open_data_send_socket,
+    open_unicast_data_send_socket,
     pack_payload,
 )
 
@@ -97,9 +100,24 @@ def build_offered_service(service: SensorService, local_addr: str, unicast_port:
 async def run(args: argparse.Namespace) -> None:
     log = configure_logging("server", level=getattr(logging, args.log_level.upper()))
 
-    trsp_u, trsp_m, sd_prot = await create_split_endpoints(
-        local_addr=args.local_addr, unicast_port=args.unicast_port
-    )
+    unicast_mode = args.peer_addr is not None
+    trsp_m = None
+    if unicast_mode:
+        log.info(
+            "--peer-addr given: running SD unicast, point-to-point with %s "
+            "(CI-only fallback -- see README's CI section)",
+            args.peer_addr,
+        )
+        trsp_u, sd_prot = await create_unicast_sd_endpoint(
+            local_addr=args.local_addr,
+            local_port=args.unicast_port,
+            peer_addr=args.peer_addr,
+            peer_port=CLIENT_SD_UNICAST_PORT,
+        )
+    else:
+        trsp_u, trsp_m, sd_prot = await create_split_endpoints(
+            local_addr=args.local_addr, unicast_port=args.unicast_port
+        )
 
     # Shortened AUTOSAR SD timing so the Initial-Wait/Repetition/Main phases
     # are all visible in a demo run lasting a few seconds rather than minutes.
@@ -134,7 +152,10 @@ async def run(args: argparse.Namespace) -> None:
 
     sd_prot.start()
 
-    data_sock = open_data_send_socket(args.local_addr)
+    if unicast_mode:
+        data_sock = open_unicast_data_send_socket(args.local_addr)
+    else:
+        data_sock = open_data_send_socket(args.local_addr)
     session_ids = {service.service_id: 1 for service in SERVICES}
     seq = 0
     try:
@@ -167,7 +188,8 @@ async def run(args: argparse.Namespace) -> None:
                 # stagger Status ~30ms after Measurements, as documented
                 if i > 0:
                     await asyncio.sleep(0.03)
-                data_sock.sendto(wire, (service.multicast_addr, DATA_PORT))
+                dest = args.peer_addr if unicast_mode else service.multicast_addr
+                data_sock.sendto(wire, (dest, DATA_PORT))
                 log.info(
                     "%s: sent notification seq=%d session=0x%04x value=%.2f "
                     "(%d bytes) -> [%s]:%d",
@@ -176,7 +198,7 @@ async def run(args: argparse.Namespace) -> None:
                     session_id,
                     value,
                     len(wire),
-                    service.multicast_addr,
+                    dest,
                     DATA_PORT,
                 )
     except asyncio.CancelledError:
@@ -188,13 +210,20 @@ async def run(args: argparse.Namespace) -> None:
         sd_prot.stop()
         data_sock.close()
         trsp_u.close()
-        trsp_m.close()
+        if trsp_m is not None:
+            trsp_m.close()
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--local-addr", default=SERVER_LOCAL_ADDR)
     parser.add_argument("--unicast-port", type=int, default=SERVER_SD_UNICAST_PORT)
+    parser.add_argument(
+        "--peer-addr",
+        default=None,
+        help="CI-only fallback: run SD+data unicast, point-to-point with this "
+        "client address, instead of multicast (see README's CI section)",
+    )
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()
 

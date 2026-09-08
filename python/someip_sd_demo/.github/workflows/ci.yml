@@ -32,20 +32,58 @@ jobs:
           print('AF_INET6 loopback OK:', s.getsockname())
           "
 
-      - name: Add IPv6 multicast route for the loopback interface
-        # Linux's `lo` gets no multicast route (ff00::/8) by default, so
-        # any sendto() to a multicast address over loopback fails with
-        # ENETUNREACH regardless of IPV6_MULTICAST_IF -- discovered by
-        # this exact CI job failing on its first real run. Real network
-        # interfaces don't need this; it's a loopback-testing-only step.
-        run: sudo ip -6 route add ff00::/8 dev lo
+      - name: Offline SD wire round-trip check (no networking)
+        # Builds the same OfferService/Subscribe entries and data
+        # notifications server.py/client.py build, and confirms they
+        # round-trip correctly through pysomeip's own SD serialize/parse.
+        # Runs anywhere, including sandboxes with no IPv6 at all -- this is
+        # the fast, deterministic part of "build and test"; the live run
+        # below is the networked part.
+        run: uv run python scripts/offline_roundtrip_check.py
 
-      - name: Run server and client over real IPv6 loopback
+      - name: Diagnose raw cross-process IPv6 multicast on this runner
+        # Informational only (does not fail the build): GitHub-hosted
+        # runners were found NOT to deliver IPv6 multicast on `lo` between
+        # processes at all, independent of pysomeip -- confirmed with this
+        # exact raw socket test (join succeeds, send succeeds, recv times
+        # out with zero packets, even with the multicast route added and
+        # IPV6_MULTICAST_LOOP explicitly enabled). That's why the live run
+        # below uses --peer-addr (unicast SD) instead of real multicast.
+        # Kept here so a future runner image change that fixes this is
+        # visible without digging through history.
+        continue-on-error: true
         run: |
-          uv run sd-server --log-level DEBUG > server.log 2>&1 &
+          sudo ip -6 route add ff00::/8 dev lo || true
+          python3 scripts/mcast_smoke_test.py recv > recv.log 2>&1 &
+          RECV_PID=$!
+          sleep 1
+          python3 scripts/mcast_smoke_test.py send > send.log 2>&1 &
+          SEND_PID=$!
+          set +e
+          wait $RECV_PID
+          RECV_STATUS=$?
+          set -e
+          kill $SEND_PID 2>/dev/null || true
+          echo "=== recv.log ==="; cat recv.log
+          echo "=== send.log ==="; cat send.log
+          if [ "$RECV_STATUS" = "0" ]; then
+            echo "::notice::multicast now works on this runner -- the live run below could switch back to it"
+          else
+            echo "::notice::multicast still not delivered on this runner's lo, as expected; live run uses --peer-addr"
+          fi
+
+      - name: Run server and client live, unicast SD (CI fallback for no multicast)
+        # See create_unicast_sd_endpoint in common.py: real sockets, real
+        # asyncio, real pysomeip SD code and timing state machine, just
+        # point-to-point instead of via multicast (which this runner can't
+        # deliver at all -- see the diagnostic step above). The demo's
+        # default (no --peer-addr) stays multicast-based, matching the real
+        # vendor deployment, for local/self-hosted use.
+        run: |
+          uv run sd-server --peer-addr ::1 --log-level DEBUG > server.log 2>&1 &
           echo $! > server.pid
           sleep 1
-          uv run sd-client --log-level DEBUG > client.log 2>&1 &
+          uv run sd-client --peer-addr ::1 --log-level DEBUG > client.log 2>&1 &
           echo $! > client.pid
 
           # Let the full Initial-Wait/Repetition/Main-phase SD handshake
@@ -98,3 +136,5 @@ jobs:
           path: |
             server.log
             client.log
+            recv.log
+            send.log

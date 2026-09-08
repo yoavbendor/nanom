@@ -218,6 +218,68 @@ async def create_split_endpoints(
     return trsp_u, trsp_m, prot
 
 
+async def create_unicast_sd_endpoint(
+    *,
+    local_addr: str,
+    local_port: int,
+    peer_addr: str,
+    peer_port: int,
+    family: socket.AddressFamily = socket.AF_INET6,
+    loop: asyncio.AbstractEventLoop | None = None,
+) -> tuple[asyncio.DatagramTransport, ServiceDiscoveryProtocol]:
+    """CI-only fallback: run SD purely unicast, point-to-point with a known
+    peer, instead of via multicast discovery.
+
+    GitHub-hosted Actions runners do not deliver IPv6 multicast traffic on
+    `lo` between processes at all (confirmed with a raw, pysomeip-independent
+    socket smoke test: joined, correct route, correct IPV6_MULTICAST_LOOP,
+    still zero packets received -- a runner/hypervisor networking limitation,
+    not something fixable from inside the VM). This sidesteps multicast
+    entirely: `ServiceDiscoveryProtocol`'s `default_addr` (its fallback
+    destination whenever a send doesn't pass an explicit `remote=`) is set to
+    the peer's address instead of a multicast group, so the server's cyclic
+    Offers and the client's FindService both go directly, unicast, to each
+    other -- still 100% real sockets/asyncio/pysomeip SD code, just not real
+    multicast fan-out (which this environment can't do regardless of how the
+    demo is written). The default (no peer given) path stays multicast-based
+    via create_split_endpoints, matching the real vendor deployment, for
+    local/self-hosted use where multicast actually works.
+    """
+    if loop is None:
+        loop = asyncio.get_event_loop()
+
+    prot = ServiceDiscoveryProtocol((peer_addr, peer_port))
+    trsp, _ = await loop.create_datagram_endpoint(
+        lambda: DatagramProtocolAdapter(prot, is_multicast=False),
+        local_addr=(local_addr, local_port),
+        family=family,
+    )
+    prot.transport = trsp
+    return trsp, prot
+
+
+def open_unicast_data_send_socket(local_addr: str, src_port: int = SENSOR_DATA_SRC_PORT) -> socket.socket:
+    """CI-only fallback data-plane send socket: plain unicast, no multicast
+    options needed since it targets a single known peer directly.
+    """
+    sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind((local_addr, src_port))
+    sock.setblocking(False)
+    return sock
+
+
+def open_unicast_data_recv_socket(local_addr: str, port: int = DATA_PORT) -> socket.socket:
+    """CI-only fallback data-plane receive socket: plain unicast bind, no
+    multicast group join.
+    """
+    sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
+    sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    sock.bind((local_addr, port))
+    sock.setblocking(False)
+    return sock
+
+
 def if_index(interface: str) -> int:
     return socket.if_nametoindex(interface)
 
