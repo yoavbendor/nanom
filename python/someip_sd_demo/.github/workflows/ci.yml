@@ -144,3 +144,98 @@ jobs:
             client.log
             recv.log
             send.log
+
+  # Exploratory: does a Docker bridge network fare any better than raw `lo`
+  # for IPv6 multicast on a GitHub-hosted runner? A Docker bridge is a real
+  # L2 device between two containers -- their traffic never leaves the VM's
+  # own kernel netns (no hypervisor vSwitch involved), a different code path
+  # than loopback multicast, which is a special-cased device in Linux. This
+  # job answers that empirically instead of guessing; `continue-on-error` at
+  # the job level so a "no" here never blocks the (already green, --peer-addr
+  # based) primary job above.
+  docker-compose-multicast:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Build images
+        run: docker compose build
+
+      - name: Smoke test -- does the Docker bridge deliver multicast at all
+        # Same standalone probe as the loopback job's diagnostic step, run
+        # between two throwaway containers on the compose network instead
+        # of two processes on lo. Informational: logged either way, doesn't
+        # fail the step by itself (the real signal is the next step).
+        run: |
+          set +e
+          docker compose --profile smoketest up --abort-on-container-exit --exit-code-from mcast-recv mcast-recv mcast-send
+          SMOKE_STATUS=$?
+          set -e
+          echo "=== mcast-recv logs ==="; docker compose logs mcast-recv || true
+          echo "=== mcast-send logs ==="; docker compose logs mcast-send || true
+          docker compose --profile smoketest down -v
+          if [ "$SMOKE_STATUS" = "0" ]; then
+            echo "::notice::Docker bridge multicast smoke test PASSED on this runner"
+          else
+            echo "::notice::Docker bridge multicast smoke test FAILED on this runner (status=$SMOKE_STATUS)"
+          fi
+
+      - name: Run the real demo over the Docker bridge, default multicast mode
+        # No --peer-addr here on purpose: this is specifically testing
+        # whether the demo's real, default (multicast) behavior works
+        # inside Docker on this runner -- the whole point of this job.
+        run: |
+          docker compose up -d sd-server sd-client
+          sleep 45
+          docker compose logs sd-server > server.log 2>&1
+          docker compose logs sd-client > client.log 2>&1
+          docker compose down -v
+
+      - name: Check expected SD + data sequence in logs
+        run: |
+          echo "=== server.log ==="; cat server.log
+          echo
+          echo "=== client.log ==="; cat client.log
+          echo
+
+          fail=0
+          check() {
+            local file="$1" pattern="$2" desc="$3"
+            if ! grep -q "$pattern" "$file"; then
+              echo "::error file=$file::missing expected log line: $desc (pattern: $pattern)"
+              fail=1
+            else
+              echo "OK: $desc"
+            fi
+          }
+
+          check server.log "offering Measurements" "server offers Measurements (0x60d4)"
+          check server.log "offering Status" "server offers Status (0x60d6)"
+          check server.log "SubscribeEventgroup accepted" "server accepted at least one subscribe"
+          check server.log "sent notification" "server sent at least one notification"
+
+          check client.log "discovered service=0x60d4" "client discovered Measurements"
+          check client.log "discovered service=0x60d6" "client discovered Status"
+          check client.log "received Subscribe ACK" "client saw a SubscribeAck (pysomeip's own log line)"
+          check client.log "Measurements: received notification" "client received a Measurements notification"
+          check client.log "Status: received notification" "client received a Status notification"
+          check client.log "static session id, as documented" "Status's static session-id quirk observed on the wire"
+
+          if [ "$fail" = "0" ]; then
+            echo "::notice::Docker bridge multicast WORKS end-to-end on this runner -- docker-compose.yml's default (no --peer-addr) mode is CI-verified"
+          else
+            echo "::notice::Docker bridge multicast demo did not complete end-to-end on this runner -- see README's Docker section for the --peer-addr fallback"
+          fi
+
+          exit $fail
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: someip-sd-docker-logs
+          path: |
+            server.log
+            client.log

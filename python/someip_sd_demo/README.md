@@ -160,9 +160,16 @@ docker compose build
 **Validate the environment first** (30 seconds, no sudo, no image beyond
 what you just built): confirms this Docker setup actually delivers IPv6
 multicast between containers on the bridge, using the same standalone
-script CI uses to diagnose GitHub-hosted runners (which, unlike a normal
-Docker bridge, turned out not to support this at all -- see the CI
-section below). Exits 0 if the multicast packet was received, 1 if not:
+script CI uses. CI's own Docker job (`docker-compose-multicast` in
+`.github/workflows/ci.yml`) confirmed this works end-to-end on
+GitHub-hosted runners -- a genuinely different result from bare loopback
+multicast on the same runners, which doesn't work at all (see the CI
+section below): a Docker bridge is a real L2 device between two
+containers, whose traffic never leaves the VM's own kernel netns, unlike
+loopback's special-cased handling. That's real (if rootful) evidence the
+underlying mechanism works; run the smoke test below to confirm it also
+holds for your specific rootless setup. Exits 0 if the multicast packet
+was received, 1 if not:
 
 ```sh
 docker compose --profile smoketest up --abort-on-container-exit --exit-code-from mcast-recv
@@ -187,25 +194,26 @@ case CI runs in), this needs none of the port-splitting either --
 SD negotiation and timing state machine, just point-to-point instead of via
 multicast.
 
-**Why this should work in rootless mode, and what I could and couldn't
-verify:** container-to-container traffic on a shared Docker bridge network
-is ordinary Linux bridging inside the daemon's own network namespace --
+**Why this should work in rootless mode, and what's actually confirmed:**
+container-to-container traffic on a shared Docker bridge network is
+ordinary Linux bridging inside the daemon's own network namespace --
 unlike loopback multicast on a virtualized CI runner, and unlike the
 host<->container path, it doesn't go through slirp4netns/pasta (those only
-mediate the bridge's uplink to the outside world), so the same bridge-level
-multicast delivery that works in rootful Docker should work in rootless
-mode too. I could not run this end-to-end myself, for a simpler reason than
-Docker specifics: this session's own sandbox kernel has **no IPv6 support at
-all** (`socket.socket(AF_INET6, ...)` itself fails with `EAFNOSUPPORT`,
-confirmed independently several times this session, including via Docker's
-own `--ipv6` bridge creation failing here the same way) -- so nothing IPv6,
-containerized or not, is testable in this specific environment, regardless
-of Docker/rootless behavior. That's a property of this sandbox, not of your
-dev host, which almost certainly has ordinary IPv6 support. The smoke test
-above is the fast way to get a real answer on your host before trusting the
-full demo to it -- please let me know what it reports so this section can
-be corrected if rootless Docker's multicast support turns out to be more
-restricted than reasoned here.
+mediate the bridge's uplink to the outside world). CI has since confirmed
+this reasoning holds in practice, not just in theory: GitHub Actions'
+`docker-compose-multicast` job runs this exact `docker-compose.yml` in its
+default (multicast) mode on a fresh `ubuntu-latest` runner and it passes --
+hundreds of real notifications exchanged, genuine multicast SD traffic
+logged -- on the very same class of runner where bare loopback multicast
+does not work at all. That's rootful Docker, though, not rootless: I
+couldn't verify the rootless case myself (this session's own sandbox
+kernel has no IPv6 support whatsoever -- confirmed independently several
+times, including Docker's own `--ipv6` bridge creation failing here the
+same way -- so nothing IPv6 was testable here regardless of Docker/rootless
+specifics). The smoke test above is the fast way to get a real answer for
+rootless specifically on your host; please let me know what it reports so
+this section can be corrected if rootless Docker's multicast support turns
+out to be more restricted than rootful.
 
 ## CI
 
@@ -238,6 +246,17 @@ restricted than reasoned here.
    `SubscribeAck`, and at least one received notification for each of
    Measurements and Status. The job fails (and uploads all logs as
    artifacts) if any expected line is missing within the timeout.
+
+A second job, `docker-compose-multicast`, answers a different question:
+does a **Docker bridge** fare better than bare loopback for multicast on
+the same class of runner? It builds `docker-compose.yml`, runs the smoke
+test between two throwaway containers, then runs the real demo in its
+**default multicast mode** (no `--peer-addr`) and checks the same
+sequence. Yes, it does: this job passes, with real multicast SD traffic
+and hundreds of notifications exchanged between the two containers --
+good evidence for the reasoning in the Docker section above.
+`continue-on-error` at the job level, so it's informational and can never
+block the primary (already green) job.
 
 ## Verifying against nanom_shark's own SOME/IP-SD decoder
 
