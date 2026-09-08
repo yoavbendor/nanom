@@ -102,6 +102,53 @@ notifications arriving at the client roughly every 65ms (Status ~30ms
 after Measurements). Stop either process with Ctrl+C; the server logs its
 `StopOffer`s and the client logs its unsubscribes.
 
+### Running it on WSL2 (confirmed working, `--peer-addr` required)
+
+**Confirmed end-to-end on a WSL2 Ubuntu host running as root:** a real
+IPv6 kernel is present there (unlike some bare-metal dev hosts -- see the
+Docker section's prerequisite check below), so the plain `uv run` path
+above works with one change: WSL2's virtualized network stack, like
+GitHub-hosted CI runners, does **not** deliver loopback IPv6 multicast
+between two separate processes (confirmed by running both roles at
+`--log-level DEBUG` for 20s+ with zero SD traffic received on either
+side, despite both processes being alive and sending). This is the exact
+same limitation the CI job already works around -- see the CI section
+below -- so the fix is the same: add `--peer-addr` to run SD unicast,
+point-to-point, instead of the default multicast:
+
+```sh
+cd ~/someip-sd-sim
+git pull
+uv sync
+
+# no sudo needed if you're already root; harmless if the route exists already
+ip -6 route add ff00::/8 dev lo
+
+uv run sd-server --peer-addr ::1 --log-level DEBUG > /tmp/sd-server.log 2>&1 &
+SERVER_PID=$!
+sleep 2
+uv run sd-client --peer-addr ::1 --log-level DEBUG > /tmp/sd-client.log 2>&1 &
+CLIENT_PID=$!
+
+sleep 45   # give the Subscribe/SubscribeAck cycle time to settle, like CI does
+kill $SERVER_PID $CLIENT_PID
+grep -E "Subscribe|Offer|Find|sent notification" /tmp/sd-*.log
+```
+
+This has been run and confirmed on WSL2: real `FindService`/`OfferService`
+exchange with the real vendor service/eventgroup IDs and multicast
+options, `Subscribe`/`SubscribeAck` for both eventgroups, and Status/
+Measurements notifications streaming afterward (including the real
+static-session-id-`0x0000` quirk on Status) -- the full SD negotiation,
+end to end, no containers involved. No `--unicast-port` split is needed
+here since both roles use their own real default ports against `::1`;
+`--peer-addr` alone is what routes around the multicast gap.
+
+If you don't have a working IPv6 kernel or aren't running as root on your
+WSL2 (or other) host, fall back to the rootless-Docker/Podman path below
+instead -- but note its own caveat: Podman 4.2.1's CNI backend has a
+separate, unrelated IPv6-assignment bug documented in that section.
+
 ## Why two different SD unicast ports (`--unicast-port`)
 
 Two real hosts each have their own IP address, so both can bind their SD
