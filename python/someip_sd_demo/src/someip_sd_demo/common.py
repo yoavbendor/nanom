@@ -185,10 +185,19 @@ async def create_split_endpoints(
     # multicast scope -- this mirrors open_data_recv_socket below, and is
     # the same root lesson as the real project's own "if_nametoindex(),
     # not scope_id()" vSomeIP patch (see README).
+    # SO_REUSEADDR only, deliberately not SO_REUSEPORT: REUSEADDR is the
+    # traditional mechanism that lets multiple sockets join the same
+    # multicast group on the same port and each get a copy of every
+    # datagram. REUSEPORT changes Linux's delivery semantics toward
+    # per-flow load-balancing (one recipient, chosen by a hash of the
+    # datagram's fixed src/dst tuple) -- which, since every SD send here
+    # keeps the same source port throughout a run, silently and
+    # deterministically starved one side of every multicast SD message for
+    # the entire run (found by CI going quiet with no errors on either
+    # side -- the same reuseport pitfall the two split unicast ports above
+    # exist to avoid, just biting the multicast leg too).
     mc_sock = socket.socket(family, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     mc_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    if hasattr(socket, "SO_REUSEPORT"):
-        mc_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     mc_sock.bind(("::", multicast_port))
     mreq = struct.pack(
         "16sI", socket.inet_pton(family, multicast_addr), if_index(multicast_interface)
@@ -239,10 +248,10 @@ def open_data_recv_socket(
     to every multicast group listed (both eventgroups' streams arrive on
     the same port, distinguished only by which group they were sent to).
     """
+    # SO_REUSEADDR only -- see create_split_endpoints's mc_sock comment on
+    # why SO_REUSEPORT is deliberately avoided for multicast group members.
     sock = socket.socket(socket.AF_INET6, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    if hasattr(socket, "SO_REUSEPORT"):
-        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEPORT, 1)
     sock.bind(("::", port))
     for addr in multicast_addrs:
         mreq = struct.pack("16sI", socket.inet_pton(socket.AF_INET6, addr), if_index(interface))
