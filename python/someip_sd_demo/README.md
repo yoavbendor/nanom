@@ -143,6 +143,32 @@ uv run sd-client --local-addr fd53:7cb8:383:2::1:117 --unicast-port 30490 --inte
 
 ## Running it under rootless Docker (no sudo required)
 
+**Prerequisite, check this first (5 seconds, no sudo):** the host kernel
+itself needs IPv6 support, independent of Docker/rootless entirely --
+nothing here (or anywhere else in this demo) can create an `AF_INET6`
+socket without it, in a container or otherwise. Confirmed missing on at
+least one real site so far, and the failure mode is specific enough to
+recognize immediately:
+
+```sh
+python3 -c "import socket; socket.socket(socket.AF_INET6, socket.SOCK_DGRAM)"
+# OSError: [Errno 97] Address family not supported by protocol
+cat /proc/sys/net/ipv6/conf/all/disable_ipv6   # "No such file or directory"
+ip -6 addr show                                 # prints nothing, not even ::1
+```
+
+That combination means the `ipv6` kernel module isn't loaded on the host
+at all (not a sysctl toggle, not a rootless-netns quirk -- the whole IPv6
+stack is absent from the running kernel), which needs `modprobe ipv6` --
+root, so not fixable from a rootless setup. If you hit this: ask your
+site admin to enable IPv6 on the host, or find a different host that has
+it (a colleague's machine, a VM, or eventually the real target VLAN,
+which almost certainly already has IPv6 since that's what the actual
+AUTOSAR system runs on). In the meantime, `scripts/offline_roundtrip_check.py`
+needs no networking at all, and CI is your live, verified proof of the
+networked behavior -- both the loopback and Docker-bridge-multicast jobs
+are green (see the CI section below).
+
 If your dev host doesn't give you `sudo` for `ip -6 addr add`/`ip -6 route
 add` (both used above for loopback testing), running the two roles as
 separate **containers on their own Docker bridge network** sidesteps that
