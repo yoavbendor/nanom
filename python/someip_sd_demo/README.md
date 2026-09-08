@@ -134,13 +134,78 @@ uv run sd-client --local-addr fd00::2 --unicast-port 30490
 
 Once the real VLAN is reachable, run each role bound to its real address
 on the real interface (see `REAL_SENSOR_ADDR`/`REAL_ECU_ADDR` in
-`common.py`), with `INTERFACE` in `common.py` changed from `"lo"` to the
-real interface (`enp1s0f1.2` per the doc):
+`common.py`) via `--interface`, e.g. `enp1s0f1.2` per the doc:
 
 ```sh
-uv run sd-server --local-addr fd53:7cb8:383:2::56   --unicast-port 30490
-uv run sd-client --local-addr fd53:7cb8:383:2::1:117 --unicast-port 30490
+uv run sd-server --local-addr fd53:7cb8:383:2::56    --unicast-port 30490 --interface enp1s0f1.2
+uv run sd-client --local-addr fd53:7cb8:383:2::1:117 --unicast-port 30490 --interface enp1s0f1.2
 ```
+
+## Running it under rootless Docker (no sudo required)
+
+If your dev host doesn't give you `sudo` for `ip -6 addr add`/`ip -6 route
+add` (both used above for loopback testing), running the two roles as
+separate **containers on their own Docker bridge network** sidesteps that
+entirely: each container gets its own real IPv6 address, so none of the
+loopback-sharing workarounds (`--unicast-port`, the multicast route, extra
+addresses on `lo`) are needed -- `docker-compose.yml` runs the demo at its
+real addresses (`fd53:7cb8:383:2::56` / `::1:117`) with plain `--unicast-port
+30490` on both, exactly as a real deployment would.
+
+```sh
+module load docker-rootless/<version>   # however your site activates it; check `module avail docker-rootless`
+docker compose build
+```
+
+**Validate the environment first** (30 seconds, no sudo, no image beyond
+what you just built): confirms this Docker setup actually delivers IPv6
+multicast between containers on the bridge, using the same standalone
+script CI uses to diagnose GitHub-hosted runners (which, unlike a normal
+Docker bridge, turned out not to support this at all -- see the CI
+section below). Exits 0 if the multicast packet was received, 1 if not:
+
+```sh
+docker compose --profile smoketest up --abort-on-container-exit --exit-code-from mcast-recv
+```
+
+Then run the real demo:
+
+```sh
+docker compose up --build
+```
+
+Expected log sequence is the same as the plain `uv run` case above, just
+prefixed with each container's name. Stop with Ctrl+C or `docker compose down`.
+
+**If the smoke test fails** (some rootless Docker network backends restrict
+multicast more than others): fall back to the CI-only unicast mode --
+add `--peer-addr fd53:7cb8:383:2::1:117` to `sd-server`'s command and
+`--peer-addr fd53:7cb8:383:2::56` to `sd-client`'s in `docker-compose.yml`.
+Since each container already has its own real address (unlike the loopback
+case CI runs in), this needs none of the port-splitting either --
+`create_unicast_sd_endpoint` in `common.py` still exercises the full real
+SD negotiation and timing state machine, just point-to-point instead of via
+multicast.
+
+**Why this should work in rootless mode, and what I could and couldn't
+verify:** container-to-container traffic on a shared Docker bridge network
+is ordinary Linux bridging inside the daemon's own network namespace --
+unlike loopback multicast on a virtualized CI runner, and unlike the
+host<->container path, it doesn't go through slirp4netns/pasta (those only
+mediate the bridge's uplink to the outside world), so the same bridge-level
+multicast delivery that works in rootful Docker should work in rootless
+mode too. I could not run this end-to-end myself, for a simpler reason than
+Docker specifics: this session's own sandbox kernel has **no IPv6 support at
+all** (`socket.socket(AF_INET6, ...)` itself fails with `EAFNOSUPPORT`,
+confirmed independently several times this session, including via Docker's
+own `--ipv6` bridge creation failing here the same way) -- so nothing IPv6,
+containerized or not, is testable in this specific environment, regardless
+of Docker/rootless behavior. That's a property of this sandbox, not of your
+dev host, which almost certainly has ordinary IPv6 support. The smoke test
+above is the fast way to get a real answer on your host before trusting the
+full demo to it -- please let me know what it reports so this section can
+be corrected if rootless Docker's multicast support turns out to be more
+restricted than reasoned here.
 
 ## CI
 

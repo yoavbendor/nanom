@@ -27,6 +27,7 @@ from someip_sd_demo.common import (
     CLIENT_SD_UNICAST_PORT,
     DATA_PORT,
     INSTANCE_ID,
+    INTERFACE,
     MAJOR_VERSION,
     MINOR_VERSION,
     SERVER_LOCAL_ADDR,
@@ -116,7 +117,7 @@ async def run(args: argparse.Namespace) -> None:
         )
     else:
         trsp_u, trsp_m, sd_prot = await create_split_endpoints(
-            local_addr=args.local_addr, unicast_port=args.unicast_port
+            local_addr=args.local_addr, unicast_port=args.unicast_port, multicast_interface=args.interface
         )
 
     # Shortened AUTOSAR SD timing so the Initial-Wait/Repetition/Main phases
@@ -155,7 +156,7 @@ async def run(args: argparse.Namespace) -> None:
     if unicast_mode:
         data_sock = open_unicast_data_send_socket(args.local_addr)
     else:
-        data_sock = open_data_send_socket(args.local_addr)
+        data_sock = open_data_send_socket(args.local_addr, interface=args.interface)
     session_ids = {service.service_id: 1 for service in SERVICES}
     seq = 0
     try:
@@ -223,6 +224,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="CI-only fallback: run SD+data unicast, point-to-point with this "
         "client address, instead of multicast (see README's CI section)",
+    )
+    parser.add_argument(
+        "--interface",
+        default=INTERFACE,
+        help="interface to join/send multicast on (default: %(default)s; e.g. eth0 in a container)",
     )
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()

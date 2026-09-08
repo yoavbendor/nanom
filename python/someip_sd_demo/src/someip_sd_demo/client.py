@@ -22,6 +22,7 @@ from someip_sd_demo.common import (
     CLIENT_SD_UNICAST_PORT,
     DATA_PORT,
     INSTANCE_ID,
+    INTERFACE,
     MAJOR_VERSION,
     SERVER_SD_UNICAST_PORT,
     SERVICES,
@@ -80,7 +81,7 @@ async def run(args: argparse.Namespace) -> None:
         )
     else:
         trsp_u, trsp_m, sd_prot = await create_split_endpoints(
-            local_addr=args.local_addr, unicast_port=args.unicast_port
+            local_addr=args.local_addr, unicast_port=args.unicast_port, multicast_interface=args.interface
         )
 
     timings = sd_prot.timings
@@ -122,7 +123,7 @@ async def run(args: argparse.Namespace) -> None:
     if unicast_mode:
         data_sock = open_unicast_data_recv_socket(args.local_addr)
     else:
-        data_sock = open_data_recv_socket(tuple(s.multicast_addr for s in SERVICES))
+        data_sock = open_data_recv_socket(tuple(s.multicast_addr for s in SERVICES), interface=args.interface)
     by_service_id = {s.service_id: s for s in SERVICES}
     loop = asyncio.get_event_loop()
 
@@ -183,6 +184,11 @@ def parse_args() -> argparse.Namespace:
         default=None,
         help="CI-only fallback: run SD+data unicast, point-to-point with this "
         "server address, instead of multicast (see README's CI section)",
+    )
+    parser.add_argument(
+        "--interface",
+        default=INTERFACE,
+        help="interface to join/send multicast on (default: %(default)s; e.g. eth0 in a container)",
     )
     parser.add_argument("--log-level", default="INFO")
     return parser.parse_args()

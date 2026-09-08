@@ -1,0 +1,62 @@
+services:
+  sd-server:
+    build: .
+    networks:
+      someip:
+        ipv6_address: fd53:7cb8:383:2::56
+    command: >
+      sd-server
+      --local-addr fd53:7cb8:383:2::56
+      --unicast-port 30490
+      --interface eth0
+      --log-level DEBUG
+
+  sd-client:
+    build: .
+    networks:
+      someip:
+        ipv6_address: fd53:7cb8:383:2::1:117
+    command: >
+      sd-client
+      --local-addr fd53:7cb8:383:2::1:117
+      --unicast-port 30490
+      --interface eth0
+      --log-level DEBUG
+    depends_on:
+      - sd-server
+
+  # Fast standalone check that this Docker setup actually delivers IPv6
+  # multicast between containers on the bridge network, before trusting
+  # the full demo to it -- same script CI uses to diagnose GitHub-hosted
+  # runners (which, unlike a normal Docker bridge, turned out NOT to
+  # support this at all). Not started by `docker compose up`; run
+  # explicitly with the "smoketest" profile, see README.
+  mcast-recv:
+    build: .
+    profiles: ["smoketest"]
+    networks:
+      someip:
+        ipv6_address: fd53:7cb8:383:2::10
+    environment:
+      MCAST_IFACE: eth0
+    entrypoint: ["python3", "scripts/mcast_smoke_test.py", "recv"]
+
+  mcast-send:
+    build: .
+    profiles: ["smoketest"]
+    networks:
+      someip:
+        ipv6_address: fd53:7cb8:383:2::11
+    environment:
+      MCAST_IFACE: eth0
+    entrypoint: ["sh", "-c", "sleep 1 && python3 scripts/mcast_smoke_test.py send"]
+    depends_on:
+      - mcast-recv
+
+networks:
+  someip:
+    driver: bridge
+    enable_ipv6: true
+    ipam:
+      config:
+        - subnet: fd53:7cb8:383:2::/64

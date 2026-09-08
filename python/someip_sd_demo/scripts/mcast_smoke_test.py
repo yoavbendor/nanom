@@ -1,10 +1,17 @@
 """Standalone diagnostic (not part of the demo): confirms two separate
-OS processes can exchange a raw IPv6 multicast UDP datagram on this host,
-independent of pysomeip/asyncio. Used to isolate CI failures.
+OS processes can exchange a raw IPv6 multicast UDP datagram on this host
+(or, run via docker-compose's "smoketest" profile, two containers on a
+shared bridge network), independent of pysomeip/asyncio. Used to isolate
+CI failures, and to validate a new environment (e.g. rootless Docker on a
+no-sudo host) before trusting the full demo to it.
 
 Usage: python3 mcast_smoke_test.py recv   (prints RECEIVED: ... and exits 0)
        python3 mcast_smoke_test.py send   (sends a few packets)
+
+Interface defaults to "lo"; override with the MCAST_IFACE env var (the
+docker-compose smoketest profile sets it to "eth0").
 """
+import os
 import socket
 import struct
 import sys
@@ -12,7 +19,7 @@ import time
 
 GROUP = "ff14::4:0"
 PORT = 30490
-IFACE = "lo"
+IFACE = os.environ.get("MCAST_IFACE", "lo")
 
 
 def if_index():
