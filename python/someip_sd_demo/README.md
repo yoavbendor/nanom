@@ -148,51 +148,75 @@ add` (both used above for loopback testing), running the two roles as
 separate **containers on their own Docker bridge network** sidesteps that
 entirely: each container gets its own real IPv6 address, so none of the
 loopback-sharing workarounds (`--unicast-port`, the multicast route, extra
-addresses on `lo`) are needed -- `docker-compose.yml` runs the demo at its
-real addresses (`fd53:7cb8:383:2::56` / `::1:117`) with plain `--unicast-port
-30490` on both, exactly as a real deployment would.
+addresses on `lo`) are needed -- both roles run at their real addresses
+(`fd53:7cb8:383:2::56` / `::1:117`) with plain `--unicast-port 30490` on
+both, exactly as a real deployment would.
 
 ```sh
-module load docker-rootless/<version>   # however your site activates it; check `module avail docker-rootless`
+module load docker-rootless   # however your site activates it; check `module avail docker-rootless`
+```
+
+**Which tooling you have varies by site** -- some rootless Docker installs
+ship the `docker compose` CLI plugin, some ship the older standalone
+`docker-compose` binary instead, and some (e.g. a bare `docker` from a
+module with no plugins layered on) ship neither. Check once:
+
+```sh
+docker compose version    # CLI plugin?
+which docker-compose      # standalone binary?
+```
+
+**If either exists**, use `docker-compose.yml` in this repo (same commands
+either way -- swap `docker compose` for `docker-compose` if that's what you
+have):
+
+```sh
 docker compose build
+docker compose --profile smoketest up --abort-on-container-exit --exit-code-from mcast-recv   # validate first, see below
+docker compose up --build       # then the real demo
+docker compose down             # stop
+```
+
+**If neither exists** (confirmed the case on at least one real site so
+far: `docker` with no `compose` subcommand and no standalone binary),
+`scripts/docker_run_demo.sh` and friends do the exact same thing with
+plain `docker build`/`network create`/`run` -- no compose needed at all:
+
+```sh
+scripts/docker_smoke_test.sh    # validate first, see below
+scripts/docker_run_demo.sh      # then the real demo
+docker logs -f sd-server        # tail either container's log
+docker logs -f sd-client
+scripts/docker_stop_demo.sh     # stop and clean up
 ```
 
 **Validate the environment first** (30 seconds, no sudo, no image beyond
 what you just built): confirms this Docker setup actually delivers IPv6
 multicast between containers on the bridge, using the same standalone
-script CI uses. CI's own Docker job (`docker-compose-multicast` in
-`.github/workflows/ci.yml`) confirmed this works end-to-end on
-GitHub-hosted runners -- a genuinely different result from bare loopback
-multicast on the same runners, which doesn't work at all (see the CI
-section below): a Docker bridge is a real L2 device between two
-containers, whose traffic never leaves the VM's own kernel netns, unlike
-loopback's special-cased handling. That's real (if rootful) evidence the
-underlying mechanism works; run the smoke test below to confirm it also
-holds for your specific rootless setup. Exits 0 if the multicast packet
-was received, 1 if not:
+probe script (`scripts/mcast_smoke_test.py`) either path runs. CI's own
+Docker job (`docker-compose-multicast` in `.github/workflows/ci.yml`)
+confirmed this works end-to-end on GitHub-hosted runners -- a genuinely
+different result from bare loopback multicast on the same runners, which
+doesn't work at all (see the CI section below): a Docker bridge is a real
+L2 device between two containers, whose traffic never leaves the VM's own
+kernel netns, unlike loopback's special-cased handling. That's real (if
+rootful) evidence the underlying mechanism works; the smoke test confirms
+it also holds for your specific rootless setup. Exits 0 if the multicast
+packet was received, 1 if not.
 
-```sh
-docker compose --profile smoketest up --abort-on-container-exit --exit-code-from mcast-recv
-```
-
-Then run the real demo:
-
-```sh
-docker compose up --build
-```
-
-Expected log sequence is the same as the plain `uv run` case above, just
-prefixed with each container's name. Stop with Ctrl+C or `docker compose down`.
+Expected log sequence, either path, is the same as the plain `uv run` case
+above, just prefixed with each container's name.
 
 **If the smoke test fails** (some rootless Docker network backends restrict
 multicast more than others): fall back to the CI-only unicast mode --
-add `--peer-addr fd53:7cb8:383:2::1:117` to `sd-server`'s command and
-`--peer-addr fd53:7cb8:383:2::56` to `sd-client`'s in `docker-compose.yml`.
-Since each container already has its own real address (unlike the loopback
-case CI runs in), this needs none of the port-splitting either --
-`create_unicast_sd_endpoint` in `common.py` still exercises the full real
-SD negotiation and timing state machine, just point-to-point instead of via
-multicast.
+add `--peer-addr fd53:7cb8:383:2::1:117` to the server command and
+`--peer-addr fd53:7cb8:383:2::56` to the client command (in
+`docker-compose.yml`, or in `docker_run_demo.sh` if you're on the
+plain-`docker` path). Since each container already has its own real
+address (unlike the loopback case CI runs in), this needs none of the
+port-splitting either -- `create_unicast_sd_endpoint` in `common.py` still
+exercises the full real SD negotiation and timing state machine, just
+point-to-point instead of via multicast.
 
 **Why this should work in rootless mode, and what's actually confirmed:**
 container-to-container traffic on a shared Docker bridge network is
