@@ -175,30 +175,32 @@ async def create_split_endpoints(
     )
 
     # The multicast socket is built ourselves rather than via pysomeip's
-    # own _create_endpoint: on Linux, that binds to "<addr>%<interface>",
-    # and glibc's getaddrinfo only accepts a zone-id suffix for LINK-LOCAL
-    # scope addresses (ff02::/16) -- it fails with EAI_NONAME for any other
-    # scope, including the admin-local ff14::/16 addresses this project's
-    # real SD multicast group actually uses (confirmed the hard way: this
-    # broke CI). Binding the wildcard address and joining the group
-    # explicitly via IPV6_JOIN_GROUP + if_nametoindex works for every
-    # multicast scope -- this mirrors open_data_recv_socket below, and is
-    # the same root lesson as the real project's own "if_nametoindex(),
-    # not scope_id()" vSomeIP patch (see README).
-    # SO_REUSEADDR only, deliberately not SO_REUSEPORT: REUSEADDR is the
-    # traditional mechanism that lets multiple sockets join the same
-    # multicast group on the same port and each get a copy of every
-    # datagram. REUSEPORT changes Linux's delivery semantics toward
-    # per-flow load-balancing (one recipient, chosen by a hash of the
-    # datagram's fixed src/dst tuple) -- which, since every SD send here
-    # keeps the same source port throughout a run, silently and
-    # deterministically starved one side of every multicast SD message for
-    # the entire run (found by CI going quiet with no errors on either
-    # side -- the same reuseport pitfall the two split unicast ports above
-    # exist to avoid, just biting the multicast leg too).
+    # own _create_endpoint, for two reasons found the hard way (via CI,
+    # each fix here undoing a real failure):
+    #
+    # 1. pysomeip's _create_endpoint binds to "<addr>%<interface>" on
+    #    Linux, and glibc's getaddrinfo only accepts a zone-id suffix for
+    #    LINK-LOCAL scope addresses (ff02::/16) -- EAI_NONAME for any
+    #    other scope, including the admin-local ff14::/16 this project's
+    #    real SD multicast group actually uses. Building the socket
+    #    directly and joining via IPV6_JOIN_GROUP + if_nametoindex (no
+    #    address-string parsing involved) works for every scope.
+    # 2. The traditional way multiple processes share one multicast group
+    #    on one port -- so each gets a copy of every datagram -- is
+    #    SO_REUSEADDR *and* binding to the specific group address, not a
+    #    wildcard "::" bind (which EADDRINUSEs on the second process even
+    #    with SO_REUSEADDR set: that allowance is for identical-address
+    #    binds, not two different wildcard binds racing for the same
+    #    port). SO_REUSEPORT was tried first and rejected: on Linux it
+    #    switches delivery to per-flow load-balancing (one recipient,
+    #    chosen by a hash of the datagram's fixed src/dst tuple) -- and
+    #    since every SD send here keeps the same source port for the
+    #    whole run, that hash is constant, so one side was silently and
+    #    deterministically starved of the other's Offers/Finds for the
+    #    entire run (no errors, just total silence).
     mc_sock = socket.socket(family, socket.SOCK_DGRAM, socket.IPPROTO_UDP)
     mc_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    mc_sock.bind(("::", multicast_port))
+    mc_sock.bind((multicast_addr, multicast_port))
     mreq = struct.pack(
         "16sI", socket.inet_pton(family, multicast_addr), if_index(multicast_interface)
     )
