@@ -174,12 +174,28 @@ jobs:
       - name: compile each header alone
         run: |
           set -e
-          for h in include/nanom/*.hpp include/nanom_shark/*.hpp; do
+          for h in include/nanom/*.hpp include/nanom/formats/*.hpp include/nanom_shark/*.hpp; do
             echo "== $h =="
             echo "#include \"$h\"
             int main(){}" | g++-13 -std=c++23 -Wall -Wextra -Wpedantic -Werror \
               -I include -x c++ - -o /dev/null
           done
+
+  # ---- Parquet differential: the reflected Thrift model vs pyarrow on real files ----
+  #      ctest skips parquet_differential when pyarrow is absent; this job installs it so the
+  #      footer / page-header / offset-index decode is checked against pyarrow on every push.
+  parquet-differential:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: install pyarrow
+        run: python3 -m pip install --break-system-packages pyarrow
+      - name: configure + build
+        run: |
+          cmake -B build -DCMAKE_CXX_COMPILER=g++-13 -DNANOM_WERROR=ON
+          cmake --build build -j --target parquet_meta
+      - name: differential
+        run: ctest --test-dir build -R parquet_differential --output-on-failure
 
   # ---- amalgamation: the generated single-file header must always compile ----
   #      tools/amalgamate.py expands the layered include/nanom/*.hpp into one

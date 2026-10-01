@@ -1354,6 +1354,217 @@ constexpr auto uint_(std::endian order) {
 }
 
 // ---------------------------------------------------------------------------
+// 12b. variable-length integers — ULEB128 / SLEB128 / zigzag (protobuf, Thrift
+//      compact, Parquet RLE headers, DWARF, WebAssembly). nom has no equivalent.
+// ---------------------------------------------------------------------------
+
+/// Bytes a ULEB128 encoding of a T-wide value can occupy (u32: 5, u64: 10).
+template <class T>
+inline constexpr std::size_t leb128_max_bytes = (8 * sizeof(T) + 6) / 7;
+
+/// zigzag: maps signed to unsigned so small magnitudes stay small (0,-1,1,-2 -> 0,1,2,3).
+template <std::unsigned_integral U>
+NANOM_HD constexpr std::make_signed_t<U> zigzag_decode(U u) {
+  return std::bit_cast<std::make_signed_t<U>>(U((u >> 1) ^ (U(0) - (u & 1))));
+}
+template <std::signed_integral S>
+NANOM_HD constexpr std::make_unsigned_t<S> zigzag_encode(S s) {
+  using U = std::make_unsigned_t<S>;
+  // arithmetic shift of the sign bit, done on the unsigned twin (no signed-overflow UB)
+  return U(U(std::bit_cast<U>(s) << 1) ^ (U(0) - (std::bit_cast<U>(s) >> (8 * sizeof(S) - 1))));
+}
+
+namespace detail {
+/// Decode one ULEB128 value of at most leb128_max_bytes<U> bytes. Rejects (a) a value wider than U
+/// (the last permitted byte may only carry the bits U still has room for — so a 6th byte for u32,
+/// or high garbage in the 10th byte for u64, is an error, never a silent wrap) and (b) running out
+/// of input mid-value (incomplete on streaming inputs).
+template <std::unsigned_integral U>
+NANOM_HD constexpr result<U> read_uleb128(input in) {
+  constexpr std::size_t max_bytes = leb128_max_bytes<U>;
+  constexpr unsigned    last_bits = 8 * sizeof(U) - 7 * (max_bytes - 1);  // payload bits allowed in the last byte
+  const std::size_t avail = in.size() < max_bytes ? in.size() : max_bytes;
+  U v = 0;
+  for (std::size_t i = 0; i < avail; ++i) {
+    const std::uint8_t b = in[i];
+    if (i + 1 == max_bytes) {
+      // last permitted byte: no continuation, and no payload bits beyond U's width
+      if ((b & 0x80u) || (b >> last_bits) != 0) return make_err(in, "varint fitting the target width");
+      return done{U(v | (U(b) << (7 * i))), in.advance(i + 1)};
+    }
+    v |= U(U(b & 0x7fu) << (7 * i));
+    if (!(b & 0x80u)) return done{v, in.advance(i + 1)};
+  }
+  // every byte present had the continuation bit set and we are under max_bytes: need more input
+  return make_incomplete(in.advance(in.size()), 1);
+}
+}  // namespace detail
+
+/// uleb128<U>() — unsigned LEB128 / protobuf "varint" into U (std::uint32_t or std::uint64_t).
+template <std::unsigned_integral U = std::uint64_t>
+constexpr auto uleb128() {
+  return [](input in) -> result<U> { return detail::read_uleb128<U>(in); };
+}
+/// sleb128<S>() — signed LEB128 (sign-extended from the last byte's bit 6; DWARF / WebAssembly).
+template <std::signed_integral S = std::int64_t>
+constexpr auto sleb128() {
+  return [](input in) -> result<S> {
+    using U = std::make_unsigned_t<S>;
+    constexpr std::size_t max_bytes = leb128_max_bytes<U>;
+    constexpr unsigned    bits      = 8 * sizeof(S);
+    const std::size_t avail = in.size() < max_bytes ? in.size() : max_bytes;
+    U v = 0;
+    for (std::size_t i = 0; i < avail; ++i) {
+      const std::uint8_t b = in[i];
+      const unsigned shift = unsigned(7 * i);
+      v |= U(U(b & 0x7fu) << shift);
+      if (!(b & 0x80u)) {
+        if (i + 1 == max_bytes) {
+          // the unused high bits of the last byte must all copy the sign bit
+          const unsigned used = bits - shift;            // bits of this byte that land in S
+          const std::uint8_t sign_ext = std::uint8_t((b & 0x7fu) >> (used - 1));
+          if (sign_ext != 0 && sign_ext != (0x7fu >> (used - 1)))
+            return make_err(in, "sleb128 fitting the target width");
+        } else if ((b & 0x40u) && shift + 7 < bits) {
+          v |= U(~U(0) << (shift + 7));                  // sign-extend
+        }
+        return done{std::bit_cast<S>(v), in.advance(i + 1)};
+      }
+      if (i + 1 == max_bytes) return make_err(in, "sleb128 fitting the target width");
+    }
+    return make_incomplete(in.advance(in.size()), 1);
+  };
+}
+/// zigzag varint (protobuf sint32/sint64, Thrift compact i16/i32/i64) decoded into S. The varint is
+/// read at S's width, so an out-of-range value is an error rather than a truncation.
+template <std::signed_integral S>
+constexpr auto zigzag_varint() {
+  return [](input in) -> result<S> {
+    using U = std::make_unsigned_t<std::conditional_t<(sizeof(S) < 4), std::int32_t, S>>;
+    auto r = detail::read_uleb128<U>(in);
+    if (!r) return unexp(r.error());
+    const auto wide = zigzag_decode(r->value);
+    if (wide < std::numeric_limits<S>::min() || wide > std::numeric_limits<S>::max())
+      return make_err(in, "zigzag varint in range");
+    return done{S(wide), r->rest};
+  };
+}
+inline constexpr auto varint_u32 = [](input in) { return detail::read_uleb128<std::uint32_t>(in); };
+inline constexpr auto varint_u64 = [](input in) { return detail::read_uleb128<std::uint64_t>(in); };
+
+/// Encode v as ULEB128 into out (which must hold leb128_max_bytes<U> bytes); returns bytes written.
+template <std::unsigned_integral U>
+NANOM_HD constexpr std::size_t uleb128_encode(U v, std::byte* out) {
+  std::size_t n = 0;
+  while (v >= 0x80u) {
+    out[n++] = std::byte(std::uint8_t(v) | 0x80u);
+    v = U(v >> 7);
+  }
+  out[n++] = std::byte(std::uint8_t(v));
+  return n;
+}
+
+// ---------------------------------------------------------------------------
+// 12c. hostile-count guards — validate a length/count from the wire BEFORE it sizes anything
+// ---------------------------------------------------------------------------
+
+/// True when `count` items of at least `min_item_bytes` each can still fit in `in`. Every element
+/// count read from the wire passes through this before a container is reserved, so a 4-byte
+/// hostile count can never turn into a multi-gigabyte allocation (overflow-safe: divides, never
+/// multiplies).
+NANOM_HD constexpr bool count_fits(input in, std::uint64_t count, std::size_t min_item_bytes) {
+  if (min_item_bytes == 0) return true;
+  return count <= in.size() / min_item_bytes;
+}
+
+/// checked_mul / checked_add — overflow-checked size arithmetic for wire-derived values.
+template <std::unsigned_integral U>
+constexpr std::optional<U> checked_mul(U a, U b) {
+  U r{};
+  if (__builtin_mul_overflow(a, b, &r)) return std::nullopt;
+  return r;
+}
+template <std::unsigned_integral U>
+constexpr std::optional<U> checked_add(U a, U b) {
+  U r{};
+  if (__builtin_add_overflow(a, b, &r)) return std::nullopt;
+  return r;
+}
+
+// ---------------------------------------------------------------------------
+// 12d. little-endian arrays — typed views over PLAIN-encoded columns / offset tables
+// ---------------------------------------------------------------------------
+
+/// le_array<T> — n little-endian T values sitting in the buffer, decoded on access. Never casts
+/// the wire to T* (alignment and strict aliasing stay intact); copy_to() is a single memcpy on a
+/// little-endian host, which is what a columnar decoder wants for PLAIN pages. as_span() is the
+/// true zero-copy path: available only where std::start_lifetime_as_array exists (the C++23
+/// facility that makes viewing bytes as T well-defined), the host is little-endian, and the data is
+/// suitably aligned — otherwise it returns nullopt and callers fall back to copy_to().
+template <class T>
+  requires(std::integral<T> || std::floating_point<T>)
+class le_array {
+ public:
+  constexpr le_array() = default;
+  constexpr le_array(bytes raw, std::size_t n) : raw_(raw), n_(n) {}
+  NANOM_HD constexpr std::size_t size() const { return n_; }
+  NANOM_HD constexpr bool        empty() const { return n_ == 0; }
+  constexpr bytes raw() const { return raw_; }
+  /// Element i (precondition: i < size()).
+  constexpr T operator[](std::size_t i) const {
+    using U = detail::uint_for_bytes<sizeof(T)>;
+    U u = 0;
+    const auto* p = raw_.data() + i * sizeof(T);
+    for (std::size_t k = 0; k < sizeof(T); ++k) u |= U(U(std::uint8_t(p[k])) << (8 * k));
+    return std::bit_cast<T>(u);
+  }
+  /// Bounds-checked element access.
+  constexpr std::optional<T> at(std::size_t i) const {
+    if (i >= n_) return std::nullopt;
+    return (*this)[i];
+  }
+  /// Decode all values into out (precondition: out.size() >= size()); returns false otherwise.
+  bool copy_to(std::span<T> out) const {
+    if (out.size() < n_) return false;
+    if constexpr (std::endian::native == std::endian::little) {
+      if (n_) std::memcpy(out.data(), raw_.data(), n_ * sizeof(T));
+    } else {
+      for (std::size_t i = 0; i < n_; ++i) out[i] = (*this)[i];
+    }
+    return true;
+  }
+  /// Zero-copy typed span, when the platform can provide one without UB (see class comment).
+  std::optional<std::span<const T>> as_span() const {
+#if defined(__cpp_lib_start_lifetime_as) && __cpp_lib_start_lifetime_as >= 202207L
+    if constexpr (std::endian::native == std::endian::little) {
+      if (n_ == 0) return std::span<const T>{};
+      if (reinterpret_cast<std::uintptr_t>(raw_.data()) % alignof(T) == 0)
+        return std::span<const T>(std::start_lifetime_as_array<const T>(raw_.data(), n_), n_);
+    }
+#endif
+    return std::nullopt;
+  }
+
+ private:
+  bytes       raw_{};
+  std::size_t n_ = 0;
+};
+
+/// le_array_of<T>(n) — parser: n little-endian T values (count checked against the input first).
+template <class T>
+constexpr auto le_array_of(std::size_t n) {
+  return [n](input in) -> result<le_array<T>> {
+    if (!count_fits(in, n, sizeof(T))) {
+      const auto need = n > std::numeric_limits<std::size_t>::max() / sizeof(T)
+                            ? std::numeric_limits<std::size_t>::max()
+                            : n * sizeof(T) - in.size();
+      return make_incomplete(in, need);
+    }
+    return done{le_array<T>(in.take_span(n * sizeof(T)), n), in.advance(n * sizeof(T))};
+  };
+}
+
+// ---------------------------------------------------------------------------
 // 13. text numbers — decimal / hex / float from ASCII (nom::character +
 //     nom::number text parsers)
 // ---------------------------------------------------------------------------

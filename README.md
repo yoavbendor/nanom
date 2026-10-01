@@ -134,11 +134,13 @@ reflection add-on, then the data-tooling extras:
 
 | header | what | depends on |
 |---|---|---|
-| `nanom/nom.hpp` | **the rust-nom parallel** — `input`/`result`/`Parser`, every combinator (tag/take/alt/many0/preceded/…), binary numbers (`be_u16`…), text numbers (`dec`/`hex`/`float`), bit-level parsing. **Include this alone for the parser-only subset.** | — (self-contained) |
-| `nanom/reflect.hpp` | struct reflection: `fixed_string`, wire types (`be<>`/`ubits<>`), the `describe<T>` seam, `strct<T>()`, `overlay<T>()`/`view<T>` | `nom.hpp` |
+| `nanom/nom.hpp` | **the rust-nom parallel** — `input`/`result`/`Parser`, every combinator (tag/take/alt/many0/preceded/…), binary numbers (`be_u16`…), variable-length integers (`uleb128`/`sleb128`/`zigzag_varint`), hostile-count guards (`count_fits`), little-endian arrays (`le_array<T>`), text numbers (`dec`/`hex`/`float`), bit-level parsing. **Include this alone for the parser-only subset.** | — (self-contained) |
+| `nanom/reflect.hpp` | struct reflection: `fixed_string`, wire types (`be<>`/`ubits<>`), the `describe<T>` seam, `strct<T>()`, `footer<T>()` (trailers), `overlay<T>()`/`view<T>` | `nom.hpp` |
 | `nanom/schema.hpp` | *extra* — `schema_of<T>()`, Arrow format strings, `avro_schema`, `to_json`/`csv_row` | `reflect.hpp` |
 | `nanom/soa.hpp` | *extra* — `soa<T>` columnar (SoA) chunked storage | `schema.hpp` |
 | `nanom/bulk.hpp` | *extra, opt-in* — data-parallel (GPU-ready) SoA scatter | `soa.hpp` |
+| `nanom/tagged.hpp` | *extra* — reflected **tagged messages**: `field<Id, T>` members, the Thrift compact codec (decode + encode), lazy `list<>`/`lazy<>` views ([docs](docs/TAGGED.md)) | `reflect.hpp` |
+| `nanom/formats/parquet_thrift.hpp` | *format model, opt-in* — Parquet footer / page headers / page index as reflected structs + `read_file_metadata` | `tagged.hpp` |
 | `nanom/nanom26.hpp`, `nanom/describe_macro.hpp` | the two `describe<T>` providers (C++26 reflection / `NANOM_DESCRIBE` macro), included by `reflect.hpp` | — |
 | `nanom/prelude.hpp` | shared config: std includes, `NANOM_HD`, feature probes | — |
 

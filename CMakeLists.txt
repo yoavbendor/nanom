@@ -145,6 +145,16 @@ add_test(NAME nanom_tests COMMAND nanom_tests)
 nanom_exe(nanom_segmented_tests tests/test_segmented.cpp)
 add_test(NAME nanom_segmented_tests COMMAND nanom_segmented_tests)
 
+# Variable-length integers, count guards, le_array, and the reflected tagged-message Thrift
+# compact codec + Parquet metadata model (tagged.hpp, formats/parquet_thrift.hpp). Also built in
+# the strict profile and with generation tracking off, so every safety profile covers the codec.
+nanom_exe(nanom_tagged_tests tests/test_tagged.cpp)
+add_test(NAME nanom_tagged_tests COMMAND nanom_tagged_tests)
+nanom_exe_strict(nanom_tagged_tests_strict tests/test_tagged.cpp)
+add_test(NAME nanom_tagged_tests_strict COMMAND nanom_tagged_tests_strict)
+nanom_exe_generation(nanom_tagged_tests_nogen 0 tests/test_tagged.cpp)
+add_test(NAME nanom_tagged_tests_nogen COMMAND nanom_tagged_tests_nogen)
+
 # Memory-safety regression suite: enforced guards (must pass).
 nanom_exe(nanom_memory_safety_tests tests/test_memory_safety.cpp)
 add_test(NAME nanom_memory_safety_tests COMMAND nanom_memory_safety_tests)
@@ -217,6 +227,18 @@ foreach(ex ethernet elf fat16)
   nanom_exe(example_${ex} examples/${ex}.cpp)
   add_test(NAME example_${ex} COMMAND example_${ex})
 endforeach()
+
+# Parquet footer / page-header / offset-index dump via the reflected Thrift model, checked against
+# pyarrow on a matrix of real files (codecs, page v1/v2, dictionary, nested + logical types, page
+# index). Skipped (exit 77) when python3 or pyarrow is unavailable.
+nanom_exe(parquet_meta examples/parquet_meta.cpp)
+find_package(Python3 COMPONENTS Interpreter QUIET)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME parquet_differential
+           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/parquet_differential.py
+                   $<TARGET_FILE:parquet_meta>)
+  set_tests_properties(parquet_differential PROPERTIES SKIP_RETURN_CODE 77)
+endif()
 
 # ---- C++26 reflection mode only: the macro-free showcase + the provider-equivalence suite -----
 if(NANOM_CXX26_REFLECTION)
@@ -357,6 +379,11 @@ target_link_libraries(nm_streaming_defrag_fuzz PRIVATE nanom::shark)
 target_compile_definitions(nm_streaming_defrag_fuzz PRIVATE NANOM_FUZZ_STANDALONE=1)
 add_test(NAME streaming_defrag_fuzz COMMAND nm_streaming_defrag_fuzz 400)
 
+# Thrift compact codec robustness + canonical round trip, through the Parquet metadata model.
+nanom_exe(nm_thrift_fuzz fuzz/fuzz_thrift.cpp)
+target_compile_definitions(nm_thrift_fuzz PRIVATE NANOM_FUZZ_STANDALONE=1)
+add_test(NAME thrift_fuzz COMMAND nm_thrift_fuzz 20000)
+
 # ---- benchmarks: built always (so they can't rot) and smoke-tested with a
 #      tiny iteration count; the bench.yml workflow runs them for real numbers.
 nanom_exe(nm_parse_bench bench/parse_bench.cpp)
@@ -365,18 +392,20 @@ nanom_exe(nm_bulk_bench  examples/nanotins_parity/pcap_bulk.cpp)  # reuse as bul
 nanom_exe(nm_segmented_bench bench/segmented_bench.cpp)  # stitch-vs-segments + per-wrap overhead
 nanom_exe(nm_streaming_bench bench/streaming_bench.cpp)  # whole-file vs EPB-at-a-time: memory bound + ns/pkt
 target_link_libraries(nm_streaming_bench PRIVATE nanom::shark)
+nanom_exe(nm_thrift_bench bench/thrift_bench.cpp)  # Parquet footer decode: validate / full / one row group
 add_test(NAME bench_smoke_parse COMMAND nm_parse_bench ${td}/srv6_sample.pcap 2)
 add_test(NAME bench_smoke_safety COMMAND nm_safety_microbench 2)
 add_test(NAME bench_smoke_bulk  COMMAND nm_bulk_bench  ${td}/srv6_sample.pcap 50 2)
 add_test(NAME bench_smoke_segmented COMMAND nm_segmented_bench 2)
 add_test(NAME bench_smoke_streaming COMMAND nm_streaming_bench 1 1)
+add_test(NAME bench_smoke_thrift COMMAND nm_thrift_bench 10 5 1)
 
 # ---- libFuzzer coverage-guided targets (Clang only, opt-in) ---------------
 if(NANOM_BUILD_FUZZERS)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(FATAL_ERROR "NANOM_BUILD_FUZZERS requires Clang (libFuzzer)")
   endif()
-  foreach(fz scan_walk streaming_pcapng defrag segmented streaming_defrag)
+  foreach(fz scan_walk streaming_pcapng defrag segmented streaming_defrag thrift)
     add_executable(fuzz_${fz} fuzz/fuzz_${fz}.cpp)
     target_link_libraries(fuzz_${fz} PRIVATE nanom Threads::Threads)
     target_include_directories(fuzz_${fz} PRIVATE ${CMAKE_SOURCE_DIR}/bench)

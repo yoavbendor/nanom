@@ -41,6 +41,7 @@
 #define NANOM_HAS_REFLECTION 0
 #endif
 #include <limits>
+#include <memory>
 #include <optional>
 #include <span>
 #include <string>

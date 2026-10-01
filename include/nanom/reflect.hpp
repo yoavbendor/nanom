@@ -389,6 +389,21 @@ constexpr auto strct(std::endian dflt = std::endian::native) {
   };
 }
 
+/// footer<T>() — parse a registered struct from the END of the input (file trailers: Lance's
+/// 40-byte footer, a Parquet/ORC length+magic tail, ZIP's end-of-central-directory). The value is
+/// decoded exactly as strct<T>() would; `rest` is everything BEFORE the footer (the body), so the
+/// next step can address metadata by offsets taken from the footer.
+template <Described T>
+constexpr auto footer(std::endian dflt = std::endian::native) {
+  return [dflt](input in) -> result<T> {
+    constexpr std::size_t need = wire_size_v<T>;
+    if (in.size() < need) return make_incomplete(in, need - in.size());
+    auto r = strct<T>(dflt)(in.advance(in.size() - need));
+    if (!r) return unexp(r.error());
+    return done{std::move(r->value), in.with_range(in.first, in.last - need)};
+  };
+}
+
 // ---------------------------------------------------------------------------
 // 20. view<T> / overlay<T>() — zero-copy lazy access: get<"field">()
 // ---------------------------------------------------------------------------
