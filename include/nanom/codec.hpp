@@ -41,11 +41,38 @@ inline void copy_match(std::byte* dst, std::size_t offset, std::size_t len) {
     while (len--) *dst++ = *src++;
   }
 }
+inline void copy8(std::byte* d, const std::byte* s) { std::memcpy(d, s, 8); }
+inline void copy16(std::byte* d, const std::byte* s) { std::memcpy(d, s, 16); }
+
+/// LZ77 back-reference copy of `len` bytes from `offset` back, allowed to write up to 15 bytes past
+/// dst + len (callers guarantee `room` = writable bytes from dst, and fall back to copy_match when
+/// room < len + 16). Every byte read is either before dst or already written by this copy, so the
+/// overshoot never feeds garbage into the result, and the bytes past len are overwritten later.
+inline void copy_match_wild(std::byte* dst, std::size_t offset, std::size_t len) {
+  const std::byte* src = dst - offset;
+  if (offset >= 16) {
+    for (std::size_t i = 0; i < len; i += 16) copy16(dst + i, src + i);
+  } else if (offset >= 8) {
+    for (std::size_t i = 0; i < len; i += 8) copy8(dst + i, src + i);
+  } else {
+    // offset 1..7 (run-like repeats): the first 8 bytes byte-wise, then 8-byte chunks from a lag
+    // that is a multiple of the period and >= 8 (same bytes, by periodicity, and non-overlapping)
+    const std::size_t head = len < 8 ? len : 8;
+    for (std::size_t i = 0; i < head; ++i) dst[i] = src[i];
+    const std::size_t lag = offset * ((8 + offset - 1) / offset);  // 8..14
+    for (std::size_t i = head; i < len; i += 8) copy8(dst + i, dst + i - lag);
+  }
+}
 }  // namespace detail
 
 // ---------------------------------------------------------------------------
 // 30. Snappy (raw block format — what Parquet's SNAPPY codec stores)
 // ---------------------------------------------------------------------------
+//
+// Fast paths (all guarded by explicit room checks; the exact paths below handle the last bytes of
+// a block and every other case): short literals move as one fixed 16-byte copy, back-references
+// as 16- / 8-byte chunks or periodic 8-byte chunks for offsets under 8. Every read stays inside
+// the input or the already-produced output; every write stays inside `out`.
 
 /// Uncompressed length from the Snappy preamble (to size/validate the output before decoding).
 inline std::optional<std::uint32_t> snappy_uncompressed_length(std::span<const std::byte> in) {
@@ -54,36 +81,93 @@ inline std::optional<std::uint32_t> snappy_uncompressed_length(std::span<const s
   return r->value;
 }
 
+namespace detail {
+/// Snappy tag table, built at compile time: for every tag byte, the element length (bits 0-7),
+/// the copy offset's high bits (bits 8-10, copy-1 only) and the count of extra bytes (bits 11-13).
+/// Literals with a length suffix (len > 60) are marked with length 0 and handled out of line.
+consteval std::array<std::uint16_t, 256> snappy_table() {
+  std::array<std::uint16_t, 256> t{};
+  for (unsigned tag = 0; tag < 256; ++tag) {
+    unsigned len = 0, high = 0, extra = 0;
+    switch (tag & 3) {
+      case 0: len = (tag >> 2) + 1; if (len > 60) len = 0; extra = 0; break;
+      case 1: len = ((tag >> 2) & 7) + 4; high = (tag >> 5) << 8; extra = 1; break;
+      case 2: len = (tag >> 2) + 1; extra = 2; break;
+      default: len = (tag >> 2) + 1; extra = 4; break;
+    }
+    t[tag] = std::uint16_t(len | high | (extra << 11));
+  }
+  return t;
+}
+inline constexpr std::array<std::uint16_t, 256> snappy_tags = snappy_table();
+inline constexpr std::uint32_t snappy_extra_mask[5] = {0, 0xff, 0xffff, 0xffffff, 0xffffffff};
+inline std::uint32_t load_le32(const std::byte* p) {
+  std::uint32_t v;
+  std::memcpy(&v, p, 4);
+  if constexpr (std::endian::native == std::endian::big) v = std::byteswap(v);
+  return v;
+}
+}  // namespace detail
+
 /// Decompress a raw Snappy block into exactly out.size() bytes (the preamble length must match).
 inline status snappy_decompress(std::span<const std::byte> in, std::span<std::byte> out) {
   auto pre = varint_u32(from(in));
   if (!pre) return detail::fail("snappy: bad length preamble", 0);
   if (pre->value != out.size()) return detail::fail("snappy: length preamble does not match the page header", 0);
-  const auto* ip = reinterpret_cast<const std::uint8_t*>(pre->rest.first);
-  const auto* const ie = reinterpret_cast<const std::uint8_t*>(in.data() + in.size());
+  const std::byte* ip = pre->rest.first;
+  const std::byte* const ie = in.data() + in.size();
   std::byte* op = out.data();
   std::byte* const ob = out.data();
   std::byte* const oe = out.data() + out.size();
-  const auto at = [&] { return std::size_t(reinterpret_cast<const std::byte*>(ip) - in.data()); };
+  const auto at = [&] { return std::size_t(ip - in.data()); };
+  const auto u8 = [](const std::byte* p) { return std::size_t(std::uint8_t(*p)); };
+  // fast-path limits, computed once (an element may use the fast path while ip < ip_fast and
+  // op < op_fast: 16 input bytes and 80 output bytes of headroom)
+  const std::byte* const ip_fast = in.size() >= 16 ? ie - 16 : in.data();
+  std::byte* const op_fast = out.size() >= 80 ? oe - 80 : ob;
   while (ip < ie) {
-    const std::uint8_t tag = *ip++;
-    if ((tag & 3) == 0) {  // literal
-      std::size_t len = tag >> 2;
-      if (len >= 60) {
-        const std::size_t nb = len - 59;  // 1..4 length bytes
-        if (std::size_t(ie - ip) < nb) return detail::fail("snappy: truncated literal length", at());
-        len = 0;
-        for (std::size_t i = 0; i < nb; ++i) len |= std::size_t(ip[i]) << (8 * i);
-        ip += nb;
-      }
-      len += 1;
-      if (len <= 16 && ie - ip >= 16 && oe - op >= 16) {
-        // short literal with slack on both sides: one fixed 16-byte copy (the bytes past len are
-        // inside the output and get overwritten by what follows)
-        std::memcpy(op, ip, 16);
-        ip += len;
+    const std::size_t tag = u8(ip);
+    const std::uint16_t entry = detail::snappy_tags[tag];
+    // Fast path, per element: while >= 16 input bytes (tag + 4 extra bytes, or a 16-byte literal)
+    // and >= 80 output bytes (the longest copy, 64, plus 16 of overshoot) remain, an element is a
+    // table lookup, one masked 4-byte load and fixed-size copies. Offsets are still validated.
+    if (ip < ip_fast && op < op_fast) {
+      if ((tag & 3) == 0) {
+        const std::size_t len = entry & 0xff;
+        if (len != 0 && len <= 16) {
+          detail::copy16(op, ip + 1);  // bytes past len land inside out and are overwritten later
+          ip += 1 + len;
+          op += len;
+          continue;
+        }
+        // long literal: the exact path below
+      } else {
+        const std::size_t extra = entry >> 11;
+        const std::size_t len = entry & 0xff;
+        const std::size_t offset = (entry & 0x700) + (detail::load_le32(ip + 1) & detail::snappy_extra_mask[extra]);
+        ip += 1 + extra;
+        // offset in [1, produced]: one unsigned compare (offset 0 wraps to the maximum)
+        if (offset - 1 >= std::size_t(op - ob)) return detail::fail("snappy: copy offset outside the output", at());
+        if (offset >= 8 && len <= 16) {
+          detail::copy8(op, op - offset);
+          detail::copy8(op + 8, op - offset + 8);
+        } else {
+          detail::copy_match_wild(op, offset, len);
+        }
         op += len;
         continue;
+      }
+    }
+    ++ip;  // exact path: every length and offset checked against both ends
+    if ((tag & 3) == 0) {  // literal
+      std::size_t len = (tag >> 2) + 1;
+      if (len > 60) {
+        const std::size_t nb = len - 60;  // 1..4 length bytes
+        if (std::size_t(ie - ip) < nb) return detail::fail("snappy: truncated literal length", at());
+        len = 0;
+        for (std::size_t i = 0; i < nb; ++i) len |= u8(ip + i) << (8 * i);
+        ip += nb;
+        len += 1;
       }
       if (std::size_t(ie - ip) < len) return detail::fail("snappy: literal runs past the input", at());
       if (std::size_t(oe - op) < len) return detail::fail("snappy: literal overflows the output", at());
@@ -92,39 +176,34 @@ inline status snappy_decompress(std::span<const std::byte> in, std::span<std::by
       op += len;
       continue;
     }
-    std::size_t len = 0, offset = 0;
+    std::size_t len, offset;
     switch (tag & 3) {
       case 1:
         if (ie - ip < 1) return detail::fail("snappy: truncated copy", at());
         len = ((tag >> 2) & 7) + 4;
-        offset = (std::size_t(tag >> 5) << 8) | ip[0];
+        offset = ((tag >> 5) << 8) | u8(ip);
         ip += 1;
         break;
       case 2:
         if (ie - ip < 2) return detail::fail("snappy: truncated copy", at());
         len = (tag >> 2) + 1;
-        offset = std::size_t(ip[0]) | (std::size_t(ip[1]) << 8);
+        offset = u8(ip) | (u8(ip + 1) << 8);
         ip += 2;
         break;
       default:
         if (ie - ip < 4) return detail::fail("snappy: truncated copy", at());
         len = (tag >> 2) + 1;
-        offset = std::size_t(ip[0]) | (std::size_t(ip[1]) << 8) | (std::size_t(ip[2]) << 16) |
-                 (std::size_t(ip[3]) << 24);
+        offset = u8(ip) | (u8(ip + 1) << 8) | (u8(ip + 2) << 16) | (u8(ip + 3) << 24);
         ip += 4;
         break;
     }
     if (offset == 0 || offset > std::size_t(op - ob)) return detail::fail("snappy: copy offset outside the output", at());
-    if (len <= 16 && offset >= 8 && oe - op >= 16) {
-      // short match, non-overlapping within 8 bytes: two fixed 8-byte copies (sequential, so a
-      // second chunk that overlaps the first reads bytes the first already wrote — LZ semantics)
-      std::memcpy(op, op - offset, 8);
-      std::memcpy(op + 8, op - offset + 8, 8);
-      op += len;
-      continue;
+    if (std::size_t(oe - op) >= len + 16) {
+      detail::copy_match_wild(op, offset, len);
+    } else {
+      if (std::size_t(oe - op) < len) return detail::fail("snappy: copy overflows the output", at());
+      detail::copy_match(op, offset, len);
     }
-    if (std::size_t(oe - op) < len) return detail::fail("snappy: copy overflows the output", at());
-    detail::copy_match(op, offset, len);
     op += len;
   }
   if (op != oe) return detail::fail("snappy: output shorter than declared", at());
@@ -136,19 +215,19 @@ inline status snappy_decompress(std::span<const std::byte> in, std::span<std::by
 // ---------------------------------------------------------------------------
 
 /// Decompress one LZ4 block into out; returns the bytes produced (must equal out.size() for
-/// Parquet, which the caller checks against the page header).
+/// Parquet, which the caller checks against the page header). Same fast-path scheme as Snappy.
 inline status lz4_block_decompress(std::span<const std::byte> in, std::span<std::byte> out) {
-  const auto* ip = reinterpret_cast<const std::uint8_t*>(in.data());
-  const auto* const ie = ip + in.size();
+  const std::byte* ip = in.data();
+  const std::byte* const ie = ip + in.size();
   std::byte* op = out.data();
   std::byte* const ob = out.data();
   std::byte* const oe = out.data() + out.size();
-  const auto at = [&] { return std::size_t(reinterpret_cast<const std::byte*>(ip) - in.data()); };
+  const auto at = [&] { return std::size_t(ip - in.data()); };
   const auto ext_len = [&](std::size_t& len) {
     if (len != 15) return true;
     for (;;) {
       if (ip >= ie) return false;
-      const std::uint8_t b = *ip++;
+      const std::size_t b = std::size_t(std::uint8_t(*ip++));
       if (len > std::numeric_limits<std::size_t>::max() - b) return false;
       len += b;
       if (b != 255) return true;
@@ -157,24 +236,34 @@ inline status lz4_block_decompress(std::span<const std::byte> in, std::span<std:
   if (in.empty()) return detail::fail("lz4: empty block", 0);
   for (;;) {
     if (ip >= ie) return detail::fail("lz4: truncated sequence", at());
-    const std::uint8_t token = *ip++;
+    const std::size_t token = std::size_t(std::uint8_t(*ip++));
     std::size_t lit = token >> 4;
-    if (!ext_len(lit)) return detail::fail("lz4: truncated literal length", at());
-    if (std::size_t(ie - ip) < lit) return detail::fail("lz4: literals run past the input", at());
-    if (std::size_t(oe - op) < lit) return detail::fail("lz4: literals overflow the output", at());
-    if (lit) std::memcpy(op, ip, lit);  // lit may be 0 into an empty output: no null memcpy
-    ip += lit;
-    op += lit;
+    if (lit < 15 && ie - ip >= 16 && oe - op >= 16) {
+      detail::copy16(op, ip);
+      ip += lit;
+      op += lit;
+    } else {
+      if (!ext_len(lit)) return detail::fail("lz4: truncated literal length", at());
+      if (std::size_t(ie - ip) < lit) return detail::fail("lz4: literals run past the input", at());
+      if (std::size_t(oe - op) < lit) return detail::fail("lz4: literals overflow the output", at());
+      if (lit) std::memcpy(op, ip, lit);  // lit may be 0 into an empty output: no null memcpy
+      ip += lit;
+      op += lit;
+    }
     if (ip == ie) break;  // the last sequence carries literals only
     if (ie - ip < 2) return detail::fail("lz4: truncated match offset", at());
-    const std::size_t offset = std::size_t(ip[0]) | (std::size_t(ip[1]) << 8);
+    const std::size_t offset = std::size_t(std::uint8_t(ip[0])) | (std::size_t(std::uint8_t(ip[1])) << 8);
     ip += 2;
     if (offset == 0 || offset > std::size_t(op - ob)) return detail::fail("lz4: match offset outside the output", at());
     std::size_t mlen = token & 15;
     if (!ext_len(mlen)) return detail::fail("lz4: truncated match length", at());
     mlen += 4;
-    if (std::size_t(oe - op) < mlen) return detail::fail("lz4: match overflows the output", at());
-    detail::copy_match(op, offset, mlen);
+    if (std::size_t(oe - op) >= mlen + 16) {
+      detail::copy_match_wild(op, offset, mlen);
+    } else {
+      if (std::size_t(oe - op) < mlen) return detail::fail("lz4: match overflows the output", at());
+      detail::copy_match(op, offset, mlen);
+    }
     op += mlen;
   }
   return std::size_t(op - ob);
