@@ -77,6 +77,14 @@ inline status snappy_decompress(std::span<const std::byte> in, std::span<std::by
         ip += nb;
       }
       len += 1;
+      if (len <= 16 && ie - ip >= 16 && oe - op >= 16) {
+        // short literal with slack on both sides: one fixed 16-byte copy (the bytes past len are
+        // inside the output and get overwritten by what follows)
+        std::memcpy(op, ip, 16);
+        ip += len;
+        op += len;
+        continue;
+      }
       if (std::size_t(ie - ip) < len) return detail::fail("snappy: literal runs past the input", at());
       if (std::size_t(oe - op) < len) return detail::fail("snappy: literal overflows the output", at());
       std::memcpy(op, ip, len);
@@ -107,6 +115,14 @@ inline status snappy_decompress(std::span<const std::byte> in, std::span<std::by
         break;
     }
     if (offset == 0 || offset > std::size_t(op - ob)) return detail::fail("snappy: copy offset outside the output", at());
+    if (len <= 16 && offset >= 8 && oe - op >= 16) {
+      // short match, non-overlapping within 8 bytes: two fixed 8-byte copies (sequential, so a
+      // second chunk that overlaps the first reads bytes the first already wrote — LZ semantics)
+      std::memcpy(op, op - offset, 8);
+      std::memcpy(op + 8, op - offset + 8, 8);
+      op += len;
+      continue;
+    }
     if (std::size_t(oe - op) < len) return detail::fail("snappy: copy overflows the output", at());
     detail::copy_match(op, offset, len);
     op += len;

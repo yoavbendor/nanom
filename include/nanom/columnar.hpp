@@ -149,6 +149,42 @@ class rle_bp_decoder {
     return done;
   }
 
+  /// One run of the stream, exposed without expanding it (for consumers that can act on whole
+  /// runs: an RLE run of definition levels is a range fill, a bit-packed run of width-1 levels IS a
+  /// validity bitmap).
+  struct run {
+    bool             packed = false;  ///< bit-packed (true) or RLE (false)
+    std::uint32_t    value  = 0;      ///< RLE: the repeated value
+    std::size_t      count  = 0;      ///< values in this run (at most what the caller asked for)
+    std::span<const std::byte> bits;  ///< packed: the run's bytes, first value at bit `bit_offset`
+    std::size_t      bit_offset = 0;
+  };
+  /// Next run, truncated to at most `max_values`. Returns false at the end of the data (or on
+  /// malformed input: check ok()). Interleaves correctly with get().
+  bool next_run(run& r, std::size_t max_values) {
+    while (ok_ && max_values) {
+      if (rle_left_) {
+        r.packed = false;
+        r.value = rle_value_;
+        r.count = std::min(rle_left_, max_values);
+        rle_left_ -= r.count;
+        return true;
+      }
+      if (bp_left_) {
+        r.packed = true;
+        r.count = std::min(bp_left_, max_values);
+        const std::size_t bit = bp_pos_ * width_;
+        r.bits = std::span<const std::byte>(bp_ + bit / 8, bp_bytes_ - bit / 8);
+        r.bit_offset = bit % 8;
+        bp_pos_ += r.count;
+        bp_left_ -= r.count;
+        return true;
+      }
+      if (!next_run()) return false;
+    }
+    return false;
+  }
+
   /// Skip n values (returns how many were skipped).
   std::size_t skip(std::size_t n) {
     std::uint32_t buf[256];

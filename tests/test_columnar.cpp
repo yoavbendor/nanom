@@ -156,6 +156,25 @@ static void test_rle_hybrid() {
         got.insert(got.end(), buf, buf + k);
       }
       CHECK(d.ok() && got == v);
+      // the run view reproduces the same values (expanded here from RLE values / packed bits)
+      col::rle_bp_decoder dr(enc, w);
+      std::vector<std::uint32_t> via_runs;
+      col::rle_bp_decoder::run run;
+      while (via_runs.size() < n && dr.next_run(run, std::min<std::size_t>(1 + rng() % 50, n - via_runs.size()))) {
+        if (!run.packed) {
+          via_runs.insert(via_runs.end(), run.count, run.value);
+        } else {
+          for (std::size_t k = 0; k < run.count; ++k) {
+            std::uint64_t x = 0;
+            for (unsigned b = 0; b < w; ++b) {
+              const std::size_t bit = run.bit_offset + k * w + b;
+              x |= std::uint64_t((std::uint8_t(run.bits[bit / 8]) >> (bit % 8)) & 1) << b;
+            }
+            via_runs.push_back(std::uint32_t(x));
+          }
+        }
+      }
+      CHECK(dr.ok() && via_runs == v);
     }
   }
   // hostile: an RLE run of 2^62 values only yields what is asked for
