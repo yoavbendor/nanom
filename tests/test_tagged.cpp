@@ -272,8 +272,13 @@ static void test_thrift_rejects() {
   auto miss = B({0x28, 0x01, 'z', 0x00});
   auto r = nm::thrift_compact<Inner>()(I(miss));
   CHECK(!r && std::string_view(r.error().expected) == "every required thrift field");
-  // wire type mismatch: field 1 sent as binary
-  CHECK(!nm::thrift_compact<Inner>()(I(B({0x18, 0x01, 'q', 0x00}))));
+  // wire type mismatch on a REQUIRED field: skipped (Thrift semantics), then the message fails
+  // the required-field check
+  auto mm = nm::thrift_compact<Inner>()(I(B({0x18, 0x01, 'q', 0x00})));
+  CHECK(!mm && std::string_view(mm.error().expected) == "every required thrift field");
+  // ... on an OPTIONAL field: skipped, the message decodes, the member stays absent
+  auto mo = nm::thrift_compact<Inner>()(I(B({0x15, 0x04, 0x15, 0x06, 0x00})));  // field 2 (string) sent as i32
+  CHECK(mo && *mo->value.a == 2 && !mo->value.s->has_value() && mo->rest.empty());
   // i32 member receiving an out-of-range i32 varint (2^31 zigzag-encoded)
   CHECK(!nm::thrift_compact<Inner>()(I(B({0x15, 0x80, 0x80, 0x80, 0x80, 0x10, 0x00}))));
   // truncated string length

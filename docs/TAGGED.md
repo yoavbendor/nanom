@@ -28,7 +28,7 @@ The field id lives in the type (`field<Id, T>`), the same way endianness lives i
 | fact | how |
 |---|---|
 | field id → member dispatch | consteval table (dense array for ids < 256), one runtime switch into per-field code |
-| expected wire type per member | `type_of<T>()`; a mismatch on the wire is an error, never a reinterpretation |
+| expected wire type per member | `type_of<T>()`; a field whose wire type does not match is skipped like an unknown field, never reinterpreted (Apache Thrift's semantics; old Parquet writers reused field ids with other types). A required member skipped this way fails the required-field check. |
 | required fields | a bitmask checked once, at the struct's STOP byte |
 | ids unique, ascending, ≤ 64 fields | `static_assert` |
 | unsupported member types (unsigned, float) | `static_assert` with a message naming the supported set |

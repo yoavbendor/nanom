@@ -22,7 +22,10 @@
 // everything the codec needs is known at compile time:
 //
 //   * a field-id -> member dispatch table (dense array for ids < 256), built by consteval code;
-//   * the expected wire type of every member, so a type mismatch is an error, not a reinterpretation;
+//   * the expected wire type of every member: a field whose wire type does not match is never
+//     reinterpreted — it is skipped like an unknown field (Apache Thrift's own semantics, which
+//     real files rely on: old writers reused field ids with other types), and if the member is
+//     required the message then fails the required-field check;
 //   * the required-field bitmask, checked once when the struct's STOP byte arrives;
 //   * id uniqueness / ascending order / ≤ 64 fields — static_asserts, not runtime surprises.
 //
@@ -686,12 +689,16 @@ constexpr bool read_struct(ctx& c, ptr& p, ptr e, int depth, M& m) {
       if (!skip(c, p, e, type, false, depth)) return false;
       continue;
     }
+    bool matched = true;
     const bool ok = with_field_index<M>(slot, [&]<std::size_t I>(std::integral_constant<std::size_t, I>) {
       using F = field_at_t<M, I>;
       using V = typename F::value_type;
       using T = unwrap_optional_t<V>;
       constexpr auto mp = std::tuple_element_t<I, fields_tuple_t<M>>::mem_ptr;
-      if (!wire_ok(type_of<T>(), type)) return c.fail(fault::type_mismatch, hp);
+      if (!wire_ok(type_of<T>(), type)) {  // Thrift semantics: skip, never reinterpret
+        matched = false;
+        return skip(c, p, e, type, false, depth);
+      }
       if constexpr (std::is_same_v<T, bool>) {  // bool field: the value is the header type
         (m.*mp).v = V(type == std::uint8_t(ctype::bool_true));
         return true;
@@ -704,7 +711,7 @@ constexpr bool read_struct(ctx& c, ptr& p, ptr e, int depth, M& m) {
       }
     });
     if (!ok) return false;
-    seen |= std::uint64_t(1) << slot;
+    if (matched) seen |= std::uint64_t(1) << slot;
   }
   if ((seen & info::required_mask) != info::required_mask) {
     c.where = describe<M>::name();
