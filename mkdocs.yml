@@ -75,6 +75,7 @@ nav:
   - C++26 reflection: P2996_COMPAT.md
   - nanom_shark tutorial: NANO_SHARK.md
   - Tagged messages (Thrift, Parquet): TAGGED.md
+  - Columnar kernels and codecs: COLUMNAR.md
   - Benchmarks:
       - vs Rust nom (streaming pcapng): BENCH_RUST_NOM.md
       - vs nanotins (overlay decode): NANOTINS_COMPARISON.md

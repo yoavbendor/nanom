@@ -193,9 +193,9 @@ jobs:
       - name: configure + build
         run: |
           cmake -B build -DCMAKE_CXX_COMPILER=g++-13 -DNANOM_WERROR=ON
-          cmake --build build -j --target parquet_meta
+          cmake --build build -j --target parquet_meta codec_check
       - name: differential
-        run: ctest --test-dir build -R parquet_differential --output-on-failure
+        run: ctest --test-dir build -R 'parquet_differential|codec_differential' --output-on-failure
 
   # ---- amalgamation: the generated single-file header must always compile ----
   #      tools/amalgamate.py expands the layered include/nanom/*.hpp into one

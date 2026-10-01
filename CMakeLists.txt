@@ -155,6 +155,13 @@ add_test(NAME nanom_tagged_tests_strict COMMAND nanom_tagged_tests_strict)
 nanom_exe_generation(nanom_tagged_tests_nogen 0 tests/test_tagged.cpp)
 add_test(NAME nanom_tagged_tests_nogen COMMAND nanom_tagged_tests_nogen)
 
+# Columnar page decode kernels (bit unpacking, RLE hybrid, DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT)
+# and the dependency-free codecs (Snappy, LZ4 block), against reference implementations.
+nanom_exe(nanom_columnar_tests tests/test_columnar.cpp)
+add_test(NAME nanom_columnar_tests COMMAND nanom_columnar_tests)
+nanom_exe_strict(nanom_columnar_tests_strict tests/test_columnar.cpp)
+add_test(NAME nanom_columnar_tests_strict COMMAND nanom_columnar_tests_strict)
+
 # Memory-safety regression suite: enforced guards (must pass).
 nanom_exe(nanom_memory_safety_tests tests/test_memory_safety.cpp)
 add_test(NAME nanom_memory_safety_tests COMMAND nanom_memory_safety_tests)
@@ -232,8 +239,14 @@ endforeach()
 # pyarrow on a matrix of real files (codecs, page v1/v2, dictionary, nested + logical types, page
 # index). Skipped (exit 77) when python3 or pyarrow is unavailable.
 nanom_exe(parquet_meta examples/parquet_meta.cpp)
+nanom_exe(codec_check tests/codec_check.cpp)
 find_package(Python3 COMPONENTS Interpreter QUIET)
 if(Python3_Interpreter_FOUND)
+  # Snappy / LZ4-block decoders vs pyarrow's compressors on ~600 buffers.
+  add_test(NAME codec_differential
+           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/codec_differential.py
+                   $<TARGET_FILE:codec_check>)
+  set_tests_properties(codec_differential PROPERTIES SKIP_RETURN_CODE 77)
   add_test(NAME parquet_differential
            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/parquet_differential.py
                    $<TARGET_FILE:parquet_meta>)
@@ -383,6 +396,9 @@ add_test(NAME streaming_defrag_fuzz COMMAND nm_streaming_defrag_fuzz 400)
 nanom_exe(nm_thrift_fuzz fuzz/fuzz_thrift.cpp)
 target_compile_definitions(nm_thrift_fuzz PRIVATE NANOM_FUZZ_STANDALONE=1)
 add_test(NAME thrift_fuzz COMMAND nm_thrift_fuzz 20000)
+nanom_exe(nm_columnar_fuzz fuzz/fuzz_columnar.cpp)
+target_compile_definitions(nm_columnar_fuzz PRIVATE NANOM_FUZZ_STANDALONE=1)
+add_test(NAME columnar_fuzz COMMAND nm_columnar_fuzz 20000)
 
 # ---- benchmarks: built always (so they can't rot) and smoke-tested with a
 #      tiny iteration count; the bench.yml workflow runs them for real numbers.
@@ -405,7 +421,7 @@ if(NANOM_BUILD_FUZZERS)
   if(NOT CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     message(FATAL_ERROR "NANOM_BUILD_FUZZERS requires Clang (libFuzzer)")
   endif()
-  foreach(fz scan_walk streaming_pcapng defrag segmented streaming_defrag thrift)
+  foreach(fz scan_walk streaming_pcapng defrag segmented streaming_defrag thrift columnar)
     add_executable(fuzz_${fz} fuzz/fuzz_${fz}.cpp)
     target_link_libraries(fuzz_${fz} PRIVATE nanom Threads::Threads)
     target_include_directories(fuzz_${fz} PRIVATE ${CMAKE_SOURCE_DIR}/bench)

@@ -140,6 +140,7 @@ reflection add-on, then the data-tooling extras:
 | `nanom/soa.hpp` | *extra* — `soa<T>` columnar (SoA) chunked storage | `schema.hpp` |
 | `nanom/bulk.hpp` | *extra, opt-in* — data-parallel (GPU-ready) SoA scatter | `soa.hpp` |
 | `nanom/tagged.hpp` | *extra* — reflected **tagged messages**: `field<Id, T>` members, the Thrift compact codec (decode + encode), lazy `list<>`/`lazy<>` views ([docs](docs/TAGGED.md)) | `reflect.hpp` |
+| `nanom/columnar.hpp`, `nanom/codec.hpp` | *extra* — page decode kernels (width-specialized bit unpacking, RLE/bit-packed hybrid, DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT) and dependency-free Snappy / LZ4-block decompression ([docs](docs/COLUMNAR.md)) | `nom.hpp` |
 | `nanom/formats/parquet_thrift.hpp` | *format model, opt-in* — Parquet footer / page headers / page index as reflected structs + `read_file_metadata` | `tagged.hpp` |
 | `nanom/nanom26.hpp`, `nanom/describe_macro.hpp` | the two `describe<T>` providers (C++26 reflection / `NANOM_DESCRIBE` macro), included by `reflect.hpp` | — |
 | `nanom/prelude.hpp` | shared config: std includes, `NANOM_HD`, feature probes | — |
