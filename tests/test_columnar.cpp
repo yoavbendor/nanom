@@ -246,11 +246,12 @@ static void test_bss_and_bits() {
   CHECK(!col::byte_stream_split(split, 4, f.size() + 1, std::as_writable_bytes(std::span<float>(back))));
 
   std::mt19937 rng(4);
-  for (int t = 0; t < 200; ++t) {
-    const std::size_t n = rng() % 200, at = rng() % 70;
+  for (int t = 0; t < 4000; ++t) {
+    // exact-size buffers (no slack) every other round, so ASan catches any over-read or -write
+    const std::size_t n = rng() % (t % 4 == 0 ? 3000 : 200), at = rng() % 70;
     bytes_v src((n + 7) / 8);
     for (auto& b : src) b = std::byte(rng());
-    bytes_v dst((at + n + 7) / 8 + 1, std::byte{0xa5});
+    bytes_v dst((at + n + 7) / 8 + (t % 2), std::byte{0xa5});
     const bytes_v before = dst;
     CHECK(col::copy_bits(src, n, dst, at));
     bool ok = true;

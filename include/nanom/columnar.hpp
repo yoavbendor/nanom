@@ -394,11 +394,41 @@ inline bool copy_bits(std::span<const std::byte> in, std::size_t n, std::span<st
     }
     return true;
   }
-  for (std::size_t i = 0; i < n; ++i) {
-    const bool b = (s[i / 8] >> (i % 8)) & 1;
-    const std::size_t j = dst_bit + i;
-    if (b) d[j / 8] = std::uint8_t(d[j / 8] | (1u << (j % 8)));
-    else   d[j / 8] = std::uint8_t(d[j / 8] & ~(1u << (j % 8)));
+  // unaligned destination: every output byte takes the high bits of one source byte and the low
+  // bits of the next. Fill the partial first byte, then whole output words, then the tail.
+  const unsigned sh = unsigned(dst_bit % 8);   // destination bit offset in its byte
+  std::uint8_t* o = d + dst_bit / 8;
+  {
+    const std::size_t head = std::min<std::size_t>(n, 8 - sh);
+    const std::uint8_t mask = std::uint8_t(((1u << head) - 1) << sh);
+    *o = std::uint8_t((*o & ~mask) | ((s[0] << sh) & mask));
+    if (n == head) return true;
+    ++o;
+  }
+  // the rest is byte-aligned in the output: output byte q holds source bits [8q + k, 8q + k + 8)
+  const unsigned k = 8 - sh;                   // 1..7 source bits went into the first byte
+  std::size_t left = n - k, p = 0;
+  const std::size_t in_bytes = (n + 7) / 8;
+  while (left >= 64 && p + 9 <= in_bytes) {
+    std::uint64_t w;
+    std::memcpy(&w, s + p, 8);
+    w = (w >> k) | (std::uint64_t(s[p + 8]) << (64 - k));
+    std::memcpy(o, &w, 8);
+    o += 8;
+    p += 8;
+    left -= 64;
+  }
+  while (left >= 8) {  // whole bytes: s[p + 1] exists because k + 8 more bits remain in the source
+    *o++ = std::uint8_t((s[p] >> k) | (s[p + 1] << (8 - k)));
+    ++p;
+    left -= 8;
+  }
+  if (left) {
+    const std::size_t first = p * 8 + k;        // source bit of the tail's first bit
+    unsigned v = s[first / 8] >> (first % 8);
+    if ((first % 8) + left > 8) v |= unsigned(s[first / 8 + 1]) << (8 - first % 8);
+    const std::uint8_t mask = std::uint8_t((1u << left) - 1);
+    *o = std::uint8_t((*o & ~mask) | (v & mask));
   }
   return true;
 }
