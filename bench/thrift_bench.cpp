@@ -10,6 +10,7 @@
 //   nm_thrift_bench [row_groups=1000] [columns=50] [reps=20]
 //   nm_thrift_bench file.parquet [reps=20]      — the same patterns on a real file's footer
 #include <nanom/formats/parquet_thrift.hpp>
+#include <nanom/tagged_encode.hpp>
 
 #include <chrono>
 #include <cstdio>
@@ -171,7 +172,7 @@ int main(int argc, char** argv) {
   }
   f.row_groups = std::move(rgs);
   std::vector<std::byte> wire;
-  nm::thrift_compact_encode(f, wire);
+  if (!nm::thrift_compact_encode(f, wire)) std::abort();
   const nm::input in = nm::from(std::span<const std::byte>(wire));
 
   std::int64_t sink = 0;
@@ -208,6 +209,16 @@ int main(int argc, char** argv) {
     sink += std::int64_t(r->value.row_groups->size());
   });
 
+  // writing: the whole footer from in-memory values, and its exact size without writing
+  std::vector<std::byte> out;
+  out.reserve(wire.size());
+  const double encode = best_ns(reps, [&] {
+    out.clear();
+    if (!nm::thrift_compact_encode(f, out)) std::abort();
+    sink += std::int64_t(out.size());
+  });
+  const double sized = best_ns(reps, [&] { sink += std::int64_t(*nm::thrift_compact_size(f)); });
+
   const double mb = double(wire.size()) / 1e6;
   const double chunks = double(R) * C;
   std::printf("footer: %d row groups x %d columns, %.2f MB of Thrift compact\n", R, C, mb);
@@ -217,5 +228,8 @@ int main(int argc, char** argv) {
   std::printf("  one_rg   : %9.3f ms\n", one / 1e6);
   std::printf("  eager    : %9.3f ms  %7.0f MB/s  %6.1f ns/column chunk (std::vector mirror, one pass)\n",
               eager / 1e6, mb / (eager / 1e9), eager / chunks);
+  std::printf("  encode   : %9.3f ms  %7.0f MB/s  %6.1f ns/column chunk (write from values)\n", encode / 1e6,
+              mb / (encode / 1e9), encode / chunks);
+  std::printf("  size     : %9.3f ms  (exact encoded size, nothing written)\n", sized / 1e6);
   return sink == 42 ? 1 : 0;
 }

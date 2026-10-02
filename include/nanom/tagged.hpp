@@ -15,7 +15,9 @@
 //   NANOM_DESCRIBE(KeyValue, key, value);   // C++23; under C++26 reflection no registration at all
 //
 //   auto r = nm::thrift_compact<KeyValue>()(in);          // an ordinary nanom parser
-//   std::vector<std::byte> out; nm::thrift_compact_encode(r->value, out);   // and back
+//
+// This header only READS. Writing the same model back (nm::thrift_compact_encode) lives in
+// nanom/tagged_encode.hpp, which a reader never needs to include.
 //
 // The field id lives in the TYPE (field<Id, T>), exactly as endianness lives in be<>/le<> — so both
 // describe<T> providers (the NANOM_DESCRIBE macro and C++26 P2996 reflection) work unchanged, and
@@ -221,8 +223,21 @@ class list {
                  tagged_wire w = tagged_wire::thrift_compact)
       : region_(region), count_(count), elem_wire_(elem_wire), depth_(depth), wire_(w) {}
 
-  constexpr std::size_t   size()      const { return count_; }
-  constexpr bool          empty()     const { return count_ == 0; }
+  /// A list to WRITE (see nanom/tagged_encode.hpp): a view of the caller's elements, which must
+  /// outlive it. It iterates, indexes and copies exactly like a decoded list.
+  static constexpr list of(std::span<const E> elems) {
+    list l;
+    l.src_ = elems.data();
+    l.src_n_ = elems.size();
+    l.src_mode_ = true;
+    return l;
+  }
+  /// True for a list made with of() (elements in memory), false for one decoded from the wire.
+  constexpr bool          is_source() const { return src_mode_; }
+  constexpr std::span<const E> source() const { return {src_, src_n_}; }
+
+  constexpr std::size_t   size()      const { return src_mode_ ? src_n_ : count_; }
+  constexpr bool          empty()     const { return size() == 0; }
   constexpr input         region()    const { return region_; }
   constexpr std::uint8_t  elem_wire() const { return elem_wire_; }
 
@@ -233,6 +248,7 @@ class list {
   constexpr expected<E, error> at(std::size_t i) const;
   /// Owning copy of every element.
   constexpr expected<std::vector<E>, error> to_vector() const {
+    if (src_mode_) return std::vector<E>(src_, src_ + src_n_);
     std::vector<E> out;
     out.reserve(count_);
     auto st = for_each([&](E e) { out.push_back(std::move(e)); });
@@ -246,6 +262,9 @@ class list {
   std::uint8_t  elem_wire_ = 0;
   std::uint8_t  depth_     = 0;
   tagged_wire   wire_      = tagged_wire::thrift_compact;
+  bool          src_mode_  = false;  ///< of(): elements in memory, not on the wire
+  const E*      src_       = nullptr;
+  std::size_t   src_n_     = 0;
 };
 
 /// A nested message decoded on demand: holds the struct's (structurally validated) bytes.
@@ -256,8 +275,17 @@ class lazy {
   constexpr lazy() = default;
   constexpr lazy(input region, std::uint8_t depth, tagged_wire w = tagged_wire::thrift_compact)
       : region_(region), depth_(depth), wire_(w) {}
+  /// A nested message to WRITE (see nanom/tagged_encode.hpp): a view of the caller's message,
+  /// which must outlive it. decode() returns a copy of it.
+  static constexpr lazy of(const M& m) {
+    lazy l;
+    l.src_ = &m;
+    return l;
+  }
+  constexpr const M* source() const { return src_; }
   constexpr input region() const { return region_; }
-  constexpr bool  empty()  const { return region_.empty(); }
+  /// Neither decoded from the wire nor set with of().
+  constexpr bool  empty()  const { return region_.empty() && src_ == nullptr; }
   /// Decode the full message now.
   constexpr expected<M, error> decode() const;
 
@@ -265,6 +293,7 @@ class lazy {
   input        region_{};
   std::uint8_t depth_ = 0;
   tagged_wire  wire_  = tagged_wire::thrift_compact;
+  const M*     src_   = nullptr;  ///< of(): the message in memory
 };
 
 // ---------------------------------------------------------------------------
@@ -720,100 +749,6 @@ constexpr bool read_struct(ctx& c, ptr& p, ptr e, int depth, M& m) {
   return true;
 }
 
-// ---- encoder -----------------------------------------------------------------------------------
-
-struct writer {
-  std::vector<std::byte>& out;
-  void u8(std::uint8_t b) { out.push_back(std::byte(b)); }
-  void varint(std::uint64_t v) {
-    std::byte buf[leb128_max_bytes<std::uint64_t>];
-    const std::size_t n = uleb128_encode(v, buf);
-    out.insert(out.end(), buf, buf + n);
-  }
-  void raw(const std::byte* p, std::size_t n) { if (n) out.insert(out.end(), p, p + n); }
-  void list_header(std::size_t n, std::uint8_t et) {
-    if (n < 15) {
-      u8(std::uint8_t((n << 4) | et));
-    } else {
-      u8(std::uint8_t(0xf0 | et));
-      varint(n);
-    }
-  }
-};
-
-template <Message M> void write_struct(writer& w, const M& m);
-
-template <class T>
-void write_value(writer& w, const T& v) {
-  if constexpr (std::is_same_v<T, bool>) {
-    w.u8(v ? 1 : 2);
-  } else if constexpr (std::is_same_v<T, std::int8_t>) {
-    w.u8(std::bit_cast<std::uint8_t>(v));
-  } else if constexpr (std::is_same_v<T, std::int16_t> || std::is_same_v<T, std::int32_t> ||
-                       std::is_same_v<T, std::int64_t>) {
-    w.varint(zigzag_encode(v));
-  } else if constexpr (std::is_same_v<T, double>) {
-    const auto u = std::bit_cast<std::uint64_t>(v);
-    for (int i = 0; i < 8; ++i) w.u8(std::uint8_t(u >> (8 * i)));
-  } else if constexpr (std::is_enum_v<T>) {
-    w.varint(zigzag_encode(std::int32_t(v)));
-  } else if constexpr (std::is_same_v<T, std::string_view> || std::is_same_v<T, std::string>) {
-    w.varint(v.size());
-    w.raw(reinterpret_cast<const std::byte*>(v.data()), v.size());
-  } else if constexpr (std::is_same_v<T, bytes>) {
-    w.varint(v.size());
-    w.raw(v.data(), v.size());
-  } else if constexpr (is_vector_t<T>::value) {
-    using E = typename T::value_type;
-    w.list_header(v.size(), type_of<E>());
-    for (const auto& e : v) write_value<E>(w, e);
-  } else if constexpr (is_list_t<T>::value) {
-    // the region is already-valid compact encoding of exactly these elements: copy it verbatim
-    w.list_header(v.size(), v.size() ? v.elem_wire() : type_of<typename T::value_type>());
-    w.raw(v.region().first, v.region().size());
-  } else if constexpr (is_lazy_t<T>::value) {
-    if (v.empty()) w.u8(0);
-    else w.raw(v.region().first, v.region().size());
-  } else if constexpr (std::is_same_v<T, empty_struct>) {
-    w.u8(0);
-  } else if constexpr (Message<T>) {
-    write_struct(w, v);
-  } else {
-    static_assert(always_false<T>, "nanom thrift: unsupported member type");
-  }
-}
-
-template <Message M>
-void write_struct(writer& w, const M& m) {
-  std::int32_t last = 0;
-  for_each_field<M>([&](auto f) {
-    using F = member_t<decltype(f)::mem_ptr>;
-    using V = typename F::value_type;
-    const V& fv = (m.*(decltype(f)::mem_ptr)).v;
-    const auto emit = [&](const auto& val) {
-      using T = std::remove_cvref_t<decltype(val)>;
-      std::uint8_t type = type_of<T>();
-      if constexpr (std::is_same_v<T, bool>)
-        type = val ? std::uint8_t(ctype::bool_true) : std::uint8_t(ctype::bool_false);
-      const std::int32_t delta = std::int32_t(F::id) - last;
-      if (delta >= 1 && delta <= 15) {
-        w.u8(std::uint8_t((delta << 4) | type));
-      } else {
-        w.u8(type);
-        w.varint(zigzag_encode(std::int16_t(F::id)));
-      }
-      last = F::id;
-      if constexpr (!std::is_same_v<T, bool>) write_value<T>(w, val);
-    };
-    if constexpr (is_optional_t<V>::value) {
-      if (fv) emit(*fv);
-    } else {
-      emit(fv);
-    }
-  });
-  w.u8(0);
-}
-
 }  // namespace detail::tc
 
 /// thrift_compact<M>() — parser: one Thrift compact struct into the message M.
@@ -826,13 +761,6 @@ constexpr auto thrift_compact() {
     if (!detail::tc::read_struct<M>(c, p, in.last, 0, m)) return unexp(c.to_error());
     return done{std::move(m), in.advance(std::size_t(p - in.first))};
   };
-}
-
-/// Append the Thrift compact encoding of m to out.
-template <Message M>
-void thrift_compact_encode(const M& m, std::vector<std::byte>& out) {
-  detail::tc::writer w{out};
-  detail::tc::write_struct(w, m);
 }
 
 /// Skip one Thrift compact struct without decoding it (validates structure and limits).
@@ -848,6 +776,16 @@ inline constexpr auto thrift_compact_skip = [](input in) -> result<unit> {
 template <class E>
 template <class F>
 constexpr expected<unit, error> list<E>::for_each(F&& f) const {
+  if (src_mode_) {
+    for (std::size_t i = 0; i < src_n_; ++i) {
+      if constexpr (std::is_same_v<std::invoke_result_t<F&, E>, bool>) {
+        if (!f(E(src_[i]))) break;
+      } else {
+        f(E(src_[i]));
+      }
+    }
+    return unit{};
+  }
   detail::tc::ctx c{region_};
   detail::tc::ptr p = region_.first;
   for (std::uint32_t i = 0; i < count_; ++i) {
@@ -864,6 +802,10 @@ constexpr expected<unit, error> list<E>::for_each(F&& f) const {
 
 template <class E>
 constexpr expected<E, error> list<E>::at(std::size_t i) const {
+  if (src_mode_) {
+    if (i >= src_n_) return unexpected<error>(make_err(region_, "list index in range").error());
+    return src_[i];
+  }
   detail::tc::ctx c{region_};
   if (i >= count_) {
     error e = make_err(region_, "list index in range").error();
@@ -879,6 +821,7 @@ constexpr expected<E, error> list<E>::at(std::size_t i) const {
 
 template <class M>
 constexpr expected<M, error> lazy<M>::decode() const {
+  if (src_) return *src_;
   detail::tc::ctx c{region_};
   detail::tc::ptr p = region_.first;
   M m{};

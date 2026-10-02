@@ -8,12 +8,19 @@
 //      element) without crashing — element errors are allowed, crashes are not;
 //   3. canonical round trip: once decoded, encode(decode(encode(m))) == encode(m). Decoding drops
 //      unknown top-level fields and normalizes varints, so the INPUT is not reproduced — but the
-//      codec's own output must be a fixed point.
+//      codec's own output must be a fixed point; thrift_compact_size agrees with the bytes written.
+//
+// The standalone driver also GENERATES inputs (tests/tagged_gen.hpp): random FileMetaData /
+// PageHeader values built by reflection are encoded, must decode back to the same value, and are
+// then mutated — structurally valid bytes reach far deeper into the decoder than noise does.
 //
 // libFuzzer:  clang++ -fsanitize=fuzzer,address,undefined -std=c++23 -I include fuzz/fuzz_thrift.cpp
 // standalone: -DNANOM_FUZZ_STANDALONE, then ./nm_thrift_fuzz [iterations] [seed] — mutates a valid
 //             seed footer (bit flips, truncation, byte insertion, splices) and feeds pure noise.
 #include <nanom/formats/parquet_thrift.hpp>
+#include <nanom/tagged_encode.hpp>
+
+#include "../tests/tagged_gen.hpp"
 
 #include <cstdint>
 #include <cstdio>
@@ -25,7 +32,8 @@ namespace pq = nanom_formats::parquet;
 
 namespace {
 
-std::uint64_t g_decoded = 0;  // inputs that decoded as FileMetaData (round trip exercised)
+std::uint64_t g_decoded = 0;    // inputs that decoded as FileMetaData (round trip exercised)
+std::uint64_t g_generated = 0;  // generated messages that decoded back to themselves
 
 [[noreturn]] void die(const char* what) {
   std::fprintf(stderr, "fuzz_thrift: %s\n", what);
@@ -53,11 +61,14 @@ void walk(const pq::FileMetaData& m) {
 
 void round_trip(const pq::FileMetaData& m) {
   std::vector<std::byte> a, b;
-  nm::thrift_compact_encode(m, a);
+  auto n = nm::thrift_compact_encode(m, a);
+  if (!n || *n != a.size()) die("encoding a decoded footer failed");
+  auto size = nm::thrift_compact_size(m);
+  if (!size || *size != a.size()) die("thrift_compact_size disagrees with the bytes written");
   auto r = nm::thrift_compact<pq::FileMetaData>()(nm::from(std::span<const std::byte>(a)));
   if (!r) die("re-decode of the codec's own encoding failed");
   if (!r->rest.empty()) die("re-decode did not consume the whole encoding");
-  nm::thrift_compact_encode(r->value, b);
+  if (!nm::thrift_compact_encode(r->value, b)) die("re-encode failed");
   if (a != b) die("encode(decode(encode(m))) != encode(m)");
 }
 
@@ -80,44 +91,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
 }
 
 #ifdef NANOM_FUZZ_STANDALONE
-// ---- seed: an owning "writer-side" mirror of the footer, encoded with the same codec ------------
-// These mirror structs use std::vector where the reader model uses lazy nm::list views: the same
-// field ids, so the writer's output is the reader's input — the nanoarrow2parquet /
-// parquet2nanoarrow pairing in miniature.
-struct ColMetaW {
-  nm::field<1, pq::Type>                       type;
-  nm::field<2, std::vector<pq::Encoding>>      encodings;
-  nm::field<3, std::vector<std::string_view>>  path;
-  nm::field<4, pq::CompressionCodec>           codec;
-  nm::field<5, std::int64_t>                   num_values;
-  nm::field<6, std::int64_t>                   uncompressed;
-  nm::field<7, std::int64_t>                   compressed;
-  nm::field<9, std::int64_t>                   data_page_offset;
-  nm::field<12, std::optional<pq::Statistics>> stats;
-};
-struct ChunkW {
-  nm::field<2, std::int64_t> file_offset;
-  nm::field<3, ColMetaW>     meta;
-};
-struct RowGroupW {
-  nm::field<1, std::vector<ChunkW>> columns;
-  nm::field<2, std::int64_t>        bytes;
-  nm::field<3, std::int64_t>        rows;
-};
-struct FooterW {
-  nm::field<1, std::int32_t>                     version;
-  nm::field<2, std::vector<pq::SchemaElement>>   schema;
-  nm::field<3, std::int64_t>                     rows;
-  nm::field<4, std::vector<RowGroupW>>           row_groups;
-  nm::field<5, std::vector<pq::KeyValue>>        kv;
-  nm::field<6, std::string_view>                 created_by;
-};
-NANOM_DESCRIBE(ColMetaW, type, encodings, path, codec, num_values, uncompressed, compressed,
-               data_page_offset, stats);
-NANOM_DESCRIBE(ChunkW, file_offset, meta);
-NANOM_DESCRIBE(RowGroupW, columns, bytes, rows);
-NANOM_DESCRIBE(FooterW, version, schema, rows, row_groups, kv, created_by);
-
+// ---- seed: a footer composed through the model itself (lists from the caller's elements) -------
 namespace {
 struct Rng {
   std::uint64_t s;
@@ -148,31 +122,41 @@ std::vector<std::uint8_t> make_seed() {
   st.min_value = nm::bytes(std::span<const std::byte>(lo));
   st.max_value = nm::bytes(std::span<const std::byte>(hi));
 
-  ColMetaW c;
+  const pq::Encoding encs[] = {pq::Encoding::PLAIN, pq::Encoding::RLE};
+  const std::string_view path[] = {"id"};
+  pq::ColumnMetaData c;
   c.type = pq::Type::INT64;
-  c.encodings = std::vector<pq::Encoding>{pq::Encoding::PLAIN, pq::Encoding::RLE};
-  c.path = std::vector<std::string_view>{"id"};
+  c.encodings = nm::list<pq::Encoding>::of(encs);
+  c.path_in_schema = nm::list<std::string_view>::of(path);
   c.codec = pq::CompressionCodec::SNAPPY;
   c.num_values = 1000;
-  c.uncompressed = 8000;
-  c.compressed = 4000;
+  c.total_uncompressed_size = 8000;
+  c.total_compressed_size = 4000;
   c.data_page_offset = 4;
-  c.stats = st;
-  RowGroupW rg;
-  rg.columns = std::vector<ChunkW>{ChunkW{4, c}, ChunkW{4004, c}};
-  rg.bytes = 16000;
-  rg.rows = 1000;
-  FooterW f;
+  c.statistics = st;
+  pq::ColumnChunk c1, c2;
+  c1.file_offset = 4;
+  c1.meta_data = c;
+  c2.file_offset = 4004;
+  c2.meta_data = c;
+  const pq::ColumnChunk chunks[] = {c1, c2};
+  pq::RowGroup rg;
+  rg.columns = nm::list<pq::ColumnChunk>::of(chunks);
+  rg.total_byte_size = 16000;
+  rg.num_rows = 1000;
+  const pq::RowGroup rgs[] = {rg, rg};
+  const pq::SchemaElement schema[] = {root, a, b};
+  const pq::KeyValue kv[] = {pq::KeyValue{std::string_view("k"), std::optional<std::string_view>("v")}};
+  pq::FileMetaData f;
   f.version = 2;
-  f.schema = std::vector<pq::SchemaElement>{root, a, b};
-  f.rows = 1000;
-  f.row_groups = std::vector<RowGroupW>{rg, rg};
-  f.kv = std::vector<pq::KeyValue>{pq::KeyValue{std::string_view("k"), std::optional<std::string_view>("v")}};
+  f.schema = nm::list<pq::SchemaElement>::of(schema);
+  f.num_rows = 1000;
+  f.row_groups = nm::list<pq::RowGroup>::of(rgs);
+  f.key_value_metadata = nm::list<pq::KeyValue>::of(kv);
   f.created_by = std::string_view("nanom fuzz seed");
 
   std::vector<std::byte> enc;
-  nm::thrift_compact_encode(f, enc);
-  // the writer mirror's bytes must decode through the zero-copy reader model
+  if (!nm::thrift_compact_encode(f, enc)) die("seed does not encode");
   auto r = nm::thrift_compact<pq::FileMetaData>()(nm::from(std::span<const std::byte>(enc)));
   if (!r || *r->value.num_rows != 1000 || r->value.row_groups->size() != 2) die("seed does not decode");
   std::vector<std::uint8_t> out(enc.size());
@@ -189,6 +173,29 @@ int main(int argc, char** argv) {
   std::vector<std::uint8_t> buf;
   for (int i = 0; i < iters; ++i) {
     buf = seed;
+    if (rng.next() % 3 == 0) {
+      // generated: a random message must decode back to itself, then its bytes get mutated below
+      std::mt19937_64 g(rng.next());
+      nanom_test::arena ar;
+      std::vector<std::byte> enc;
+      bool ok = false;
+      if (g() & 1) {
+        const auto m = nanom_test::gen<pq::FileMetaData>(g, ar, 0);
+        if (!nm::thrift_compact_encode(m, enc)) die("generated FileMetaData does not encode");
+        auto r = nm::thrift_compact<pq::FileMetaData>()(nm::from(std::span<const std::byte>(enc)));
+        ok = r && r->rest.empty() && nanom_test::same(m, r->value);
+      } else {
+        const auto m = nanom_test::gen<pq::PageHeader>(g, ar, 0);
+        if (!nm::thrift_compact_encode(m, enc)) die("generated PageHeader does not encode");
+        auto r = nm::thrift_compact<pq::PageHeader>()(nm::from(std::span<const std::byte>(enc)));
+        ok = r && r->rest.empty() && nanom_test::same(m, r->value);
+      }
+      if (!ok) die("a generated message does not decode back to itself");
+      ++g_generated;
+      buf.assign(reinterpret_cast<const std::uint8_t*>(enc.data()),
+                 reinterpret_cast<const std::uint8_t*>(enc.data()) + enc.size());
+      LLVMFuzzerTestOneInput(buf.data(), buf.size());
+    }
     switch (rng.next() % 5) {
       case 0:  // pure noise
         buf.resize(1 + rng.next() % 512);
@@ -211,8 +218,8 @@ int main(int argc, char** argv) {
     }
     LLVMFuzzerTestOneInput(buf.data(), buf.size());
   }
-  std::printf("nm_thrift_fuzz: %d iterations OK (%llu decoded and round-tripped)\n", iters,
-              static_cast<unsigned long long>(g_decoded));
+  std::printf("nm_thrift_fuzz: %d iterations OK (%llu decoded and round-tripped, %llu generated)\n", iters,
+              static_cast<unsigned long long>(g_decoded), static_cast<unsigned long long>(g_generated));
   return 0;
 }
 #endif

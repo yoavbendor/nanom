@@ -3,6 +3,7 @@
 #include <nanom/nanom.hpp>
 #include <nanom/tagged.hpp>
 #include <nanom/formats/parquet_thrift.hpp>
+#include <nanom/tagged_encode.hpp>
 
 #include <cstdio>
 #include <random>
@@ -316,17 +317,17 @@ static void test_parquet_model_roundtrip() {
   col.repetition_type = pq::FieldRepetitionType::OPTIONAL;
   col.name = std::string_view("ts");
 
+  // composed through the model itself: lists from the caller's elements (list<E>::of)
+  const pq::SchemaElement elems[] = {root, col};
+  pq::FileMetaData fmd;
+  fmd.version = 2;
+  fmd.schema = nm::list<pq::SchemaElement>::of(elems);
+  fmd.num_rows = 3;
+  fmd.row_groups = nm::list<pq::RowGroup>::of({});
+  fmd.created_by = std::string_view("nmtt");
   std::vector<std::byte> footer;
-  nm::detail::tc::writer w{footer};
-  // FileMetaData by hand-composition: 1:i32 version, 2:list<SchemaElement>, 3:i64 rows, 4:list<RowGroup>
-  w.u8(0x15); w.varint(nm::zigzag_encode(int32_t(2)));
-  w.u8(0x19); w.list_header(2, 12);
-  nm::detail::tc::write_struct(w, root);
-  nm::detail::tc::write_struct(w, col);
-  w.u8(0x16); w.varint(nm::zigzag_encode(int64_t(3)));
-  w.u8(0x19); w.list_header(0, 12);
-  w.u8(0x28); w.varint(4); w.raw(reinterpret_cast<const std::byte*>("nmtt"), 4);  // 6: created_by
-  w.u8(0x00);
+  auto wrote = nm::thrift_compact_encode(fmd, footer);
+  CHECK(wrote && *wrote == footer.size() && *nm::thrift_compact_size(fmd) == footer.size());
 
   std::vector<std::byte> file = B({'P', 'A', 'R', '1'});
   file.insert(file.end(), footer.begin(), footer.end());
