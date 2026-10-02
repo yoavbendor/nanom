@@ -174,6 +174,7 @@ struct SomeNull {
 using AllNull = empty_struct;
 /// Nullable{ oneof: no_nulls, some_nulls, all_nulls }.
 struct Nullable {
+  pb_unknown                        unknown;  ///< a member this model does not declare
   field<1, std::optional<NoNull>>   no_nulls;
   field<2, std::optional<SomeNull>> some_nulls;
   field<3, std::optional<AllNull>>  all_nulls;
@@ -243,6 +244,13 @@ struct ArrayEncoding {
   field<13, std::optional<Constant20>>        constant;
 };
 
+/// A format 2.0 column's own encoding (lance.encodings.ColumnEncoding): which variant it is is all a
+/// reader needs; `blob` (field 3) marks a blob column. Other variants stay in `unknown`.
+struct ColumnEncoding20 {
+  pb_unknown                      unknown;
+  field<3, std::optional<bytes>>  blob;
+};
+
 /// How many members of a oneof message are set (declared ones, plus length-delimited fields kept
 /// in `unknown`, which in these messages are variants this model does not declare). A valid
 /// message has at most one.
@@ -288,7 +296,7 @@ NANOM_DESCRIBE(nanom_formats::lance::Compression, scheme);
 NANOM_DESCRIBE(nanom_formats::lance::Flat20, bits_per_value, buffer, compression);
 NANOM_DESCRIBE(nanom_formats::lance::NoNull, values);
 NANOM_DESCRIBE(nanom_formats::lance::SomeNull, validity, values);
-NANOM_DESCRIBE(nanom_formats::lance::Nullable, no_nulls, some_nulls, all_nulls);
+NANOM_DESCRIBE(nanom_formats::lance::Nullable, unknown, no_nulls, some_nulls, all_nulls);
 NANOM_DESCRIBE(nanom_formats::lance::FixedSizeList20, dimension, items, has_validity);
 NANOM_DESCRIBE(nanom_formats::lance::List20, offsets, null_offset_adjustment, num_items);
 NANOM_DESCRIBE(nanom_formats::lance::Binary, indices, bytes, null_adjustment);
@@ -299,6 +307,7 @@ NANOM_DESCRIBE(nanom_formats::lance::Bitpacked20, compressed_bits_per_value, unc
 NANOM_DESCRIBE(nanom_formats::lance::FixedSizeBinary, bytes, byte_width);
 NANOM_DESCRIBE(nanom_formats::lance::BitpackedForNonNeg, compressed_bits_per_value, uncompressed_bits_per_value, buffer);
 NANOM_DESCRIBE(nanom_formats::lance::Constant20, value);
+NANOM_DESCRIBE(nanom_formats::lance::ColumnEncoding20, unknown, blob);
 NANOM_DESCRIBE(nanom_formats::lance::ArrayEncoding, unknown, flat, nullable, fixed_size_list, list, struct_, binary,
                dictionary, fsst, packed_struct, bitpacked, fixed_size_binary, bitpacked_for_non_neg, constant);
 
