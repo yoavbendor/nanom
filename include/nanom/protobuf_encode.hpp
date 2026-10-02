@@ -50,7 +50,8 @@ template <class T>
 constexpr std::uint64_t varint_value(const T& v) {
   if constexpr (is_sint<T>::value) return zigzag_encode(v.v);
   else if constexpr (std::is_same_v<T, bool>) return v ? 1 : 0;
-  else if constexpr (std::is_enum_v<T>) return std::uint64_t(std::int64_t(std::to_underlying(v)));
+  else if constexpr (std::is_enum_v<T>)
+    return std::uint64_t(std::int64_t(static_cast<std::underlying_type_t<T>>(v)));
   else if constexpr (std::is_signed_v<T>) return std::uint64_t(std::int64_t(v));  // negative: 10 bytes
   else return std::uint64_t(v);
 }
