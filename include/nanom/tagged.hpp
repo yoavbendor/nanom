@@ -50,6 +50,8 @@
 
 #include "reflect.hpp"
 
+#include <memory>
+
 namespace nanom {
 
 // ---------------------------------------------------------------------------
@@ -69,10 +71,18 @@ inline constexpr int max_tagged_depth = NANOM_TAGGED_MAX_DEPTH;
 /// A field whose type is std::optional<T> is always optional (absent = nullopt), whatever P says.
 enum class presence : std::uint8_t { required, defaulted };
 
+/// The wire bytes of the fields a protobuf message model does not declare (key and value, in the
+/// order read), so a read-modify-write keeps what a newer writer added. Declared through pb_unknown.
+struct unknown_fields {
+  std::vector<std::byte> bytes;
+  bool empty() const { return bytes.empty(); }
+  bool operator==(const unknown_fields&) const = default;
+};
 /// One field of a tagged message: the wire field id + the value type, in the type.
 template <std::uint16_t Id, class T, presence P = presence::required>
 struct field {
-  static_assert(Id >= 1 && Id <= 32767, "nanom::field: ids are 1..32767 (Thrift i16, positive)");
+  static_assert((Id >= 1 && Id <= 32767) || (Id == 0 && std::is_same_v<T, unknown_fields>),
+                "nanom::field: ids are 1..32767 (Thrift i16, positive); 0 is pb_unknown's");
   using value_type = T;
   static constexpr std::uint16_t id = Id;
   static constexpr presence      pres = P;
@@ -92,6 +102,45 @@ struct field {
   constexpr const T* operator->() const { return &v; }
   constexpr const T& get()        const { return v; }
   constexpr operator const T&()   const { return v; }
+};
+
+/// Opt-in unknown-field preservation for protobuf (nanom/protobuf.hpp): declare `nm::pb_unknown
+/// unknown;` as the message's FIRST member (its id is 0, which no protobuf field can have). Reading
+/// appends every field the model does not declare (or that arrives with another wire type);
+/// writing emits them after the declared fields, unchanged. Not supported by the Thrift codec.
+using pb_unknown = field<0, unknown_fields, presence::defaulted>;
+
+/// An optional message held on the heap, for recursive protobuf models (a message that contains
+/// one of its own type: `nm::field<1, nm::pb_box<Node>, nm::presence::defaulted> child;`, which a
+/// std::optional<Node> member cannot express). Absent = empty. Copies are deep.
+template <class M>
+class pb_box {
+ public:
+  using value_type = M;
+  pb_box() = default;
+  pb_box(M m) : p_(std::make_unique<M>(std::move(m))) {}
+  pb_box(const pb_box& o) : p_(o.p_ ? std::make_unique<M>(*o.p_) : nullptr) {}
+  pb_box(pb_box&&) noexcept = default;
+  pb_box& operator=(const pb_box& o) {
+    if (this != &o) p_ = o.p_ ? std::make_unique<M>(*o.p_) : nullptr;
+    return *this;
+  }
+  pb_box& operator=(pb_box&&) noexcept = default;
+  pb_box& operator=(M m) {
+    p_ = std::make_unique<M>(std::move(m));
+    return *this;
+  }
+  bool has_value() const { return p_ != nullptr; }
+  explicit operator bool() const { return p_ != nullptr; }
+  M& operator*() { return *p_; }
+  const M& operator*() const { return *p_; }
+  M* operator->() { return p_.get(); }
+  const M* operator->() const { return p_.get(); }
+  M& emplace() { return *(p_ = std::make_unique<M>()); }
+  void reset() { p_.reset(); }
+
+ private:
+  std::unique_ptr<M> p_;
 };
 
 /// Thrift `struct Foo {}` (Parquet's StringType, DateType, MilliSeconds, …): no members to reflect.
@@ -119,6 +168,8 @@ template <class T> struct is_list_t : std::false_type {};
 template <class T> struct is_list_t<list<T>> : std::true_type {};
 template <class T> struct is_lazy_t : std::false_type {};
 template <class T> struct is_lazy_t<lazy<T>> : std::true_type {};
+template <class T> struct is_box_t : std::false_type {};
+template <class T> struct is_box_t<pb_box<T>> : std::true_type {};
 
 template <class T>
 consteval bool all_members_are_fields() {
@@ -173,6 +224,8 @@ struct message_info {
     return m;
   }
   static constexpr std::uint64_t required_mask = make_required_mask();
+  /// The first member is a pb_unknown (protobuf only).
+  static constexpr bool has_unknown = n > 0 && ids[0] == 0;
 
   static constexpr std::uint16_t max_id = n ? ids[n - 1] : 0;
   static constexpr bool dense = max_id < 256;
@@ -695,6 +748,7 @@ constexpr bool read_value(ctx& c, ptr& p, ptr e, int depth, T& out) {
 template <Message M>
 constexpr bool read_struct(ctx& c, ptr& p, ptr e, int depth, M& m) {
   using info = message_info<M>;
+  static_assert(!info::has_unknown, "nanom thrift: pb_unknown is protobuf-only");
   if (depth > max_tagged_depth) return c.fail(fault::too_deep, p);
   const ptr start = p;
   std::uint64_t seen = 0;

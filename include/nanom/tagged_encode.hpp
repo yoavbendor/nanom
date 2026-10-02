@@ -155,6 +155,7 @@ void write_value(W& w, const T& v) {
 
 template <Message M, class W>
 void write_struct(W& w, const M& m) {
+  static_assert(!message_info<M>::has_unknown, "nanom thrift: pb_unknown is protobuf-only");
   const auto saved_message = w.message, saved_field = w.field;
   w.message = describe<M>::name();
   std::int32_t last = 0;

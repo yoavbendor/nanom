@@ -171,6 +171,22 @@ struct Wide {  // field numbers past 15: two-byte keys
   pf<21, std::int32_t>              w;
 };
 NANOM_DESCRIBE(Wide, v, w);
+/// Keeps what it does not declare.
+struct Keep {
+  nm::pb_unknown                    unknown;
+  pf<2, std::int32_t>               a;
+  pf<4, std::vector<std::int32_t>>  r;
+  pf<5, std::string_view>           s;
+};
+NANOM_DESCRIBE(Keep, unknown, a, r, s);
+/// A recursive model: one boxed child, repeated kids, and unknown-field preservation at every level.
+struct Tree {
+  nm::pb_unknown           unknown;
+  pf<1, std::int64_t>      v;
+  pf<2, nm::pb_box<Tree>>  child;
+  pf<3, std::vector<Tree>> kids;
+};
+NANOM_DESCRIBE(Tree, unknown, v, child, kids);
 NANOM_DESCRIBE(Golden, a, b, c, d);
 NANOM_DESCRIBE(Wrap, l);
 NANOM_DESCRIBE(Signed, s32, s64, f32, db, b);
@@ -302,6 +318,80 @@ static void test_hostile() {
   CHECK(!nm::protobuf<Node>()(in_of(bomb)));
 }
 
+// ------------------------------------------------------------------ unknown fields, boxes
+static void test_unknown_and_box() {
+  // fields Keep does not declare are kept verbatim (every wire type, an id past 32767, a known id
+  // with another wire type), and written back after the declared fields
+  const auto in = B({0x08, 0x05,                               // 1: varint (undeclared)
+                     0x10, 0x07,                               // 2: a = 7
+                     0x19, 1, 2, 3, 4, 5, 6, 7, 8,             // 3: fixed64 (undeclared)
+                     0x12, 0x01, 0x41,                         // 2 as len: wrong wire type, kept
+                     0x22, 0x02, 0x01, 0x02,                   // 4: packed r = {1, 2}
+                     0x80, 0x80, 0x80, 0x80, 0x01, 0x03,       // 2^25: varint (undeclared)
+                     0x2a, 0x01, 'x',                          // 5: s = "x"
+                     0x35, 9, 9, 9, 9});                       // 6: fixed32 (undeclared)
+  auto r = nm::protobuf<Keep>()(in_of(in));
+  CHECK(r && *r->value.a == 7 && r->value.r.v == std::vector<std::int32_t>({1, 2}) && *r->value.s == "x");
+  if (r) {
+    CHECK(r->value.unknown->bytes == B({0x08, 0x05, 0x19, 1, 2, 3, 4, 5, 6, 7, 8, 0x12, 0x01, 0x41, 0x80, 0x80,
+                                        0x80, 0x80, 0x01, 0x03, 0x35, 9, 9, 9, 9}));
+    const auto out = enc(r->value);
+    CHECK(out == B({0x10, 0x07, 0x22, 0x02, 0x01, 0x02, 0x2a, 0x01, 'x', 0x08, 0x05, 0x19, 1, 2, 3, 4, 5, 6, 7, 8,
+                    0x12, 0x01, 0x41, 0x80, 0x80, 0x80, 0x80, 0x01, 0x03, 0x35, 9, 9, 9, 9}));
+    CHECK(*nm::protobuf_size(r->value) == out.size());
+    auto again = nm::protobuf<Keep>()(in_of(out));  // the canonical form is a fixed point
+    CHECK(again && same(again->value, r->value) && enc(again->value) == out);
+  }
+  // a model without pb_unknown still skips them
+  auto g = nm::protobuf<Golden>()(in_of(B({0x58, 0x05, 0x08, 0x02})));
+  CHECK(g && *g->value.a == 2 && enc(g->value) == B({0x08, 0x02}));
+  // a truncated unknown field is still an error, never half-kept
+  CHECK(!nm::protobuf<Keep>()(in_of(B({0x10, 0x07, 0x1a, 0x05, 0x01}))));
+
+  // pb_box: absent, present, deep copies, recursion
+  Tree t;
+  CHECK(!t.child->has_value() && enc(t).empty());
+  t.v = 1;
+  t.child->emplace().v = 2;
+  (*t.child)->child = Tree{};
+  (*(*t.child)->child)->v = 3;
+  t.kids->push_back(**t.child);  // a deep copy
+  (*t.kids)[0].v = 9;
+  CHECK(*(*t.child)->v == 2 && *(*t.kids)[0].v == 9);
+  CHECK((*t.kids)[0].child->has_value() && *(*(*t.kids)[0].child)->v == 3);  // copied, grandchild too
+  const auto tw = enc(t);
+  auto tb = nm::protobuf<Tree>()(in_of(tw));
+  CHECK(tb && same(t, tb->value) && *(*(*tb->value.child)->child)->v == 3);
+  Tree copy = t;
+  CHECK(same(copy, t));
+  copy.child->reset();
+  CHECK(t.child->has_value() && !copy.child->has_value());
+
+  // a boxed chain as deep as the decoder accepts round-trips; one more level is refused both ways
+  const auto chain = [](int depth) {
+    Tree root;
+    Tree* at = &root;
+    for (int i = 0; i < depth; ++i) at = &at->child->emplace();
+    at->v = 42;
+    return root;
+  };
+  const Tree deep = chain(nm::max_tagged_depth);
+  auto db = nm::protobuf<Tree>()(in_of(enc(deep)));
+  CHECK(db && same(deep, db->value));
+  std::vector<std::byte> sink;
+  CHECK(!nm::protobuf_encode(chain(nm::max_tagged_depth + 1), sink));
+  std::vector<std::byte> bomb;  // hand-built, past the limit: the decoder refuses
+  for (int i = 0; i < nm::max_tagged_depth + 2; ++i) {
+    std::vector<std::byte> next = B({0x12});
+    std::byte len[10];
+    const auto n = nm::uleb128_encode(std::uint64_t(bomb.size()), len);
+    next.insert(next.end(), len, len + n);
+    next.insert(next.end(), bomb.begin(), bomb.end());
+    bomb = std::move(next);
+  }
+  CHECK(!nm::protobuf<Tree>()(in_of(bomb)));
+}
+
 // ------------------------------------------------------------------ encoder errors
 struct failing_sink {
   std::size_t budget;
@@ -403,15 +493,20 @@ int main() {
   test_reader_rules();
   test_hostile();
   test_encode_errors();
+  test_unknown_and_box();
   test_lance_manifest();
 
   roundtrip_property<All>("All", 3000, 1);
   roundtrip_property<Node>("Node", 1000, 2);
   roundtrip_property<Wide>("Wide", 1000, 7);
+  roundtrip_property<Keep>("Keep", 2000, 8);
+  roundtrip_property<Tree>("Tree", 1000, 9);
   roundtrip_property<lance::Manifest>("lance::Manifest", 1000, 3);
   roundtrip_property<lance::FileDescriptor>("lance::FileDescriptor", 500, 4);
   roundtrip_property<lance::ColumnMetadata>("lance::ColumnMetadata", 1000, 5);
   roundtrip_property<lance::Metadata>("lance::Metadata", 500, 6);
+  roundtrip_property<lance::IndexMetadata>("lance::IndexMetadata", 1000, 10);
+  roundtrip_property<lance::IndexSection>("lance::IndexSection", 300, 11);
 
   if (failures) {
     std::printf("%d failure(s)\n", failures);

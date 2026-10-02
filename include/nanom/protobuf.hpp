@@ -22,10 +22,13 @@
 //                                                 strings / messages one record each; a proto map
 //                                                 is std::vector<Entry> with Entry {1: key, 2: value}
 //   std::optional<T>                              explicit presence (proto3 `optional`, oneof members)
+//   nm::pb_box<M>                                 an optional message on the heap (recursive models)
+//   nm::pb_unknown (first member, id 0)           keeps the fields the model does not declare
 //
 // Presence: proto3 fields are implicit — absent means the default — so declare them
 // presence::defaulted; presence::required makes absence an error (for formats that need it).
-// Unknown fields, and known fields arriving with another wire type, are skipped (the protobuf rule).
+// Unknown fields, and known fields arriving with another wire type, are skipped (the protobuf rule),
+// or kept verbatim in a pb_unknown member when the model declares one (written back on encode).
 //
 // Hostile-input posture, as in tagged.hpp: every length is checked against the remaining bytes,
 // nesting is capped at max_tagged_depth, integers must fit the member (an over-wide varint is an
@@ -74,10 +77,17 @@ template <class T> struct is_sint<pb_sint<T>> : std::true_type {};
 template <class T> struct is_fixed : std::false_type {};
 template <class T> struct is_fixed<pb_fixed<T>> : std::true_type {};
 
+/// std::optional<M> and pb_box<M>: written when present, absent otherwise.
+template <class T> constexpr bool opt_like = is_optional_t<T>::value || is_box_t<T>::value;
+template <class T> struct inner { using type = T; };
+template <class T> struct inner<std::optional<T>> { using type = T; };
+template <class T> struct inner<pb_box<T>> { using type = T; };
+template <class T> using inner_t = typename inner<T>::type;
+
 /// The wire type a (non-repeated) member type is written with.
 template <class T>
 consteval std::uint8_t wire_of() {
-  if constexpr (is_optional_t<T>::value)                              return wire_of<typename T::value_type>();
+  if constexpr (opt_like<T>)                                          return wire_of<typename T::value_type>();
   else if constexpr (is_sint<T>::value)                               return varint;
   else if constexpr (is_fixed<T>::value)                              return sizeof(T) == 4 ? i32 : i64;
   else if constexpr (std::is_same_v<T, float>)                        return i32;
@@ -102,6 +112,8 @@ constexpr void check_model() {
       static_assert(F::pres == presence::defaulted,
                     "nanom protobuf: a repeated field is presence::defaulted (an empty one is absent "
                     "on the wire, so it cannot be required)");
+    if constexpr (is_box_t<typename F::value_type>::value)
+      static_assert(F::pres == presence::defaulted, "nanom protobuf: a pb_box field is presence::defaulted");
   });
 }
 
@@ -259,7 +271,9 @@ bool read_len(ctx& c, ptr p, ptr e, std::uint8_t depth, T& out) {
 template <class V>
 bool read_field(ctx& c, ptr& p, ptr e, std::uint8_t wt, std::uint8_t depth, V& slot, bool& matched,
                 std::span<const std::byte> key) {
-  if constexpr (is_vector_t<V>::value) {
+  if constexpr (std::is_same_v<V, unknown_fields>) {  // id 0: never dispatched here
+    return skip_value(c, p, e, wt);
+  } else if constexpr (is_vector_t<V>::value) {
     using E = typename V::value_type;
     constexpr std::uint8_t ew = wire_of<E>();
     if (wt == ew && !(ew == len && packable<E>)) {  // one element (unpacked / string / message)
@@ -319,7 +333,7 @@ bool read_field(ctx& c, ptr& p, ptr e, std::uint8_t wt, std::uint8_t depth, V& s
     }
     return skip_value(c, p, e, wt);  // another wire type: an unknown field
   } else {
-    using T = unwrap_optional_t<V>;
+    using T = inner_t<V>;
     constexpr std::uint8_t tw = wire_of<T>();
     if (wt != tw) return skip_value(c, p, e, wt);
     matched = true;
@@ -329,7 +343,7 @@ bool read_field(ctx& c, ptr& p, ptr e, std::uint8_t wt, std::uint8_t depth, V& s
       if (!read_varint(c, p, e, n)) return false;
       if (n > std::uint64_t(e - p)) return c.fail("a length-delimited field that fits the message", p);
       if constexpr (Message<T>) {  // a repeated occurrence of a message field merges (protobuf rule)
-        if constexpr (is_optional_t<V>::value) {
+        if constexpr (opt_like<V>) {
           if (slot) x = std::move(*slot);
         } else {
           x = std::move(slot);
@@ -343,6 +357,14 @@ bool read_field(ctx& c, ptr& p, ptr e, std::uint8_t wt, std::uint8_t depth, V& s
     slot = std::move(x);
     return true;
   }
+}
+
+/// Append one skipped field (key and value) to the message's pb_unknown member.
+template <Message M>
+void keep_unknown(M& m, ptr first, ptr last) {
+  constexpr auto mp = std::get<0>(describe<M>::fields()).mem_ptr;
+  auto& b = (m.*mp).v.bytes;
+  b.insert(b.end(), first, last);
 }
 
 template <Message M>
@@ -360,6 +382,7 @@ bool read_message(ctx& c, ptr p, ptr e, std::uint8_t depth, M& m) {
     const std::uint8_t slot = id > 32767 ? info::no_slot : info::slot_of(std::int32_t(id));
     if (slot == info::no_slot) {
       if (!skip_value(c, p, e, wt)) return false;
+      if constexpr (info::has_unknown) keep_unknown(m, tag_at, p);
       continue;
     }
     bool matched = false;
@@ -371,6 +394,7 @@ bool read_message(ctx& c, ptr p, ptr e, std::uint8_t depth, M& m) {
     });
     if (!ok) return false;
     if (matched) seen |= std::uint64_t(1) << slot;
+    else if constexpr (info::has_unknown) keep_unknown(m, tag_at, p);  // a known id, another wire type
   }
   if ((seen & info::required_mask) != info::required_mask) {
     return c.fail("a protobuf message with every required field", p);

@@ -7,6 +7,7 @@
 
 #include <nanom/protobuf.hpp>
 
+#include <algorithm>
 #include <cstring>
 #include <deque>
 #include <limits>
@@ -37,6 +38,37 @@ inline std::string_view gen_string(std::mt19937_64& rng, arena& a) {
   for (auto& c : s) c = char(rng());
   a.strings.push_back(std::move(s));
   return a.strings.back();
+}
+
+/// Valid wire records for fields message M does not declare (any wire type, ids past 32767
+/// included), as a pb_unknown member holds them.
+template <class M>
+nm::unknown_fields gen_unknown(std::mt19937_64& rng) {
+  nm::unknown_fields u;
+  const auto put = [&](std::uint64_t v) {
+    std::byte b[10];
+    const auto n = nm::uleb128_encode(v, b);
+    u.bytes.insert(u.bytes.end(), b, b + n);
+  };
+  const auto& ids = nm::detail::message_info<M>::ids;
+  for (int k = int(rng() % 4); k > 0; --k) {
+    std::uint64_t id;
+    do {
+      id = rng() % 3 ? 1 + rng() % 200 : 1 + rng() % 536870911;
+    } while (std::find(ids.begin(), ids.end(), id) != ids.end());
+    const std::uint8_t wts[] = {0, 1, 2, 5};
+    const std::uint8_t wt = wts[rng() % 4];
+    put((id << 3) | wt);
+    if (wt == 0) put(rng() >> (rng() % 64));
+    else if (wt == 1 || wt == 5)
+      for (int i = 0; i < (wt == 1 ? 8 : 4); ++i) u.bytes.push_back(std::byte(rng()));
+    else {
+      const std::size_t n = rng() % 20;
+      put(n);
+      for (std::size_t i = 0; i < n; ++i) u.bytes.push_back(std::byte(rng()));
+    }
+  }
+  return u;
 }
 
 template <class T>
@@ -74,7 +106,11 @@ T gen(std::mt19937_64& rng, arena& a, int depth) {
       using F = nm::detail::member_t<decltype(f)::mem_ptr>;
       using V = typename F::value_type;
       auto& slot = (m.*(decltype(f)::mem_ptr)).v;
-      if constexpr (nm::detail::is_optional_t<V>::value) {
+      if constexpr (std::is_same_v<V, nm::unknown_fields>) {
+        slot = gen_unknown<T>(rng);
+      } else if constexpr (nm::detail::is_box_t<V>::value) {
+        if (depth < 5 && rng() % 2) slot = gen<typename V::value_type>(rng, a, depth + 1);
+      } else if constexpr (nm::detail::is_optional_t<V>::value) {
         if (depth < 6 && rng() % 3) slot = gen<typename V::value_type>(rng, a, depth + 1);
       } else {
         slot = gen<V>(rng, a, depth + 1);
@@ -93,7 +129,7 @@ bool same(const T& x, const T& y) {
     return std::bit_cast<U>(x) == std::bit_cast<U>(y);
   } else if constexpr (std::is_same_v<T, nm::bytes>) {
     return x.size() == y.size() && (x.size() == 0 || std::memcmp(x.data(), y.data(), x.size()) == 0);
-  } else if constexpr (nm::detail::is_optional_t<T>::value) {
+  } else if constexpr (nm::detail::is_optional_t<T>::value || nm::detail::is_box_t<T>::value) {
     return x.has_value() == y.has_value() && (!x || same(*x, *y));
   } else if constexpr (nm::detail::is_vector_t<T>::value) {
     if (x.size() != y.size()) return false;

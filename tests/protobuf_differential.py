@@ -29,13 +29,17 @@ except ImportError:
 
 F = descriptor_pb2.FieldDescriptorProto
 T = {
-    "int32": F.TYPE_INT32, "uint32": F.TYPE_UINT32, "uint64": F.TYPE_UINT64, "bool": F.TYPE_BOOL,
+    "int32": F.TYPE_INT32, "int64": F.TYPE_INT64, "uint32": F.TYPE_UINT32, "uint64": F.TYPE_UINT64,
+    "bool": F.TYPE_BOOL,
     "bytes": F.TYPE_BYTES, "enum": F.TYPE_ENUM, "msg": F.TYPE_MESSAGE,
 }
 
 # name -> [(field name, number, type, label, type_name, proto3_optional, packed)]
 MESSAGES = {
     "MetadataEntry": [("key", 1, "bytes"), ("value", 2, "bytes")],
+    "StringEntry": [("key", 1, "bytes"), ("value", 2, "bytes")],
+    "Timestamp": [("seconds", 1, "int64"), ("nanos", 2, "int32")],
+    "Any": [("type_url", 1, "bytes"), ("value", 2, "bytes")],
     "Field": [("type", 1, "enum", "FieldType"), ("name", 2, "bytes"), ("id", 3, "int32"),
               ("parent_id", 4, "int32"), ("logical_type", 5, "bytes"), ("nullable", 6, "bool"),
               ("encoding", 7, "enum", "FieldEncoding"), ("metadata", 10, "map")],
@@ -57,9 +61,22 @@ MESSAGES = {
     "DataFragment": [("id", 1, "uint64"), ("files", 2, "msg*", "DataFile"),
                      ("deletion_file", 3, "msg", "DeletionFile"), ("physical_rows", 4, "uint64")],
     "DataStorageFormat": [("file_format", 1, "bytes"), ("version", 2, "bytes")],
+    "WriterVersion": [("library", 1, "bytes"), ("version", 2, "bytes")],
     "Manifest": [("fields", 1, "msg*", "Field"), ("fragments", 2, "msg*", "DataFragment"),
-                 ("version", 3, "uint64"), ("max_fragment_id", 11, "uint32?"),
-                 ("data_format", 15, "msg", "DataStorageFormat")],
+                 ("version", 3, "uint64"), ("version_aux_data", 4, "uint64"), ("schema_metadata", 5, "map"),
+                 ("index_section", 6, "uint64?"), ("timestamp", 7, "msg", "Timestamp"), ("tag", 8, "bytes"),
+                 ("reader_feature_flags", 9, "uint64"), ("writer_feature_flags", 10, "uint64"),
+                 ("max_fragment_id", 11, "uint32?"), ("transaction_file", 12, "bytes"),
+                 ("writer_version", 13, "msg", "WriterVersion"), ("next_row_id", 14, "uint64"),
+                 ("data_format", 15, "msg", "DataStorageFormat"), ("config", 16, "smap"),
+                 ("table_metadata", 19, "smap"), ("transaction_section", 21, "uint64?")],
+    "IndexSection": [("indices", 1, "bytes*")],
+    "Uuid": [("uuid", 1, "bytes")],
+    "IndexFile": [("path", 1, "bytes"), ("size", 2, "uint64")],
+    "IndexMetadata": [("uuid", 1, "msg", "Uuid"), ("fields", 2, "int32*"), ("name", 3, "bytes"),
+                      ("dataset_version", 4, "uint64"), ("fragment_bitmap", 5, "bytes?"),
+                      ("index_details", 6, "msg", "Any"), ("index_version", 7, "int32?"),
+                      ("created_at", 8, "uint64?"), ("files", 10, "msg*", "IndexFile")],
 }
 ENUMS = {"FieldType": 3, "FieldEncoding": 5, "DeletionFileType": 2}
 
@@ -77,15 +94,16 @@ def build(pkg, maps):
         for spec in fields:
             fname, num, kind = spec[0], spec[1], spec[2]
             f = md.field.add(name=fname, number=num, label=F.LABEL_OPTIONAL)
-            if kind == "map":
+            if kind in ("map", "smap"):
                 if maps:
-                    entry = md.nested_type.add(name=fname.capitalize() + "Entry")
+                    entry = md.nested_type.add(name="".join(w.capitalize() for w in fname.split("_")) + "Entry")
                     entry.options.map_entry = True
                     entry.field.add(name="key", number=1, label=F.LABEL_OPTIONAL, type=F.TYPE_STRING)
-                    entry.field.add(name="value", number=2, label=F.LABEL_OPTIONAL, type=F.TYPE_BYTES)
+                    entry.field.add(name="value", number=2, label=F.LABEL_OPTIONAL,
+                                    type=F.TYPE_BYTES if kind == "map" else F.TYPE_STRING)
                     f.type_name = f".{pkg}.{name}.{entry.name}"
                 else:
-                    f.type_name = f".{pkg}.MetadataEntry"
+                    f.type_name = f".{pkg}." + ("MetadataEntry" if kind == "map" else "StringEntry")
                 f.type, f.label = F.TYPE_MESSAGE, F.LABEL_REPEATED
                 continue
             if kind.endswith("*"):
@@ -114,6 +132,8 @@ def unhex(h):
 
 
 def rand_value(rng, kind):
+    if kind == "int64":
+        return rng.choice([0, 1, -1, 2**63 - 1, -(2**63), rng.randrange(-(2**63), 2**63)])
     if kind == "int32":
         return rng.choice([0, 1, -1, 2**31 - 1, -(2**31), rng.randrange(-(2**31), 2**31)])
     if kind == "uint32":
@@ -132,10 +152,11 @@ def fill(rng, msg, name, depth=0):
         fname, kind = spec[0], spec[2]
         if rng.random() < 0.25:
             continue  # left at the default / absent
-        if kind == "map":
+        if kind in ("map", "smap"):
             for _ in range(rng.randrange(4)):
                 key = "".join(rng.choice("abcxyz_é") for _ in range(rng.randrange(6)))
-                getattr(msg, fname)[key] = rand_value(rng, "bytes")
+                getattr(msg, fname)[key] = (rand_value(rng, "bytes") if kind == "map" else
+                                            "".join(rng.choice("pqr é") for _ in range(rng.randrange(5))))
         elif kind == "msg*":
             for _ in range(rng.randrange(4 if depth < 3 else 1)):
                 fill(rng, getattr(msg, fname).add(), spec[3], depth + 1)
@@ -211,7 +232,8 @@ def main():
         data = unhex(h)
         m = flat[name]()
         m.ParseFromString(data)
-        m.DiscardUnknownFields()  # anything protobuf did not recognize is lost, so it cannot match
+        # nanom's random messages carry unknown fields too (pb_unknown members); protobuf keeps them
+        # and writes them after the known ones, as nanom does, so the bytes must still be identical
         again = m.SerializeToString(deterministic=True)
         if again != data:
             bad += 1
@@ -223,7 +245,8 @@ def main():
     rng = random.Random(5)
     originals, inputs = [], []
     for k in range(3000):
-        name = ["Manifest", "FileDescriptor", "ColumnMetadata", "Metadata", "DataFragment"][k % 5]
+        name = ["Manifest", "FileDescriptor", "ColumnMetadata", "Metadata", "DataFragment",
+                "IndexMetadata"][k % 6]
         m = mapped[name]()
         fill(rng, m, name)
         data = m.SerializeToString()
@@ -264,7 +287,27 @@ def main():
     bad3 = sum(1 for ok, (_, h, *r) in zip(expect, out) if ok != (h != "ERROR"))
     print(f"3. truncations: {len(out)} inputs, accept/reject agrees: {bad3 == 0}")
 
-    total = bad + bad2 + bad3
+    # 4. a reader declaring a subset (pb_unknown keeps the rest) re-encodes without losing anything
+    rng = random.Random(13)
+    originals, inputs = [], []
+    for _ in range(1000):
+        m = mapped["Manifest"]()
+        fill(rng, m, "Manifest")
+        originals.append(m)
+        inputs.append(f"ManifestLite {m.SerializeToString().hex() or '-'}")
+    out = run(oracle, ["recode"], "\n".join(inputs) + "\n")
+    bad4 = 0
+    for m, (_, h, *rest) in zip(originals, out):
+        back = mapped["Manifest"]()
+        if h != "ERROR":
+            back.ParseFromString(unhex(h))
+        if h == "ERROR" or back != m:
+            bad4 += 1
+            if bad4 < 3:
+                print("subset model lost something:", h[:80], rest)
+    print(f"4. subset model (pb_unknown) round trip: {len(out)} manifests, nothing lost: {bad4 == 0}")
+
+    total = bad + bad2 + bad3 + bad4
     print("protobuf_differential:", "OK" if total == 0 else f"{total} FAILURES")
     return 1 if total else 0
 

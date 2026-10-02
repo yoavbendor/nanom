@@ -35,8 +35,25 @@ static std::vector<std::byte> unhex(const std::string& s) {
   return b;
 }
 
+/// A reader that declares a few of Manifest's fields and keeps the rest (pb_unknown): re-encoding
+/// it must lose nothing, at the top level or inside fragments.
+struct FragmentLite {
+  nm::pb_unknown                                        unknown;
+  nm::field<1, std::uint64_t, nm::presence::defaulted>  id;
+};
+struct ManifestLite {
+  nm::pb_unknown                                                    unknown;
+  nm::field<2, std::vector<FragmentLite>, nm::presence::defaulted>  fragments;
+  nm::field<3, std::uint64_t, nm::presence::defaulted>              version;
+};
+NANOM_DESCRIBE(FragmentLite, unknown, id);
+NANOM_DESCRIBE(ManifestLite, unknown, fragments, version);
+
 template <class F>
 static bool with_type(const std::string& name, F&& f) {
+  if (name == "ManifestLite") return f(ManifestLite{}), true;
+  if (name == "IndexMetadata") return f(lance::IndexMetadata{}), true;
+  if (name == "IndexSection") return f(lance::IndexSection{}), true;
   if (name == "Manifest") return f(lance::Manifest{}), true;
   if (name == "FileDescriptor") return f(lance::FileDescriptor{}), true;
   if (name == "ColumnMetadata") return f(lance::ColumnMetadata{}), true;
@@ -49,9 +66,10 @@ int main(int argc, char** argv) {
   if (argc >= 2 && std::string(argv[1]) == "gen") {
     const int n = argc > 2 ? std::atoi(argv[2]) : 100;
     std::mt19937_64 rng(argc > 3 ? std::strtoull(argv[3], nullptr, 10) : 1);
-    const char* names[] = {"Manifest", "FileDescriptor", "ColumnMetadata", "Metadata", "DataFragment"};
+    const char* names[] = {"Manifest", "FileDescriptor", "ColumnMetadata", "Metadata", "DataFragment",
+                           "IndexMetadata", "IndexSection"};
     for (int i = 0; i < n; ++i) {
-      const std::string name = names[i % 5];
+      const std::string name = names[i % 7];
       with_type(name, [&]<class M>(M) {
         nanom_test::pb::arena a;
         const M m = nanom_test::pb::gen<M>(rng, a, 0);

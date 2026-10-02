@@ -16,7 +16,9 @@
 //   * presence::defaulted scalars, strings and bytes are left out when they hold the default (0,
 //     false, +0.0, empty); presence::required ones are always written;
 //   * std::optional<T> is written when it holds a value, whatever the value (proto3 `optional`);
-//   * a member of message type is always written (use std::optional<M> for an absent message);
+//   * a member of message type is always written (use std::optional<M> or nm::pb_box<M> for an
+//     absent message);
+//   * a pb_unknown member's bytes (fields the model does not declare) come last, as read;
 //   * repeated scalars are packed (one length-delimited record), repeated strings and messages are
 //     one record each, an empty repeated field writes nothing;
 //   * fields in declaration (= ascending id) order.
@@ -83,7 +85,7 @@ constexpr std::uint64_t key_of(std::uint8_t wt) { return (std::uint64_t(F::id) <
 /// Whether writing M needs the measuring pass (it has a nested message somewhere).
 template <class T>
 consteval bool has_message() {
-  if constexpr (is_optional_t<T>::value || is_vector_t<T>::value) return has_message<typename T::value_type>();
+  if constexpr (opt_like<T> || is_vector_t<T>::value) return has_message<typename T::value_type>();
   else return Message<T>;
 }
 template <Message M>
@@ -159,7 +161,9 @@ std::size_t measure(state& st, const M& m, int depth) {
       } else {
         for (const auto& e : fv) total += varint_size(key_of<F>(len)) + value_size<E>(st, e, depth);
       }
-    } else if constexpr (is_optional_t<V>::value) {
+    } else if constexpr (std::is_same_v<V, unknown_fields>) {
+      total += fv.bytes.size();  // kept verbatim, written after the declared fields
+    } else if constexpr (opt_like<V>) {
       using T = typename V::value_type;
       if (fv) total += varint_size(key_of<F>(wire_of<T>())) + value_size<T>(st, *fv, depth);
     } else {
@@ -265,7 +269,9 @@ void write_message(W& w, const M& m) {
           write_value<E>(w, e);
         }
       }
-    } else if constexpr (is_optional_t<V>::value) {
+    } else if constexpr (std::is_same_v<V, unknown_fields>) {
+      return;  // after the declared fields, below
+    } else if constexpr (opt_like<V>) {
       using T = typename V::value_type;
       if (!fv) return;
       w.varint(key_of<F>(wire_of<T>()));
@@ -276,6 +282,11 @@ void write_message(W& w, const M& m) {
       write_value<V>(w, fv);
     }
   });
+  if constexpr (message_info<M>::has_unknown) {
+    w.st.field = "(unknown fields)";
+    const auto& u = (m.*(std::get<0>(describe<M>::fields()).mem_ptr)).v.bytes;
+    w.raw(u.data(), u.size());
+  }
   if (w.st.err) return;  // keep the innermost message / field as the error location
   w.st.message = saved_message;
   w.st.field = saved_field;

@@ -2,7 +2,7 @@
 // nanom/protobuf_encode.hpp) through the Lance metadata model (nanom/formats/lance_protobuf.hpp).
 //
 // Properties checked on every input:
-//   1. decoding Manifest / FileDescriptor / ColumnMetadata / Metadata never crashes, reads out of
+//   1. decoding Manifest / FileDescriptor / ColumnMetadata / Metadata / IndexMetadata never crashes, reads out of
 //      bounds, recurses unboundedly or allocates from an unchecked count (run under ASan/UBSan);
 //   2. canonical round trip: whatever decodes re-encodes (protobuf_size agrees with the bytes
 //      written), decodes back to the same value, and encode(decode(encode(m))) == encode(m).
@@ -70,6 +70,7 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   one<lance::FileDescriptor>(in);
   one<lance::ColumnMetadata>(in);
   one<lance::Metadata>(in);
+  one<lance::IndexMetadata>(in);
   return 0;
 }
 
@@ -105,10 +106,11 @@ int main(int argc, char** argv) {
   std::vector<std::uint8_t> buf;
   for (int i = 0; i < iters; ++i) {
     std::mt19937_64 g(rng.next());
-    switch (g() % 4) {
+    switch (g() % 5) {
       case 0: buf = generated<lance::Manifest>(g); break;
       case 1: buf = generated<lance::FileDescriptor>(g); break;
       case 2: buf = generated<lance::ColumnMetadata>(g); break;
+      case 3: buf = generated<lance::IndexMetadata>(g); break;
       default: buf = generated<lance::Metadata>(g); break;
     }
     LLVMFuzzerTestOneInput(buf.data(), buf.size());
