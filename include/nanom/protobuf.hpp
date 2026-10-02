@@ -36,6 +36,9 @@
 
 #include "tagged.hpp"
 
+#include <cstring>
+#include <span>
+
 namespace nanom {
 
 /// proto sint32 / sint64: a signed integer zigzag-encoded on the wire.
@@ -119,7 +122,15 @@ struct ctx {
   }
 };
 
-inline bool read_varint(ctx& c, ptr& p, ptr e, std::uint64_t& v) {
+#if defined(__GNUC__)
+#define NANOM_PB_NOINLINE __attribute__((noinline))
+#define NANOM_PB_INLINE __attribute__((always_inline)) inline
+#else
+#define NANOM_PB_NOINLINE
+#define NANOM_PB_INLINE inline
+#endif
+
+NANOM_PB_NOINLINE inline bool read_varint_slow(ctx& c, ptr& p, ptr e, std::uint64_t& v) {
   v = 0;
   for (unsigned shift = 0; shift < 64; shift += 7) {
     if (p >= e) return c.fail("a complete protobuf varint", p);
@@ -130,6 +141,16 @@ inline bool read_varint(ctx& c, ptr& p, ptr e, std::uint64_t& v) {
   }
   return c.fail("a protobuf varint of at most 10 bytes", p);
 }
+/// One varint. Keys and small values are one byte: that case is inlined, the rest is not.
+NANOM_PB_INLINE bool read_varint(ctx& c, ptr& p, ptr e, std::uint64_t& v) {
+  if (p < e && !(std::uint8_t(*p) & 0x80)) [[likely]] {
+    v = std::uint8_t(*p++);
+    return true;
+  }
+  return read_varint_slow(c, p, e, v);
+}
+#undef NANOM_PB_NOINLINE
+#undef NANOM_PB_INLINE
 
 inline bool skip_value(ctx& c, ptr& p, ptr e, std::uint8_t wt) {
   std::uint64_t v;
@@ -233,8 +254,11 @@ bool read_len(ctx& c, ptr p, ptr e, std::uint8_t depth, T& out) {
 }
 
 /// Decode one occurrence of a field of member type V (wire type wt) into `slot`.
+/// key: the bytes of the field key just read (a repeated scalar's unpacked records usually follow
+/// one another; their run is read here without going back through the message's field dispatch).
 template <class V>
-bool read_field(ctx& c, ptr& p, ptr e, std::uint8_t wt, std::uint8_t depth, V& slot, bool& matched) {
+bool read_field(ctx& c, ptr& p, ptr e, std::uint8_t wt, std::uint8_t depth, V& slot, bool& matched,
+                std::span<const std::byte> key) {
   if constexpr (is_vector_t<V>::value) {
     using E = typename V::value_type;
     constexpr std::uint8_t ew = wire_of<E>();
@@ -251,6 +275,22 @@ bool read_field(ctx& c, ptr& p, ptr e, std::uint8_t wt, std::uint8_t depth, V& s
         p += std::ptrdiff_t(n);
       } else if constexpr (ew != len) {
         if (!read_scalar<E>(c, p, e, x)) return false;
+        slot.push_back(x);
+        if (key.size() == 1) {  // field numbers 1..15: a one-byte key
+          const std::byte k = key[0];
+          while (e - p > 1 && *p == k) {
+            ++p;
+            if (!read_scalar<E>(c, p, e, x)) return false;
+            slot.push_back(x);
+          }
+        } else {
+          while (std::size_t(e - p) > key.size() && std::memcmp(p, key.data(), key.size()) == 0) {
+            p += key.size();
+            if (!read_scalar<E>(c, p, e, x)) return false;
+            slot.push_back(x);
+          }
+        }
+        return true;
       }
       slot.push_back(std::move(x));
       return true;
@@ -266,6 +306,10 @@ bool read_field(ctx& c, ptr& p, ptr e, std::uint8_t wt, std::uint8_t depth, V& s
           const std::size_t w = ew == i32 ? 4 : 8;
           if (n % w) return c.fail("a packed fixed-width field of whole values", p);
           slot.reserve(slot.size() + std::size_t(n / w));
+        } else {  // one value per byte without the continuation bit: an exact count, no regrowth
+          std::size_t count = 0;
+          for (ptr q = p; q < pe; ++q) count += !(std::uint8_t(*q) & 0x80);
+          slot.reserve(slot.size() + count);
         }
         while (p < pe)
           if (E x{}; read_scalar<E>(c, p, pe, x)) slot.push_back(x);
@@ -322,7 +366,8 @@ bool read_message(ctx& c, ptr p, ptr e, std::uint8_t depth, M& m) {
     const bool ok = with_field_index<M>(slot, [&](auto I) {
       constexpr std::size_t i = decltype(I)::value;
       constexpr auto mp = std::get<i>(describe<M>::fields()).mem_ptr;
-      return read_field(c, p, e, wt, depth, (m.*mp).v, matched);
+      return read_field(c, p, e, wt, depth, (m.*mp).v, matched,
+                        std::span<const std::byte>(tag_at, std::size_t(p - tag_at)));
     });
     if (!ok) return false;
     if (matched) seen |= std::uint64_t(1) << slot;

@@ -3,7 +3,7 @@
 `nanom/tagged.hpp` extends "the struct IS the schema" from fixed-layout wire structs to
 **self-describing, field-numbered** encodings. Columnar file formats keep their metadata in these: the
 Parquet footer and page headers are Thrift compact, and Lance's manifests and page layouts are protobuf.
-Thrift compact ships today; protobuf is the next codec on the same model.
+Thrift compact is here. Protobuf, on the same model, is [PROTOBUF.md](PROTOBUF.md).
 
 ```cpp
 #include <nanom/tagged.hpp>

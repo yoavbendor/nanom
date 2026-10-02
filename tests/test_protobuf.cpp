@@ -166,6 +166,11 @@ struct Opt {
 struct Wrap {
   pf<1, Leaf> l;
 };
+struct Wide {  // field numbers past 15: two-byte keys
+  pf<20, std::vector<std::int32_t>> v;
+  pf<21, std::int32_t>              w;
+};
+NANOM_DESCRIBE(Wide, v, w);
 NANOM_DESCRIBE(Golden, a, b, c, d);
 NANOM_DESCRIBE(Wrap, l);
 NANOM_DESCRIBE(Signed, s32, s64, f32, db, b);
@@ -221,6 +226,16 @@ static void test_reader_rules() {
   // unpacked repeated (proto2 style) is accepted, and mixes with packed runs in order
   auto r = nm::protobuf<Golden>()(in_of(B({0x20, 0x01, 0x22, 0x02, 0x02, 0x03, 0x20, 0x04})));
   CHECK(r && r->value.d->size() == 4 && (*r->value.d)[0] == 1 && (*r->value.d)[3] == 4);
+
+  // runs of unpacked records are read in one go, with one- and two-byte keys; a key with no value
+  // after it is still an error
+  auto w1 = nm::protobuf<Wide>()(in_of(B({0xa0, 0x01, 0x05, 0xa0, 0x01, 0x86, 0x01, 0xa8, 0x01, 0x07, 0xa0, 0x01, 0x08})));
+  CHECK(w1 && w1->value.v.v == std::vector<std::int32_t>({5, 134, 8}) && *w1->value.w == 7);
+  CHECK(!nm::protobuf<Wide>()(in_of(B({0xa0, 0x01, 0x05, 0xa0, 0x01}))));
+  CHECK(!nm::protobuf<Wide>()(in_of(B({0xa0, 0x01, 0x05, 0xa0}))));
+  CHECK(!nm::protobuf<Golden>()(in_of(B({0x20, 0x01, 0x20}))));
+  auto g1 = nm::protobuf<Golden>()(in_of(B({0x20, 0x01, 0x20, 0x02, 0x20, 0x03})));
+  CHECK(g1 && g1->value.d.v == std::vector<std::int32_t>({1, 2, 3}));
 
   // unknown fields of every wire type are skipped; so is a known field with the wrong wire type
   auto u = nm::protobuf<Golden>()(in_of(B({
@@ -392,6 +407,7 @@ int main() {
 
   roundtrip_property<All>("All", 3000, 1);
   roundtrip_property<Node>("Node", 1000, 2);
+  roundtrip_property<Wide>("Wide", 1000, 7);
   roundtrip_property<lance::Manifest>("lance::Manifest", 1000, 3);
   roundtrip_property<lance::FileDescriptor>("lance::FileDescriptor", 500, 4);
   roundtrip_property<lance::ColumnMetadata>("lance::ColumnMetadata", 1000, 5);

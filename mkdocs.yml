@@ -75,6 +75,7 @@ nav:
   - C++26 reflection: P2996_COMPAT.md
   - nanom_shark tutorial: NANO_SHARK.md
   - Tagged messages (Thrift, Parquet): TAGGED.md
+  - Protobuf (Lance metadata): PROTOBUF.md
   - Columnar kernels and codecs: COLUMNAR.md
   - "Plan: writing (Parquet, then Lance)": WRITERS.md
   - Benchmarks:
