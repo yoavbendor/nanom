@@ -144,7 +144,7 @@ inline status snappy_decompress(std::span<const std::byte> in, std::span<std::by
       // the next tag's position comes from the tag by ALU alone (no table load on the loop's
       // ip -> tag -> ip dependency chain): a literal advances (tag >> 2) + 2, a copy-1 / copy-2
       // (tag & 3) + 1; copy-4 (tag & 3 == 3) takes the path below
-      const bool slow = (len - 1 >= 16) | ((tag & 3) == 3) | (!lit & ((offset < 8) | (offset > produced)));
+      const bool slow = (len - 1 >= 16) | ((tag & 3) == 3) | (bool(!lit) & ((offset < 8) | (offset > produced)));
       if (!slow) {
         const std::byte* src = lit ? ip + 1 : op - offset;
         detail::copy8(op, src);

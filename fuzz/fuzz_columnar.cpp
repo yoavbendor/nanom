@@ -6,6 +6,8 @@
 // standalone: -DNANOM_FUZZ_STANDALONE, then ./nm_columnar_fuzz [iterations] [seed]
 #include <nanom/codec.hpp>
 #include <nanom/columnar.hpp>
+#include <nanom/formats/parquet_values.hpp>
+#include <nanom/values.hpp>
 
 #include <cstdint>
 #include <cstdio>
@@ -47,6 +49,45 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     (void)cdc::snappy_decompress(in, exact);
   }
   (void)cdc::lz4_block_decompress(in, dec);
+
+  // values.hpp: every wire-driven kernel on the same bytes, outputs sized exactly
+  {
+    const std::uint16_t maxv = std::uint16_t(1 + data[0] % 12);
+    std::vector<std::uint16_t> lv(n);
+    const bool levels_ok = bool(col::decode_levels(in, maxv, n, lv.data()));
+    std::vector<std::byte> bm((n + 7) / 8 + 1);
+    col::rle_bp_decoder d1(in, 1);
+    (void)col::rle_bitmap(d1, n, bm, data[1] % 8);
+    if (levels_ok) {
+      // the decoded levels as both rep and def of a list / struct (structure checks, no overruns)
+      std::vector<std::int32_t> offs(n + 1);
+      std::vector<std::uint8_t> vb(n / 8 + 1);
+      std::int64_t nulls = 0, elems = 0;
+      const col::dremel_node nd{0, 0, std::uint16_t(data[2] % 3), std::uint16_t(1 + data[2] % 3), 1};
+      for (std::int64_t expect : {std::int64_t(0), std::int64_t(n / 2), std::int64_t(n)}) {
+        std::fill(vb.begin(), vb.end(), 0);
+        if (std::size_t(expect) <= n)
+          (void)col::list_slots(lv.data(), lv.data(), n, nd, expect, offs.data(), vb.data(), nulls, elems);
+        std::fill(vb.begin(), vb.end(), 0);
+        (void)col::struct_slots(lv.data(), lv.data(), n, nd, expect, vb.data(), nulls);
+      }
+      std::vector<std::uint8_t> sv(n / 8 + 1);
+      (void)col::level_slots(lv.data(), n, std::uint16_t(data[1] % 4), maxv, sv.data());
+    }
+    std::vector<std::string_view> views(n);
+    (void)col::length_prefixed_views(in, n, views);
+    std::vector<std::int32_t> a, b;
+    std::vector<char> arena;
+    (void)col::delta_length_views(in, n, a, views);
+    (void)col::delta_prefix_views(in, n, a, b, arena, views, 1u << 16);
+    std::vector<std::uint32_t> idx(n);
+    (void)nanom_formats::parquet::dictionary_indices(in, n, 1 + data[0], idx);
+    std::vector<std::byte> out(in.size() + col::kValueSlack);
+    std::vector<std::int32_t> ends(n);
+    std::int64_t cur = 0;
+    (void)col::append_length_prefixed(in, n, nullptr, out.data(), cur, ends.data(), INT32_MAX);
+    (void)col::valid_utf8(std::string_view(reinterpret_cast<const char*>(in.data()), in.size()));
+  }
   return 0;
 }
 

@@ -141,7 +141,9 @@ reflection add-on, then the data-tooling extras:
 | `nanom/bulk.hpp` | *extra, opt-in* — data-parallel (GPU-ready) SoA scatter | `soa.hpp` |
 | `nanom/tagged.hpp` | *extra* — reflected **tagged messages**: `field<Id, T>` members, the Thrift compact codec (decode + encode), lazy `list<>`/`lazy<>` views ([docs](docs/TAGGED.md)) | `reflect.hpp` |
 | `nanom/columnar.hpp`, `nanom/codec.hpp` | *extra* — page decode kernels (width-specialized bit unpacking, RLE/bit-packed hybrid, DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT) and dependency-free Snappy / LZ4-block decompression ([docs](docs/COLUMNAR.md)) | `nom.hpp` |
+| `nanom/values.hpp` | *extra* — value kernels for columnar readers: bitmaps, Dremel levels and record assembly, null spreading, byte arrays (length-prefixed, DELTA_LENGTH / DELTA_BYTE_ARRAY) into offsets + data, dictionary gathers, UTF-8 validation, decimal widening ([docs](docs/COLUMNAR.md)) | `columnar.hpp` |
 | `nanom/formats/parquet_thrift.hpp` | *format model, opt-in* — Parquet footer / page headers / page index as reflected structs + `read_file_metadata` | `tagged.hpp` |
+| `nanom/formats/parquet_values.hpp` | *format, opt-in* — Parquet-only value layouts: INT96 timestamps, dictionary-index framing | `values.hpp` |
 | `nanom/nanom26.hpp`, `nanom/describe_macro.hpp` | the two `describe<T>` providers (C++26 reflection / `NANOM_DESCRIBE` macro), included by `reflect.hpp` | — |
 | `nanom/prelude.hpp` | shared config: std includes, `NANOM_HD`, feature probes | — |
 
