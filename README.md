@@ -140,6 +140,8 @@ reflection add-on, then the data-tooling extras:
 | `nanom/soa.hpp` | *extra* — `soa<T>` columnar (SoA) chunked storage | `schema.hpp` |
 | `nanom/bulk.hpp` | *extra, opt-in* — data-parallel (GPU-ready) SoA scatter | `soa.hpp` |
 | `nanom/tagged.hpp` | *extra* — reflected **tagged messages**: `field<Id, T>` members, the Thrift compact decoder, lazy `list<>`/`lazy<>` views ([docs](docs/TAGGED.md)). Read-only. | `reflect.hpp` |
+| `nanom/emit.hpp` | *extra, write side* — write fixed-layout described structs: `to_bytes` (constexpr), `emit`, `emit_frame` (header + payload into a sink), binrw-style computed fields (`calc<"len">`, `checksum<"csum">`) and `verify_computed` ([plan](docs/WRITERS.md)) | `reflect.hpp`, `sink.hpp` |
+| `nanom/sink.hpp` | *write side* — byte sinks (`vector_sink`, `span_sink`, `counting_sink`, any `put()`) and `encode_error`, shared by the encoders | `prelude.hpp` |
 | `nanom/tagged_encode.hpp` | *extra, write side* — Thrift compact encoding of the same structs into byte sinks (vector, fixed span, counter, stream), with i32 and sink-overflow checks ([docs](docs/TAGGED.md#writing), [plan](docs/WRITERS.md)) | `tagged.hpp` |
 | `nanom/columnar.hpp`, `nanom/codec.hpp` | *extra* — page decode kernels (width-specialized bit unpacking, RLE/bit-packed hybrid, DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT) and dependency-free Snappy / LZ4-block decompression ([docs](docs/COLUMNAR.md)) | `nom.hpp` |
 | `nanom/values.hpp` | *extra* — value kernels for columnar readers: bitmaps, Dremel levels and record assembly, null spreading, byte arrays (length-prefixed, DELTA_LENGTH / DELTA_BYTE_ARRAY) into offsets + data, dictionary gathers, UTF-8 validation, decimal widening ([docs](docs/COLUMNAR.md)) | `columnar.hpp` |

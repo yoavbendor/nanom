@@ -47,7 +47,7 @@ path never includes, so a reader's code, compile time and speed do not change. S
 | phase | work | done when | status |
 |---|---|---|---|
 | A | Production Thrift compact encoder: `nanom/tagged_encode.hpp` with sinks, exact size, `list<E>::of` / `lazy<M>::of` sources, narrowing and required-message checks. nanoarrow2parquet encodes `PageHeader` / `FileMetaData` from the shared `parquet_thrift.hpp` model and drops its hand-written encoder. | Files round-trip through pyarrow, arrow-rs and parquet2nanoarrow; footers read back identically by all three; write speed at parity with the previous nanoarrow2parquet. | **done** ([results](#phase-a-results)) |
-| B | `emit<T>` for fixed-layout described structs (`be<>`, `ubits<>`, arrays), with computed fields (lengths, counts, offsets filled by a size pass or back-patch, like binrw's `calc`). | Every described type in nanom's tests and examples round-trips byte-for-byte. | planned |
+| B | `emit<T>` for fixed-layout described structs (`be<>`, `ubits<>`, arrays), with computed fields (lengths, counts, offsets filled by a size pass or back-patch, like binrw's `calc`). | Every described type in nanom's tests and examples round-trips byte-for-byte. | **done** ([results](#phase-b-results)) |
 | C | Encoding kernels next to the decoders: bit packing, RLE / bit-packed hybrid, DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT, a dictionary builder, statistics; possibly Snappy / LZ4 compression (zstd stays external). | Each kernel round-trips through its decoder and is fuzzed; nanoarrow2parquet gains the encodings it lacks. | planned |
 | D | nanoarrow2parquet rebuilt on A–C. A protobuf wire codec in `tagged.hpp` for Lance metadata, then a Lance writer. | Parquet and Lance writing on one base, checked by their reference readers. | planned |
 
@@ -123,6 +123,50 @@ on the uncompressed case. Rerun on tmpfs it was 1.01x, so that gap was disk writ
 the encoder. Encoding the metadata is a tiny share of a write: a 1.4 MB footer (1,000 row groups
 x 20 columns) encodes in about 2 ms.
 
+## Phase B results
+
+`nanom/emit.hpp` writes fixed-layout described structs, the inverse of `strct<T>()` and
+`overlay<T>()`. The byte sinks moved to `nanom/sink.hpp`, which both encoders share.
+
+```cpp
+auto bytes = nm::to_bytes(hdr);                     // std::array<std::byte, wire_size_v<T>>, constexpr
+auto n     = nm::emit(hdr, out_span);               // into a buffer, never written past
+auto m     = nm::emit_frame(hdr, payload, sink);    // header + payload (passed through, no copy)
+
+template <> struct nm::computed<ipv4_hdr> {        // binrw-style computed fields
+  static constexpr auto fields = std::tuple{
+      nm::calc<"total_len">([](const ipv4_hdr&, const nm::emit_ctx& c) { return 20 + c.payload.size(); }),
+      nm::checksum<"checksum">([](std::span<const std::byte> h, const nm::emit_ctx&) { return csum(h); }),
+  };
+};
+bool ok = nm::verify_computed<ipv4_hdr>(received, nm::emit_ctx{payload});   // the read side
+```
+
+- **Exact inverse.** be / le fields keep their wire bytes; plain scalars use the same default byte
+  order as `strct`; bit fields are written with the exact inverse of `read_bits` (msb0 and lsb0);
+  arrays and nested structs recurse.
+- **Computed fields.** Field names are checked at compile time (`calc<"lenght">` does not compile).
+  `calc` runs before encoding and `checksum` runs over the encoded bytes with its field zeroed.
+  Results are range-checked into their field: a payload too long for a `be<u16>` length is an
+  `encode_error` naming the field, never a truncated value.
+- **Range checks.** A `ubits<N>` / `ibits<N>` value outside N bits is an error too. The reader
+  always masks; the writer refuses.
+- **A read-side bug fixed on the way.** The bit-field docs said msb0 and lsb0 fields "may be mixed
+  field-by-field", but when they shared a byte `read_bits` read the same bits for both, so one
+  field silently got the other's value. `layout_ok` now rejects a byte holding bits of both orders,
+  at compile time, for reading and writing alike. No layout in nanom's tests or examples was
+  affected.
+
+**Tests**
+
+| check | result |
+|---|---|
+| `tests/test_emit.cpp` byte round trips | emit(strct(b)) == b for random b, in both default byte orders, through a span (exact size, ASan) and through a sink. Covers all of nanom's example layouts (Ethernet, 802.1Q, IPv4, UDP, ELF64 header and program header, FAT16 BPB, FAT directory entry with lsb0 attributes) and two layouts exercising every remaining field kind (msb0 and lsb0 runs, signed and 64-bit bit fields, floats, arrays of be / le, nested structs). |
+| computed fields | the textbook IPv4 header (`4500 0073 … b861 …`) is reproduced exactly: total_len from the payload, checksum b861. `verify_computed` accepts it and rejects a changed TTL or a wrong payload length. A payload over 65,535 bytes is refused with the field named. A UDP frame through a sink gets its length and its payload. |
+| errors | an over-wide bit field and an out-of-range signed field are refused with the field name; an output buffer smaller than the struct is refused |
+| compile time | `static_assert` on the bytes of `to_bytes()` of an 802.1Q tag; `static_assert` that a byte shared by msb0 and lsb0 fields is rejected |
+| `fuzz/fuzz_emit.cpp` | 300,000 iterations clean under ASan / UBSan: byte round trips of nested layouts with every field kind in both orders; computed IPv4 headers pass `verify_computed` and fail it after any one-byte corruption |
+
 ## Reading only: the short path
 
 For code that only reads (and for AI assistants generating such code), include just what you need:
@@ -134,5 +178,5 @@ For code that only reads (and for AI assistants generating such code), include j
 | Parquet footer and page headers | `nanom/formats/parquet_thrift.hpp` | `read_file_metadata`, `thrift_compact<PageHeader>()` |
 | decode column pages | `nanom/columnar.hpp`, `nanom/values.hpp`, `nanom/codec.hpp` | see [COLUMNAR.md](COLUMNAR.md) |
 
-None of these includes an encoder. Writing needs `nanom/tagged_encode.hpp` (and, later,
-the phase B–C headers).
+None of these includes an encoder. Writing needs `nanom/tagged_encode.hpp` (tagged messages)
+and `nanom/emit.hpp` (fixed-layout structs), and later the phase C headers.

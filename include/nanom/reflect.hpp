@@ -76,7 +76,8 @@ using uint_for_bits = uint_for_bytes<(Bits + 7) / 8>;
 /// fields in a described struct are packed together; each run must end on a
 /// byte boundary (checked at compile time). Default bit order is msb0
 /// (network); pass bit_order::lsb0 for LSB-first register layouts. Orders may
-/// be mixed field-by-field.
+/// be mixed between runs, but no byte may hold bits of both orders (msb0 fills a
+/// byte from the top, lsb0 from the bottom; a compile-time check enforces it).
 template <unsigned N, bit_order O = bit_order::msb0>
   requires(N >= 1 && N <= 64)
 struct ubits {
@@ -202,15 +203,29 @@ NANOM_HD constexpr auto field_bit_offsets() {
   return off;
 }
 
+template <class F> struct bit_order_of { static constexpr int value = -1; };  // not a bit field
+template <unsigned N, bit_order O> struct bit_order_of<ubits<N, O>> { static constexpr int value = int(O); };
+template <unsigned N, bit_order O> struct bit_order_of<ibits<N, O>> { static constexpr int value = int(O); };
+
 /// Layout validity: every non-bit field byte-aligned, total a whole number of
-/// bytes. Evaluated at compile time; strct/overlay static_assert on it.
+/// bytes, and no byte shared by msb0 and lsb0 bit fields (the two orders fill a
+/// byte from opposite ends, so a shared byte has no single meaning: each order
+/// run must start and end on a byte boundary). Evaluated at compile time;
+/// strct/overlay/emit static_assert on it.
 template <Described T>
 constexpr bool layout_ok() {
   constexpr auto off = field_bit_offsets<T>();
   bool ok = wire<T>::bits % 8 == 0;
   std::size_t i = 0;
+  int prev_order = -1;          // order of the bit field before, or -1
+  std::size_t prev_end = 0;     // its end bit
   for_each_field<T>([&](auto f) {
-    ok = ok && (wire<member_t<decltype(f)::mem_ptr>>::is_bits || off[i] % 8 == 0);
+    using F = member_t<decltype(f)::mem_ptr>;
+    ok = ok && (wire<F>::is_bits || off[i] % 8 == 0);
+    constexpr int o = bit_order_of<F>::value;
+    if (o >= 0 && prev_order >= 0 && o != prev_order) ok = ok && prev_end % 8 == 0;
+    prev_order = o;
+    prev_end = off[i] + wire<F>::bits;
     ++i;
   });
   return ok;
@@ -373,8 +388,8 @@ using field_type_at = member_t<std::remove_cvref_t<decltype(std::get<I>(describe
 template <Described T>
 constexpr auto strct(std::endian dflt = std::endian::native) {
   static_assert(detail::layout_ok<T>(),
-                "nanom: bit fields must pack to byte boundaries and every "
-                "non-bit field must start byte-aligned");
+                "nanom: bit fields must pack to byte boundaries, every non-bit "
+                "field must start byte-aligned, and msb0 / lsb0 runs must not share a byte");
   return [dflt](input in) -> result<T> {
     constexpr std::size_t need = wire_size_v<T>;
     if (in.size() < need) return make_incomplete(in, need - in.size());
@@ -519,8 +534,8 @@ struct view {
 template <Described T>
 constexpr auto overlay(std::endian dflt = std::endian::native) {
   static_assert(detail::layout_ok<T>(),
-                "nanom: bit fields must pack to byte boundaries and every "
-                "non-bit field must start byte-aligned");
+                "nanom: bit fields must pack to byte boundaries, every non-bit "
+                "field must start byte-aligned, and msb0 / lsb0 runs must not share a byte");
   return [dflt](input in) -> result<view<T>> {
     constexpr std::size_t need = wire_size_v<T>;
     if (in.size() < need) return make_incomplete(in, need - in.size());
