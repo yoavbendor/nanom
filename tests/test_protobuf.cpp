@@ -12,6 +12,7 @@
 //   * hostile input: truncation at every byte, over-long varints, out-of-range integers, groups,
 //     field number 0, lengths past the end, nesting bombs, missing required fields;
 //   * encoder errors: failing sinks, nesting beyond the decoder's limit, with the location named.
+#include <nanom/formats/lance_encodings.hpp>
 #include <nanom/formats/lance_protobuf.hpp>
 #include <nanom/protobuf_encode.hpp>
 
@@ -488,12 +489,100 @@ static void test_lance_manifest() {
   }
 }
 
+// ------------------------------------------------------------------ Lance page encodings
+static void test_lance_encodings() {
+  // A MiniBlockLayout as Lance writes it for a run-length column (bytes from a lance-written file):
+  // value_compression Rle{ values Flat(32), run_lengths Flat(8) }, layers [1], 2 buffers, 100 rows.
+  const auto mini = B({0x1a, 0x0e, 0x42, 0x0c, 0x0a, 0x04, 0x0a, 0x02, 0x08, 0x20, 0x12, 0x04, 0x0a, 0x02, 0x08,
+                       0x08, 0x32, 0x01, 0x01, 0x38, 0x02, 0x48, 0x64, 0x50, 0x01});
+  std::vector<std::byte> page;
+  page.push_back(std::byte(0x0a));
+  page.push_back(std::byte(mini.size()));
+  page.insert(page.end(), mini.begin(), mini.end());
+  auto pl = nm::protobuf<lance::PageLayout>()(in_of(page));
+  CHECK(pl && pl->value.mini_block_layout->has_value());
+  if (pl && pl->value.mini_block_layout->has_value()) {
+    const auto& m = **pl->value.mini_block_layout;
+    CHECK(*m.num_items == 100 && *m.num_buffers == 2 && *m.has_large_chunk == 1 && m.layers->size() == 1);
+    auto vc = m.value_compression->decode();  // encodings are pb_lazy: decoded on demand
+    CHECK(vc && vc->rle->has_value());
+    if (vc && vc->rle->has_value()) {
+      const auto& rle = *vc->rle;
+      auto values = rle->values->decode(), lengths = rle->run_lengths->decode();
+      CHECK(values && lengths && *values->flat->value().bits_per_value == 32 &&
+            *lengths->flat->value().bits_per_value == 8);
+      lance::CompressiveEncoding into;
+      CHECK(rle->values->decode_into(into) && *into.flat->value().bits_per_value == 32);
+    }
+    CHECK(vc && lance::oneof_members(*vc) == 1);
+    CHECK(enc(pl->value) == page);  // Lance's bytes are canonical: re-encoding reproduces them
+  }
+
+  // definition levels: CompressiveEncoding{ f4 OutOfLineBitpacking{ 16, values Flat(1) } }
+  const auto levels = B({0x22, 0x08, 0x08, 0x10, 0x1a, 0x04, 0x0a, 0x02, 0x08, 0x01});
+  auto lv = nm::protobuf<lance::CompressiveEncoding>()(in_of(levels));
+  CHECK(lv && *lv->value.out_of_line_bitpacking->value().uncompressed_bits_per_value == 16);
+  if (lv) {
+    auto child = lv->value.out_of_line_bitpacking->value().values->decode();
+    CHECK(child && *child->flat->value().bits_per_value == 1);
+  }
+  // a lazy child holds only its bytes: a malformed child is found when it is decoded, not before
+  const auto bad_child = B({0x12, 0x03, 0x0a, 0x01, 0x80});  // Variable{ offsets = [a truncated varint] }
+  auto bc = nm::protobuf<lance::CompressiveEncoding>()(in_of(bad_child));
+  CHECK(bc && bc->value.variable->has_value() && !bc->value.variable->value().offsets->decode());
+  // a lazy field occurring twice is refused (its bytes cannot be merged as protobuf merges)
+  CHECK(!nm::protobuf<lance::Variable>()(in_of(B({0x0a, 0x00, 0x0a, 0x00}))));
+  // and pb_lazy<M>::of(m) writes m (zero-copy), byte-identical to the eager encoding
+  lance::CompressiveEncoding flat1;
+  flat1.flat = lance::Flat{};
+  flat1.flat->value().bits_per_value = 1;
+  lance::OutOfLineBitpacking oob;
+  oob.uncompressed_bits_per_value = 16;
+  oob.values = nm::pb_lazy<lance::CompressiveEncoding>::of(flat1);
+  lance::CompressiveEncoding made;
+  made.out_of_line_bitpacking = oob;
+  CHECK(enc(made) == levels);
+  CHECK(*nm::protobuf_size(made) == levels.size());
+  CHECK(lv && enc(lv->value) == levels);
+
+  // a variant this model does not declare (field 12, packed struct) is kept and countable
+  const auto other = B({0x62, 0x02, 0x08, 0x01});
+  auto ot = nm::protobuf<lance::CompressiveEncoding>()(in_of(other));
+  CHECK(ot && lance::oneof_members(ot->value) == 1 && !ot->value.flat->has_value());
+  std::uint64_t first = 0;
+  if (ot) nm::for_each_unknown(*ot->value.unknown, [&](std::uint64_t f, std::uint8_t) { first = first ? first : f; });
+  CHECK(first == 12);
+  // two members of the oneof: countable, so a reader can refuse
+  auto two = nm::protobuf<lance::CompressiveEncoding>()(in_of(B({0x0a, 0x02, 0x08, 0x01, 0x62, 0x00})));
+  CHECK(two && lance::oneof_members(two->value) == 2);
+
+  // format 2.0: Nullable{ all_nulls {} } and SimpleStruct {} are empty messages
+  const auto all_null = B({0x12, 0x02, 0x1a, 0x00});
+  auto an = nm::protobuf<lance::ArrayEncoding>()(in_of(all_null));
+  CHECK(an && an->value.nullable->has_value() && an->value.nullable->value().all_nulls->has_value());
+  CHECK(an && enc(an->value) == all_null);
+  auto st = nm::protobuf<lance::ArrayEncoding>()(in_of(B({0x2a, 0x00})));
+  CHECK(st && st->value.struct_->has_value());
+  // an empty message still validates what it skips
+  CHECK(!nm::protobuf<lance::ArrayEncoding>()(in_of(B({0x2a, 0x02, 0x08}))));
+
+  // the Any-style wrapper around a page's encoding
+  lance::EncodingAny any;
+  any.type_url = std::string_view("/lance.encodings21.PageLayout");
+  any.value = nm::bytes(page);
+  const auto any_bytes = enc(any);  // the decoded views point into it
+  auto ab = nm::protobuf<lance::EncodingAny>()(in_of(any_bytes));
+  CHECK(ab && *ab->value.type_url == "/lance.encodings21.PageLayout" && ab->value.value->has_value() &&
+        ab->value.value->value().size() == page.size());
+}
+
 int main() {
   test_golden();
   test_reader_rules();
   test_hostile();
   test_encode_errors();
   test_unknown_and_box();
+  test_lance_encodings();
   test_lance_manifest();
 
   roundtrip_property<All>("All", 3000, 1);
@@ -507,6 +596,9 @@ int main() {
   roundtrip_property<lance::Metadata>("lance::Metadata", 500, 6);
   roundtrip_property<lance::IndexMetadata>("lance::IndexMetadata", 1000, 10);
   roundtrip_property<lance::IndexSection>("lance::IndexSection", 300, 11);
+  roundtrip_property<lance::PageLayout>("lance::PageLayout", 1000, 12);
+  roundtrip_property<lance::ArrayEncoding>("lance::ArrayEncoding", 1000, 13);
+  roundtrip_property<lance::EncodingAny>("lance::EncodingAny", 300, 14);
 
   if (failures) {
     std::printf("%d failure(s)\n", failures);

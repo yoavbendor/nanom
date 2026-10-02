@@ -150,6 +150,7 @@ reflection add-on, then the data-tooling extras:
 | `nanom/values.hpp` | *extra* — value kernels for columnar readers: bitmaps, Dremel levels and record assembly, null spreading, byte arrays (length-prefixed, DELTA_LENGTH / DELTA_BYTE_ARRAY) into offsets + data, dictionary gathers, UTF-8 validation, decimal widening ([docs](docs/COLUMNAR.md)) | `columnar.hpp` |
 | `nanom/formats/parquet_thrift.hpp` | *format model, opt-in* — Parquet footer / page headers / page index as reflected structs + `read_file_metadata` | `tagged.hpp` |
 | `nanom/formats/lance_protobuf.hpp` | *format model, opt-in* — Lance manifests, schemas, data files, deletion files and column metadata as reflected protobuf messages ([docs](docs/PROTOBUF.md#lance-model)) | `protobuf.hpp` |
+| `nanom/formats/lance_encodings.hpp` | *format model, opt-in* — Lance page encodings: the 2.1+ PageLayout / CompressiveEncoding tree and the 2.0 ArrayEncoding tree, children as `pb_lazy` (decoded on demand, no allocation) ([docs](docs/PROTOBUF.md#lance-model)) | `protobuf.hpp` |
 | `nanom/formats/parquet_values.hpp` | *format, opt-in* — Parquet-only value layouts: INT96 timestamps, dictionary-index framing | `values.hpp` |
 | `nanom/nanom26.hpp`, `nanom/describe_macro.hpp` | the two `describe<T>` providers (C++26 reflection / `NANOM_DESCRIBE` macro), included by `reflect.hpp` | — |
 | `nanom/prelude.hpp` | shared config: std includes, `NANOM_HD`, feature probes | — |

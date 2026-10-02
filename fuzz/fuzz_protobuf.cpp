@@ -2,9 +2,11 @@
 // nanom/protobuf_encode.hpp) through the Lance metadata model (nanom/formats/lance_protobuf.hpp).
 //
 // Properties checked on every input:
-//   1. decoding Manifest / FileDescriptor / ColumnMetadata / Metadata / IndexMetadata never crashes, reads out of
+//   1. decoding Manifest / FileDescriptor / ColumnMetadata / Metadata / IndexMetadata / PageLayout / ArrayEncoding never
+//      crashes, reads out of
 //      bounds, recurses unboundedly or allocates from an unchecked count (run under ASan/UBSan);
-//   2. canonical round trip: whatever decodes re-encodes (protobuf_size agrees with the bytes
+//   2. every pb_lazy child (Lance's encoding trees) is decoded and checked the same way;
+//   3. canonical round trip: whatever decodes re-encodes (protobuf_size agrees with the bytes
 //      written), decodes back to the same value, and encode(decode(encode(m))) == encode(m).
 //      Unknown fields are dropped and varints normalized, so the INPUT is not reproduced — the
 //      codec's own output must be a fixed point.
@@ -15,6 +17,7 @@
 //
 // libFuzzer:  clang++ -fsanitize=fuzzer,address,undefined -std=c++23 -I include fuzz/fuzz_protobuf.cpp
 // standalone: -DNANOM_FUZZ_STANDALONE, then ./nm_protobuf_fuzz [iterations] [seed]
+#include <nanom/formats/lance_encodings.hpp>
 #include <nanom/formats/lance_protobuf.hpp>
 #include <nanom/protobuf_encode.hpp>
 
@@ -54,11 +57,34 @@ void round_trip(const M& m) {
   if (a != b) die("encode(decode(encode(m))) != encode(m)");
 }
 
+/// Walk into every pb_lazy child (decoded on demand, so their bytes are only checked here), each
+/// decoded child round-tripping like the top level. Depth-bounded, as a reader of a recursive model
+/// of lazies must be.
+template <class T>
+void walk(const T& v, int depth) {
+  if (depth > 32) return;
+  if constexpr (nm::detail::pb::is_lazy_pb<T>::value) {
+    typename T::value_type child{};
+    if (v && v.decode_into(child)) {
+      round_trip(child);
+      walk(child, depth + 1);
+    }
+  } else if constexpr (nm::detail::is_optional_t<T>::value || nm::detail::is_box_t<T>::value) {
+    if (v) walk(*v, depth);
+  } else if constexpr (nm::detail::is_vector_t<T>::value) {
+    if constexpr (nm::Message<typename T::value_type> || nm::detail::pb::is_lazy_pb<typename T::value_type>::value)
+      for (const auto& e : v) walk(e, depth);
+  } else if constexpr (nm::Message<T>) {
+    nm::detail::for_each_field<T>([&](auto f) { walk((v.*(decltype(f)::mem_ptr)).v, depth); });
+  }
+}
+
 template <class M>
 void one(nm::input in) {
   if (auto m = nm::protobuf<M>()(in)) {
     ++g_decoded;
     round_trip(m->value);
+    walk(m->value, 0);
   }
 }
 
@@ -71,6 +97,8 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   one<lance::ColumnMetadata>(in);
   one<lance::Metadata>(in);
   one<lance::IndexMetadata>(in);
+  one<lance::PageLayout>(in);
+  one<lance::ArrayEncoding>(in);
   return 0;
 }
 
@@ -106,7 +134,9 @@ int main(int argc, char** argv) {
   std::vector<std::uint8_t> buf;
   for (int i = 0; i < iters; ++i) {
     std::mt19937_64 g(rng.next());
-    switch (g() % 5) {
+    switch (g() % 7) {
+      case 5: buf = generated<lance::PageLayout>(g); break;
+      case 6: buf = generated<lance::ArrayEncoding>(g); break;
       case 0: buf = generated<lance::Manifest>(g); break;
       case 1: buf = generated<lance::FileDescriptor>(g); break;
       case 2: buf = generated<lance::ColumnMetadata>(g); break;

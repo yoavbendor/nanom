@@ -49,6 +49,7 @@ https://yoavbendor.github.io/nanom/llms-full.txt inlines the prose *and* the ent
 - [tagged_encode.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/tagged_encode.hpp): tagged messages — encode into byte sinks
 - [protobuf.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/protobuf.hpp) / [protobuf_encode.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/protobuf_encode.hpp): protobuf (proto3) on the same structs — decode / encode ([docs](https://raw.githubusercontent.com/yoavbendor/nanom/main/docs/PROTOBUF.md))
 - [formats/lance_protobuf.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/formats/lance_protobuf.hpp): the Lance metadata model
+- [formats/lance_encodings.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/formats/lance_encodings.hpp): Lance page encodings (PageLayout / ArrayEncoding trees)
 - [columnar.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/columnar.hpp) / [values.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/values.hpp) / [codec.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/codec.hpp): columnar page decoding (bits, values, Snappy / LZ4)
 - [nanom26.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/nanom26.hpp): the C++26 P2996 reflection describe<T> provider (macro-free)
 - [prelude.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/prelude.hpp): shared config, feature probes

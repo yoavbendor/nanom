@@ -11,6 +11,7 @@
 #include <cstring>
 #include <deque>
 #include <limits>
+#include <memory>
 #include <random>
 #include <string>
 
@@ -20,6 +21,7 @@ namespace nm = nanom;
 /// Owns everything generated views point at.
 struct arena {
   std::deque<std::string> strings;
+  std::deque<std::shared_ptr<void>> objects;  ///< messages pb_lazy<M>::of() points at
 };
 
 template <class T> T gen(std::mt19937_64& rng, arena& a, int depth);
@@ -77,6 +79,12 @@ T gen(std::mt19937_64& rng, arena& a, int depth) {
     return gen_string(rng, a);
   } else if constexpr (std::is_same_v<T, std::string>) {
     return std::string(gen_string(rng, a));
+  } else if constexpr (std::is_same_v<T, nm::empty_struct>) {
+    return {};
+  } else if constexpr (nm::detail::pb::is_lazy_pb<T>::value) {  // a message held by the arena
+    auto m = std::make_shared<typename T::value_type>(gen<typename T::value_type>(rng, a, depth));
+    a.objects.push_back(m);
+    return T::of(*m);
   } else if constexpr (std::is_same_v<T, nm::bytes>) {
     const auto s = gen_string(rng, a);
     return nm::bytes(reinterpret_cast<const std::byte*>(s.data()), s.size());
@@ -110,6 +118,8 @@ T gen(std::mt19937_64& rng, arena& a, int depth) {
         slot = gen_unknown<T>(rng);
       } else if constexpr (nm::detail::is_box_t<V>::value) {
         if (depth < 5 && rng() % 2) slot = gen<typename V::value_type>(rng, a, depth + 1);
+      } else if constexpr (nm::detail::pb::is_lazy_pb<V>::value) {
+        if (depth < 5 && rng() % 2) slot = gen<V>(rng, a, depth + 1);
       } else if constexpr (nm::detail::is_optional_t<V>::value) {
         if (depth < 6 && rng() % 3) slot = gen<typename V::value_type>(rng, a, depth + 1);
       } else {
@@ -131,6 +141,14 @@ bool same(const T& x, const T& y) {
     return x.size() == y.size() && (x.size() == 0 || std::memcmp(x.data(), y.data(), x.size()) == 0);
   } else if constexpr (nm::detail::is_optional_t<T>::value || nm::detail::is_box_t<T>::value) {
     return x.has_value() == y.has_value() && (!x || same(*x, *y));
+  } else if constexpr (nm::detail::pb::is_lazy_pb<T>::value) {
+    if (x.has_value() != y.has_value()) return false;
+    if (!x) return true;
+    const auto rx = x.region(), ry = y.region();  // both read from the wire: the same bytes
+    if (!x.source() && !y.source())
+      return rx.size() == ry.size() && (rx.empty() || std::memcmp(rx.data(), ry.data(), rx.size()) == 0);
+    auto a = x.decode(), b = y.decode();  // otherwise what they decode to
+    return a && b && same(*a, *b);
   } else if constexpr (nm::detail::is_vector_t<T>::value) {
     if (x.size() != y.size()) return false;
     for (std::size_t i = 0; i < x.size(); ++i)

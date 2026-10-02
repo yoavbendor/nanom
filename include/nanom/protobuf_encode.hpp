@@ -86,6 +86,7 @@ constexpr std::uint64_t key_of(std::uint8_t wt) { return (std::uint64_t(F::id) <
 template <class T>
 consteval bool has_message() {
   if constexpr (opt_like<T> || is_vector_t<T>::value) return has_message<typename T::value_type>();
+  else if constexpr (is_lazy_pb<T>::value) return true;
   else return Message<T>;
 }
 template <Message M>
@@ -113,7 +114,13 @@ template <Message M> std::size_t measure(state& st, const M& m, int depth);
 /// Bytes of one value after its key (length prefix included for length-delimited values).
 template <class T>
 std::size_t value_size(state& st, const T& v, int depth) {
-  if constexpr (Message<T>) {
+  if constexpr (std::is_same_v<T, empty_struct>) {
+    return 1;  // a zero length
+  } else if constexpr (is_lazy_pb<T>::value) {
+    if (const auto* src = v.source()) return value_size(st, *src, depth);
+    const std::size_t n = v.region().size();
+    return varint_size(n) + n;
+  } else if constexpr (Message<T>) {
     const std::size_t k = st.sizes.size();
     st.sizes.push_back(0);
     const std::size_t n = measure(st, v, depth + 1);
@@ -163,6 +170,8 @@ std::size_t measure(state& st, const M& m, int depth) {
       }
     } else if constexpr (std::is_same_v<V, unknown_fields>) {
       total += fv.bytes.size();  // kept verbatim, written after the declared fields
+    } else if constexpr (is_lazy_pb<V>::value) {
+      if (fv) total += varint_size(key_of<F>(len)) + value_size<V>(st, fv, depth);
     } else if constexpr (opt_like<V>) {
       using T = typename V::value_type;
       if (fv) total += varint_size(key_of<F>(wire_of<T>())) + value_size<T>(st, *fv, depth);
@@ -232,7 +241,16 @@ void write_scalar(W& w, const T& v) {
 /// One value after its key.
 template <class T, class W>
 void write_value(W& w, const T& v) {
-  if constexpr (Message<T>) {
+  if constexpr (std::is_same_v<T, empty_struct>) {
+    w.varint(0);
+  } else if constexpr (is_lazy_pb<T>::value) {
+    if (const auto* src = v.source()) {
+      write_value(w, *src);
+    } else {  // read from the wire: written back verbatim
+      w.varint(v.region().size());
+      w.raw(v.region().data(), v.region().size());
+    }
+  } else if constexpr (Message<T>) {
     w.varint(w.st.sizes[w.st.next++]);
     write_message(w, v);
   } else if constexpr (std::is_same_v<T, bytes>) {
@@ -271,6 +289,10 @@ void write_message(W& w, const M& m) {
       }
     } else if constexpr (std::is_same_v<V, unknown_fields>) {
       return;  // after the declared fields, below
+    } else if constexpr (is_lazy_pb<V>::value) {
+      if (!fv) return;
+      w.varint(key_of<F>(len));
+      write_value<V>(w, fv);
     } else if constexpr (opt_like<V>) {
       using T = typename V::value_type;
       if (!fv) return;
@@ -303,7 +325,7 @@ encode_error error_of(const state& st) {
 /// growable sink may hold a partial encoding; a span_sink is never written past its end).
 template <Message M, byte_sink S>
 expected<std::size_t, encode_error> protobuf_encode(const M& m, S& sink) {
-  detail::pb::check_model<M>();
+  static_assert(detail::pb::check_model<M>());
   detail::pb::state st;
   if constexpr (detail::pb::has_nested<M>()) {
     detail::pb::measure(st, m, 0);
@@ -327,7 +349,7 @@ expected<std::size_t, encode_error> protobuf_encode(const M& m, std::vector<std:
 /// The exact number of bytes protobuf_encode(m, …) writes (nothing is written).
 template <Message M>
 expected<std::size_t, encode_error> protobuf_size(const M& m) {
-  detail::pb::check_model<M>();
+  static_assert(detail::pb::check_model<M>());
   detail::pb::state st;
   const std::size_t n = detail::pb::measure(st, m, 0);
   if (st.err) return unexpected<encode_error>(detail::pb::error_of<M>(st));
