@@ -19,6 +19,12 @@ benchmarks, and a generated API reference, all as flat crawlable HTML — is at
 **https://yoavbendor.github.io/nanom/** (this file is its machine-readable index; a single fetch of
 https://yoavbendor.github.io/nanom/llms-full.txt inlines the prose *and* the entire source).
 
+## Reading vs writing (pick the headers you need)
+
+- Reading only: include `nanom/nanom.hpp` (parsers, `strct<T>()`, `overlay<T>()`), `nanom/tagged.hpp` (decode Thrift: `thrift_compact<M>()`), `nanom/formats/parquet_thrift.hpp` (`read_file_metadata`), `nanom/columnar.hpp` + `nanom/values.hpp` + `nanom/codec.hpp` (page decoding). None of them includes an encoder.
+- Writing: add `nanom/tagged_encode.hpp` (`thrift_compact_encode(m, sink)`, `thrift_compact_size(m)`, `list<E>::of(span)`, `lazy<M>::of(m)`).
+- [Writing plan](https://raw.githubusercontent.com/yoavbendor/nanom/main/docs/WRITERS.md): phases for Parquet and Lance writers, the read-only short path
+
 ## Documentation
 
 - [Documentation site](https://yoavbendor.github.io/nanom/): **start here** — the complete docs (getting-started, cheat sheet, design, benchmarks) plus the generated API reference at `/api/`
@@ -39,6 +45,9 @@ https://yoavbendor.github.io/nanom/llms-full.txt inlines the prose *and* the ent
 - [reflect.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/reflect.hpp): fixed_string, wire types, the describe<T> seam, strct<>/overlay<>
 - [schema.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/schema.hpp): schema tree + Arrow/Avro/JSON/CSV emission
 - [soa.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/soa.hpp): columnar (SoA) chunked storage
+- [tagged.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/tagged.hpp): tagged messages (Thrift compact) — decode only
+- [tagged_encode.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/tagged_encode.hpp): tagged messages — encode into byte sinks
+- [columnar.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/columnar.hpp) / [values.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/values.hpp) / [codec.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/codec.hpp): columnar page decoding (bits, values, Snappy / LZ4)
 - [nanom26.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/nanom26.hpp): the C++26 P2996 reflection describe<T> provider (macro-free)
 - [prelude.hpp](https://raw.githubusercontent.com/yoavbendor/nanom/main/include/nanom/prelude.hpp): shared config, feature probes
 

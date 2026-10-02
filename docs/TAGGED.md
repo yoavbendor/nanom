@@ -16,9 +16,10 @@ struct KeyValue {
 NANOM_DESCRIBE(KeyValue, key, value);   // C++23; under C++26 reflection no registration line at all
 
 auto r = nm::thrift_compact<KeyValue>()(in);             // an ordinary nanom parser
-std::vector<std::byte> out;
-nm::thrift_compact_encode(r->value, out);                // and back
 ```
+
+Writing the same struct back is a separate header, `nanom/tagged_encode.hpp`, which reading code
+never includes (see [Writing](#writing)).
 
 The field id lives in the type (`field<Id, T>`), the same way endianness lives in `be<>`/`le<>`. Both
 `describe<T>` providers work unchanged: the `NANOM_DESCRIBE` macro and C++26 P2996 reflection.
@@ -103,3 +104,33 @@ These come from one run in a shared cloud container, so treat them as indicative
 parity, not ahead. Thrift lists carry no byte length, so a lazy nested list is re-scanned once per
 nesting level. Workloads that always decode everything can use the eager `std::vector` mirror, which
 decodes in one pass.
+
+## Writing
+
+`nanom/tagged_encode.hpp` encodes the same described structs. The full plan (Parquet, then Lance)
+is in [WRITERS.md](WRITERS.md).
+
+```cpp
+#include <nanom/tagged_encode.hpp>
+
+const pq::SchemaElement schema[] = {root, col};            // the caller owns the elements
+pq::FileMetaData f;
+f.version = 1;
+f.schema = nm::list<pq::SchemaElement>::of(schema);        // a view, not a copy
+f.num_rows = 3;
+f.row_groups = nm::list<pq::RowGroup>::of(row_groups);
+
+std::vector<std::byte> out;
+auto n = nm::thrift_compact_encode(f, out);               // bytes written, or encode_error
+std::array<std::byte, 128> buf;                            // or a fixed buffer, never written past
+nm::span_sink s{buf};
+auto h = nm::thrift_compact_encode(page_header, s);
+const std::size_t size = *nm::thrift_compact_size(f);      // exact size, nothing written
+```
+
+| | |
+|---|---|
+| sinks | `vector_sink`, `span_sink` (a full buffer is an error, never an overrun), `counting_sink`, or any type with `bool put(const std::byte*, std::size_t)` |
+| sources | `list<E>::of(span)` and `lazy<M>::of(m)` borrow the caller's values. A list or nested message decoded from a file is written back verbatim, so read-modify-write keeps fields the model does not declare. |
+| errors | a string, binary or list longer than the wire's i32; a `lazy<M>` that was never set; a sink that refuses bytes. `encode_error` names the struct and field. |
+| tests | `tests/test_tagged_encode.cpp` generates random values of every Parquet model message by reflection and checks: decode(encode(x)) == x, re-encoding is byte-identical, the size is exact, and every too-small buffer fails cleanly. `fuzz/fuzz_thrift.cpp` mutates generated messages. |

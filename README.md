@@ -139,7 +139,8 @@ reflection add-on, then the data-tooling extras:
 | `nanom/schema.hpp` | *extra* — `schema_of<T>()`, Arrow format strings, `avro_schema`, `to_json`/`csv_row` | `reflect.hpp` |
 | `nanom/soa.hpp` | *extra* — `soa<T>` columnar (SoA) chunked storage | `schema.hpp` |
 | `nanom/bulk.hpp` | *extra, opt-in* — data-parallel (GPU-ready) SoA scatter | `soa.hpp` |
-| `nanom/tagged.hpp` | *extra* — reflected **tagged messages**: `field<Id, T>` members, the Thrift compact codec (decode + encode), lazy `list<>`/`lazy<>` views ([docs](docs/TAGGED.md)) | `reflect.hpp` |
+| `nanom/tagged.hpp` | *extra* — reflected **tagged messages**: `field<Id, T>` members, the Thrift compact decoder, lazy `list<>`/`lazy<>` views ([docs](docs/TAGGED.md)). Read-only. | `reflect.hpp` |
+| `nanom/tagged_encode.hpp` | *extra, write side* — Thrift compact encoding of the same structs into byte sinks (vector, fixed span, counter, stream), with i32 and sink-overflow checks ([docs](docs/TAGGED.md#writing), [plan](docs/WRITERS.md)) | `tagged.hpp` |
 | `nanom/columnar.hpp`, `nanom/codec.hpp` | *extra* — page decode kernels (width-specialized bit unpacking, RLE/bit-packed hybrid, DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT) and dependency-free Snappy / LZ4-block decompression ([docs](docs/COLUMNAR.md)) | `nom.hpp` |
 | `nanom/values.hpp` | *extra* — value kernels for columnar readers: bitmaps, Dremel levels and record assembly, null spreading, byte arrays (length-prefixed, DELTA_LENGTH / DELTA_BYTE_ARRAY) into offsets + data, dictionary gathers, UTF-8 validation, decimal widening ([docs](docs/COLUMNAR.md)) | `columnar.hpp` |
 | `nanom/formats/parquet_thrift.hpp` | *format model, opt-in* — Parquet footer / page headers / page index as reflected structs + `read_file_metadata` | `tagged.hpp` |
