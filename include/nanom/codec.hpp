@@ -132,31 +132,35 @@ inline status snappy_decompress(std::span<const std::byte> in, std::span<std::by
     // and >= 80 output bytes (the longest copy, 64, plus 16 of overshoot) remain, an element is a
     // table lookup, one masked 4-byte load and fixed-size copies. Offsets are still validated.
     if (ip < ip_fast && op < op_fast) {
-      if ((tag & 3) == 0) {
-        const std::size_t len = entry & 0xff;
-        if (len != 0 && len <= 16) {
-          detail::copy16(op, ip + 1);  // bytes past len land inside out and are overwritten later
-          ip += 1 + len;
-          op += len;
-          continue;
-        }
-        // long literal: the exact path below
-      } else {
-        const std::size_t extra = entry >> 11;
-        const std::size_t len = entry & 0xff;
-        const std::size_t offset = (entry & 0x700) + (detail::load_le32(ip + 1) & detail::snappy_extra_mask[extra]);
+      // Literals and copies take ONE branch-free step: the source is selected (cmov), not
+      // branched on, so the literal/copy alternation of typical data costs no mispredictions.
+      // It covers literals of 1..16 bytes and copies of <= 16 bytes from >= 8 back, as two
+      // 8-byte moves (with offset >= 8 the second move reads only bytes already final).
+      const bool lit = (tag & 3) == 0;
+      const std::size_t len = entry & 0xff;  // 0: a literal with a length suffix
+      const std::size_t extra = entry >> 11;
+      const std::size_t offset = (entry & 0x700) + (detail::load_le32(ip + 1) & detail::snappy_extra_mask[extra]);
+      const std::size_t produced = std::size_t(op - ob);
+      // the next tag's position comes from the tag by ALU alone (no table load on the loop's
+      // ip -> tag -> ip dependency chain): a literal advances (tag >> 2) + 2, a copy-1 / copy-2
+      // (tag & 3) + 1; copy-4 (tag & 3 == 3) takes the path below
+      const bool slow = (len - 1 >= 16) | ((tag & 3) == 3) | (!lit & ((offset < 8) | (offset > produced)));
+      if (!slow) {
+        const std::byte* src = lit ? ip + 1 : op - offset;
+        detail::copy8(op, src);
+        detail::copy8(op + 8, src + 8);
+        op += len;
+        ip += lit ? (tag >> 2) + 2 : (tag & 3) + 1;
+        continue;
+      }
+      if (!lit && len <= 64 && offset - 1 < produced) {
+        // a copy the step above does not cover: longer than 16 or from under 8 back
         ip += 1 + extra;
-        // offset in [1, produced]: one unsigned compare (offset 0 wraps to the maximum)
-        if (offset - 1 >= std::size_t(op - ob)) return detail::fail("snappy: copy offset outside the output", at());
-        if (offset >= 8 && len <= 16) {
-          detail::copy8(op, op - offset);
-          detail::copy8(op + 8, op - offset + 8);
-        } else {
-          detail::copy_match_wild(op, offset, len);
-        }
+        detail::copy_match_wild(op, offset, len);
         op += len;
         continue;
       }
+      // a literal over 16 bytes, or an invalid offset: the exact path below
     }
     ++ip;  // exact path: every length and offset checked against both ends
     if ((tag & 3) == 0) {  // literal

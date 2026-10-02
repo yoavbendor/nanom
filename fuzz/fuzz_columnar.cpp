@@ -40,6 +40,12 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   (void)col::copy_bits(in, n, raw, data[0] % 13);
   std::vector<std::byte> dec(std::size_t(data[1]) * 256 + data[2]);
   (void)cdc::snappy_decompress(in, dec);
+  // size the output from the preamble too (exactly: ASan sees any write past it), so random
+  // bodies reach the element loop instead of failing the length check
+  if (auto want = cdc::snappy_uncompressed_length(in); want && *want <= (1u << 16)) {
+    std::vector<std::byte> exact(*want);
+    (void)cdc::snappy_decompress(in, exact);
+  }
   (void)cdc::lz4_block_decompress(in, dec);
   return 0;
 }
