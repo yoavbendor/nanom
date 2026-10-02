@@ -237,7 +237,7 @@ struct ArrayEncoding {
   field<6, std::optional<Binary>>             binary;
   field<7, std::optional<Dictionary20>>       dictionary;
   field<8, std::optional<Fsst20>>             fsst;
-  field<9, std::optional<PackedStruct>>       packed_struct;
+  pfe<9, pb_box<PackedStruct>>                packed_struct;  ///< boxed: PackedStruct holds ArrayEncodings
   field<10, std::optional<Bitpacked20>>       bitpacked;
   field<11, std::optional<FixedSizeBinary>>   fixed_size_binary;
   field<12, std::optional<BitpackedForNonNeg>> bitpacked_for_non_neg;
