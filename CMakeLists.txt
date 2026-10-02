@@ -155,6 +155,12 @@ add_test(NAME nanom_tagged_tests_strict COMMAND nanom_tagged_tests_strict)
 nanom_exe_generation(nanom_tagged_tests_nogen 0 tests/test_tagged.cpp)
 add_test(NAME nanom_tagged_tests_nogen COMMAND nanom_tagged_tests_nogen)
 
+# Columnar page encoders (columnar_encode.hpp): each round-trips through its decoder.
+nanom_exe(nanom_columnar_encode_tests tests/test_columnar_encode.cpp)
+add_test(NAME nanom_columnar_encode_tests COMMAND nanom_columnar_encode_tests)
+nanom_exe_strict(nanom_columnar_encode_tests_strict tests/test_columnar_encode.cpp)
+add_test(NAME nanom_columnar_encode_tests_strict COMMAND nanom_columnar_encode_tests_strict)
+
 # Writing fixed-layout structs (emit.hpp): byte round trips of every field kind and of the
 # examples' layouts, computed fields (IPv4 length + checksum), range errors, constexpr encoding.
 nanom_exe(nanom_emit_tests tests/test_emit.cpp)
@@ -410,6 +416,9 @@ add_test(NAME streaming_defrag_fuzz COMMAND nm_streaming_defrag_fuzz 400)
 nanom_exe(nm_thrift_fuzz fuzz/fuzz_thrift.cpp)
 target_compile_definitions(nm_thrift_fuzz PRIVATE NANOM_FUZZ_STANDALONE=1)
 add_test(NAME thrift_fuzz COMMAND nm_thrift_fuzz 20000)
+nanom_exe(nm_columnar_encode_fuzz fuzz/fuzz_columnar_encode.cpp)
+target_compile_definitions(nm_columnar_encode_fuzz PRIVATE NANOM_FUZZ_STANDALONE=1)
+add_test(NAME columnar_encode_fuzz COMMAND nm_columnar_encode_fuzz 20000)
 nanom_exe(nm_emit_fuzz fuzz/fuzz_emit.cpp)
 target_compile_definitions(nm_emit_fuzz PRIVATE NANOM_FUZZ_STANDALONE=1)
 add_test(NAME emit_fuzz COMMAND nm_emit_fuzz 20000)

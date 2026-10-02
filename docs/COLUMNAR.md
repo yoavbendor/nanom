@@ -49,6 +49,23 @@ message). Outputs are sized by the caller; the doc comment of each kernel states
 | `append_length_prefixed`, `append_gathered`, `append_views` | write values + int32 (or int64) end offsets for n slots, nulls repeating the offset; short values move as one 16-byte copy into `kValueSlack` | Arrow / Lance offsets + data output |
 | `valid_utf8`, `utf8_starts_ok` | UTF-8 check of a whole buffer (ASCII-word fast path), then a boundary check per value start | string columns: one pass per page, not per value |
 
+### Encoders (`columnar_encode.hpp`, write side)
+
+Each encoder writes exactly what its decoder reads. `tests/test_columnar_encode.cpp` round-trips
+every one through its decoder, and `fuzz/fuzz_columnar_encode.cpp` fuzzes the pairs.
+
+| encoder | decoded by | notes |
+|---|---|---|
+| `pack_bits<U>(in, width, out)` | `unpack_bits` | exactly ceil(n * width / 8) bytes, any width 0..64 |
+| `rle_hybrid_encode<V>(values, width, out)` | `rle_bp_decoder` | runs of >= 8 equal values become RLE runs; the rest whole bit-packed groups (a pending literal borrows from the next run to finish its group; only the stream's last group is padded) |
+| `rle_bitmap_encode(bitmap, n, out)` | `rle_bitmap` | width 1 straight from a bitmap: uniform stretches become RLE runs, mixed bytes are literal groups copied as they are |
+| `encode_levels(levels, max, out)` | `decode_levels` | rep / def levels at bit_width(max) |
+| `delta_binary_packed_encode<T>` | `delta_binary_packed<T>` | 128-value blocks, 4 miniblocks; wrapping arithmetic; the decoder ends exactly at the stream's end |
+| `byte_stream_split_encode` | `byte_stream_split` | any width |
+| `delta_length_encode` / `delta_prefix_encode` | `delta_length_views` / `delta_prefix_views` | DELTA_LENGTH_BYTE_ARRAY / DELTA_BYTE_ARRAY (front coding) |
+| `fixed_dictionary<T>` / `string_dictionary` | — | open addressing, exact by bytes (-0.0 / +0.0 and NaN payloads are distinct entries) |
+| `compute_stats<T>` / `compute_binary_stats` | — | Parquet orders: signed or unsigned per T; NaN ignored, min +0 written as -0 and max -0 as +0; unsigned byte order for binary |
+
 zstd, gzip and brotli plug in at the reader through the same shape:
 `status decompress(std::span<const std::byte> in, std::span<std::byte> out)`.
 

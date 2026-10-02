@@ -48,7 +48,7 @@ path never includes, so a reader's code, compile time and speed do not change. S
 |---|---|---|---|
 | A | Production Thrift compact encoder: `nanom/tagged_encode.hpp` with sinks, exact size, `list<E>::of` / `lazy<M>::of` sources, narrowing and required-message checks. nanoarrow2parquet encodes `PageHeader` / `FileMetaData` from the shared `parquet_thrift.hpp` model and drops its hand-written encoder. | Files round-trip through pyarrow, arrow-rs and parquet2nanoarrow; footers read back identically by all three; write speed at parity with the previous nanoarrow2parquet. | **done** ([results](#phase-a-results)) |
 | B | `emit<T>` for fixed-layout described structs (`be<>`, `ubits<>`, arrays), with computed fields (lengths, counts, offsets filled by a size pass or back-patch, like binrw's `calc`). | Every described type in nanom's tests and examples round-trips byte-for-byte. | **done** ([results](#phase-b-results)) |
-| C | Encoding kernels next to the decoders: bit packing, RLE / bit-packed hybrid, DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT, a dictionary builder, statistics; possibly Snappy / LZ4 compression (zstd stays external). | Each kernel round-trips through its decoder and is fuzzed; nanoarrow2parquet gains the encodings it lacks. | planned |
+| C | Encoding kernels next to the decoders: bit packing, RLE / bit-packed hybrid, DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT, a dictionary builder, statistics; possibly Snappy / LZ4 compression (zstd stays external). | Each kernel round-trips through its decoder and is fuzzed; nanoarrow2parquet gains the encodings it lacks. | **done** ([results](#phase-c-results)); Snappy / LZ4 compression not needed yet |
 | D | nanoarrow2parquet rebuilt on A–C. A protobuf wire codec in `tagged.hpp` for Lance metadata, then a Lance writer. | Parquet and Lance writing on one base, checked by their reference readers. | planned |
 
 ## Phase A in detail
@@ -167,6 +167,49 @@ bool ok = nm::verify_computed<ipv4_hdr>(received, nm::emit_ctx{payload});   // t
 | compile time | `static_assert` on the bytes of `to_bytes()` of an 802.1Q tag; `static_assert` that a byte shared by msb0 and lsb0 fields is rejected |
 | `fuzz/fuzz_emit.cpp` | 300,000 iterations clean under ASan / UBSan: byte round trips of nested layouts with every field kind in both orders; computed IPv4 headers pass `verify_computed` and fail it after any one-byte corruption |
 
+## Phase C results
+
+`nanom/columnar_encode.hpp` holds the page encoders, each the inverse of a decoder (table in
+[COLUMNAR.md](COLUMNAR.md#encoders)). nanoarrow2parquet now uses them:
+
+- **Levels and indices** are real RLE / bit-packed hybrid streams. Before, everything was one long
+  bit-packed run written a bit at a time. Definition levels of an optional field are encoded
+  straight from its presence bitmap (a literal group is one bitmap byte), so no per-row level
+  array is built.
+- **Dictionary**: nanom's open-addressing `string_dictionary` replaces `std::unordered_map`.
+- **Statistics, new**: every column chunk carries min / max / null count in Parquet's orders.
+  Unsigned columns compare unsigned, floats follow the spec, binary compares as unsigned bytes,
+  and the footer declares `column_orders`. min / max come from the typed Arrow buffers, or from the
+  dictionary's distinct values (the same answer without comparing each row).
+- **Encodings, new**: `n2p_writer_set_encoding()` selects AUTO (the previous behaviour), PLAIN,
+  DELTA (DELTA_BINARY_PACKED for integers, DELTA_BYTE_ARRAY for strings) or BYTE_STREAM_SPLIT
+  (floats).
+
+**Correctness**
+
+| check | result |
+|---|---|
+| nanom `test_columnar_encode` | every encoder through its decoder over random data at every width: run-heavy, noisy, constant and extreme values, empty and one-value inputs, keys of every length 0..80 in exact-size buffers. Planted bugs in the RLE run-stealing and in a DELTA miniblock width are caught (1,836 and 1,150 failures). |
+| nanom `fuzz_columnar_encode` | 300,000 iterations clean under ASan / UBSan. It found an out-of-bounds read in the first version of the dictionary hash (keys of 17–23 bytes), fixed before anything shipped. |
+| `oracle_roundtrip` (nanoarrow2parquet) | 49 files: the 8 table shapes x {zstd, uncompressed} x {AUTO, PLAIN, DELTA, BYTE_STREAM_SPLIT}, plus the empty file. They read back exactly in pyarrow, arrow-rs and parquet2nanoarrow. Statistics of every row group and leaf match min / max / null count computed independently in Python. Also clean with the writer built under ASan / UBSan. Turning off unsigned ordering in the statistics produces 96 failures. |
+
+**Write speed** (same method as phase A: previous release vs this one, tmpfs, median of 7
+alternating runs; AUTO encoding, statistics on):
+
+| benchmark | case | before | after | speed |
+|---|---|---:|---:|---:|
+| bench_n2p | zstd, strings, 512 MB in 128 MB chunks | 1.460 s | 1.196 s | 1.22x |
+| bench_n2p | uncompressed, 30% nulls | 1.192 s | 1.002 s | 1.19x |
+| bench_n2p | uncompressed, 256 row groups (1 MB chunks) | 0.307 s | 0.200 s | 1.54x |
+| bench_n2p_soa | zstd, strings | 2.089 s | 1.756 s | 1.19x |
+| bench_n2p_soa | uncompressed, 30% nulls | 1.953 s | 1.726 s | 1.13x |
+| bench_n2p_soa | 256 row groups | 0.431 s | 0.347 s | 1.24x |
+
+The first build of this phase was slower on string-heavy and many-row-group cases (0.82–0.94x).
+Two things fixed it: computing string min / max from the dictionary instead of comparing every
+row, and a hash for short keys (two overlapping word loads, one multiply-mix) instead of the
+FNV-style loop.
+
 ## Reading only: the short path
 
 For code that only reads (and for AI assistants generating such code), include just what you need:
@@ -179,4 +222,4 @@ For code that only reads (and for AI assistants generating such code), include j
 | decode column pages | `nanom/columnar.hpp`, `nanom/values.hpp`, `nanom/codec.hpp` | see [COLUMNAR.md](COLUMNAR.md) |
 
 None of these includes an encoder. Writing needs `nanom/tagged_encode.hpp` (tagged messages)
-and `nanom/emit.hpp` (fixed-layout structs), and later the phase C headers.
+`nanom/emit.hpp` (fixed-layout structs) and `nanom/columnar_encode.hpp` (column pages).
