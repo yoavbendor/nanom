@@ -34,7 +34,7 @@ class soa {
     /// Typed access; V must match the column's decoded type.
     template <class V>
     std::span<const V> as(std::size_t i) const {
-      return {reinterpret_cast<const V*>(cols[i].data()), rows};
+      return std::span<const V>(reinterpret_cast<const V*>(cols[i].data()), rows);
     }
   };
 

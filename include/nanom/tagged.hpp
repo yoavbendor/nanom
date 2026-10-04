@@ -287,7 +287,7 @@ class list {
   }
   /// True for a list made with of() (elements in memory), false for one decoded from the wire.
   constexpr bool          is_source() const { return src_mode_; }
-  constexpr std::span<const E> source() const { return {src_, src_n_}; }
+  constexpr std::span<const E> source() const { return std::span<const E>(src_, src_n_); }
 
   constexpr std::size_t   size()      const { return src_mode_ ? src_n_ : count_; }
   constexpr bool          empty()     const { return size() == 0; }
