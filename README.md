@@ -134,11 +134,24 @@ reflection add-on, then the data-tooling extras:
 
 | header | what | depends on |
 |---|---|---|
-| `nanom/nom.hpp` | **the rust-nom parallel** — `input`/`result`/`Parser`, every combinator (tag/take/alt/many0/preceded/…), binary numbers (`be_u16`…), text numbers (`dec`/`hex`/`float`), bit-level parsing. **Include this alone for the parser-only subset.** | — (self-contained) |
-| `nanom/reflect.hpp` | struct reflection: `fixed_string`, wire types (`be<>`/`ubits<>`), the `describe<T>` seam, `strct<T>()`, `overlay<T>()`/`view<T>` | `nom.hpp` |
+| `nanom/nom.hpp` | **the rust-nom parallel** — `input`/`result`/`Parser`, every combinator (tag/take/alt/many0/preceded/…), binary numbers (`be_u16`…), variable-length integers (`uleb128`/`sleb128`/`zigzag_varint`), hostile-count guards (`count_fits`), little-endian arrays (`le_array<T>`), text numbers (`dec`/`hex`/`float`), bit-level parsing. **Include this alone for the parser-only subset.** | — (self-contained) |
+| `nanom/reflect.hpp` | struct reflection: `fixed_string`, wire types (`be<>`/`ubits<>`), the `describe<T>` seam, `strct<T>()`, `footer<T>()` (trailers), `overlay<T>()`/`view<T>` | `nom.hpp` |
 | `nanom/schema.hpp` | *extra* — `schema_of<T>()`, Arrow format strings, `avro_schema`, `to_json`/`csv_row` | `reflect.hpp` |
 | `nanom/soa.hpp` | *extra* — `soa<T>` columnar (SoA) chunked storage | `schema.hpp` |
 | `nanom/bulk.hpp` | *extra, opt-in* — data-parallel (GPU-ready) SoA scatter | `soa.hpp` |
+| `nanom/tagged.hpp` | *extra* — reflected **tagged messages**: `field<Id, T>` members, the Thrift compact decoder, lazy `list<>`/`lazy<>` views ([docs](docs/TAGGED.md)). Read-only. | `reflect.hpp` |
+| `nanom/protobuf.hpp` | *extra* — **protobuf** (proto3 wire format) for the same `field<Id, T>` structs: `protobuf<M>()`, `pb_sint<>` / `pb_fixed<>`, packed and unpacked repeated, open enums, maps as entry vectors ([docs](docs/PROTOBUF.md)). Read-only. | `tagged.hpp` |
+| `nanom/columnar_encode.hpp` | *extra, write side* — columnar page encoders, each the inverse of a decoder: `pack_bits`, RLE / bit-packed hybrid (values, levels, straight from a bitmap), DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT, DELTA_LENGTH / DELTA_BYTE_ARRAY, dictionary builders, Parquet-ordered statistics ([docs](docs/COLUMNAR.md#encoders)) | `values.hpp` |
+| `nanom/emit.hpp` | *extra, write side* — write fixed-layout described structs: `to_bytes` (constexpr), `emit`, `emit_frame` (header + payload into a sink), binrw-style computed fields (`calc<"len">`, `checksum<"csum">`) and `verify_computed` ([plan](docs/WRITERS.md)) | `reflect.hpp`, `sink.hpp` |
+| `nanom/sink.hpp` | *write side* — byte sinks (`vector_sink`, `span_sink`, `counting_sink`, any `put()`) and `encode_error`, shared by the encoders | `prelude.hpp` |
+| `nanom/tagged_encode.hpp` | *extra, write side* — Thrift compact encoding of the same structs into byte sinks (vector, fixed span, counter, stream), with i32 and sink-overflow checks ([docs](docs/TAGGED.md#writing), [plan](docs/WRITERS.md)) | `tagged.hpp` |
+| `nanom/protobuf_encode.hpp` | *extra, write side* — canonical proto3 encoding into byte sinks: `protobuf_encode(m, sink)`, `protobuf_size(m)`, linear in the message size whatever the nesting ([docs](docs/PROTOBUF.md)) | `protobuf.hpp`, `sink.hpp` |
+| `nanom/columnar.hpp`, `nanom/codec.hpp` | *extra* — page decode kernels (width-specialized bit unpacking, RLE/bit-packed hybrid, DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT) and dependency-free Snappy / LZ4-block decompression ([docs](docs/COLUMNAR.md)) | `nom.hpp` |
+| `nanom/values.hpp` | *extra* — value kernels for columnar readers: bitmaps, Dremel levels and record assembly, null spreading, byte arrays (length-prefixed, DELTA_LENGTH / DELTA_BYTE_ARRAY) into offsets + data, dictionary gathers, UTF-8 validation, decimal widening ([docs](docs/COLUMNAR.md)) | `columnar.hpp` |
+| `nanom/formats/parquet_thrift.hpp` | *format model, opt-in* — Parquet footer / page headers / page index as reflected structs + `read_file_metadata` | `tagged.hpp` |
+| `nanom/formats/lance_protobuf.hpp` | *format model, opt-in* — Lance manifests, schemas, data files, deletion files and column metadata as reflected protobuf messages ([docs](docs/PROTOBUF.md#lance-model)) | `protobuf.hpp` |
+| `nanom/formats/lance_encodings.hpp` | *format model, opt-in* — Lance page encodings: the 2.1+ PageLayout / CompressiveEncoding tree and the 2.0 ArrayEncoding tree, children as `pb_lazy` (decoded on demand, no allocation) ([docs](docs/PROTOBUF.md#lance-model)) | `protobuf.hpp` |
+| `nanom/formats/parquet_values.hpp` | *format, opt-in* — Parquet-only value layouts: INT96 timestamps, dictionary-index framing | `values.hpp` |
 | `nanom/nanom26.hpp`, `nanom/describe_macro.hpp` | the two `describe<T>` providers (C++26 reflection / `NANOM_DESCRIBE` macro), included by `reflect.hpp` | — |
 | `nanom/prelude.hpp` | shared config: std includes, `NANOM_HD`, feature probes | — |
 

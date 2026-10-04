@@ -14,6 +14,7 @@
 //   segmented.hpp parsing over disjoint byte ranges       (scatter-gather input)
 //   schema.hpp    schemas + Arrow/Avro/JSON/CSV emission  (extra)
 //   soa.hpp       columnar Struct-of-Arrays storage       (extra)
+//   tagged.hpp    reflected tagged messages: Thrift compact codec (extra)
 //   bulk.hpp      data-parallel (GPU-ready) scatter        (separate, opt-in)
 //
 // Quick start (see README.md for more copy-paste examples):
@@ -48,5 +49,6 @@
 #include "segmented.hpp" // parsing over disjoint byte ranges (scatter-gather input)
 #include "schema.hpp"    // schema / Arrow / Avro / JSON / CSV
 #include "soa.hpp"       // columnar (SoA) storage
+#include "tagged.hpp"    // reflected tagged messages (Thrift compact; Parquet/Lance metadata)
 
 #endif  // NANOM_HPP_INCLUDED

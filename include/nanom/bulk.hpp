@@ -150,7 +150,7 @@ class bulk_table {
   std::span<const V> column(std::string_view name) const {
     for (std::size_t c = 0; c < columns_.size(); ++c)
       if (columns_[c].name == name)
-        return {reinterpret_cast<const V*>(storage_[c].data()), n_};
+        return std::span<const V>(reinterpret_cast<const V*>(storage_[c].data()), n_);
     return {};
   }
   bytes column_bytes(std::size_t c) const { return {storage_[c].data(), storage_[c].size()}; }
