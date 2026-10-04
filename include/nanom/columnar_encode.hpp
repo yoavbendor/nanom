@@ -225,13 +225,13 @@ inline void delta_binary_packed_encode(std::span<const T> values, std::vector<st
 // 48. BYTE_STREAM_SPLIT and byte-array encodings
 // ---------------------------------------------------------------------------
 
-/// n values of `width` bytes -> `width` streams of n bytes (byte k of every value, then k + 1 …).
-inline void byte_stream_split_encode(std::span<const std::byte> in, std::size_t width, std::size_t n,
-                                     std::vector<std::byte>& out) {
-  if (width == 0 || n == 0 || in.size() / width < n) return;
-  const std::size_t base = out.size();
-  out.resize(base + n * width);
-  std::byte* dst = out.data() + base;
+/// n values of `width` bytes -> `width` streams of n bytes (byte k of every value, then k + 1 …),
+/// written into `out`. False, writing nothing, when `in` or `out` is shorter than n * width.
+inline bool byte_stream_split_encode(std::span<const std::byte> in, std::size_t width, std::size_t n,
+                                     std::span<std::byte> out) {
+  if (width == 0 || n > std::numeric_limits<std::size_t>::max() / width) return false;
+  if (in.size() < n * width || out.size() < n * width) return false;
+  std::byte* dst = out.data();
   const std::byte* src = in.data();
   if (width == 4) {
     for (std::size_t i = 0; i < n; ++i) {
@@ -244,6 +244,16 @@ inline void byte_stream_split_encode(std::span<const std::byte> in, std::size_t 
     for (std::size_t b = 0; b < width; ++b)
       for (std::size_t i = 0; i < n; ++i) dst[b * n + i] = src[width * i + b];
   }
+  return true;
+}
+
+/// The same, appended to `out`.
+inline void byte_stream_split_encode(std::span<const std::byte> in, std::size_t width, std::size_t n,
+                                     std::vector<std::byte>& out) {
+  if (width == 0 || n == 0 || in.size() / width < n) return;
+  const std::size_t base = out.size();
+  out.resize(base + n * width);
+  (void)byte_stream_split_encode(in, width, n, std::span<std::byte>(out.data() + base, n * width));
 }
 
 /// DELTA_LENGTH_BYTE_ARRAY: the lengths (DELTA_BINARY_PACKED int32), then the bytes back to back.

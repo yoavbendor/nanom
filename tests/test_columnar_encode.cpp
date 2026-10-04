@@ -10,6 +10,7 @@
 //   delta_length / delta_prefix -> delta_length_views / delta_prefix_views
 //   dictionaries         indices map back to the values; -0.0 / +0.0 and NaN payloads stay apart
 //   statistics           against a naive scan; Parquet's float rules
+#include <algorithm>
 #include <nanom/columnar_encode.hpp>
 
 #include <cmath>
@@ -175,6 +176,17 @@ static void test_bss(std::mt19937_64& rng) {
     CHECK(enc.size() == n * width);
     CHECK(n == 0 || col::byte_stream_split(enc, width, n, back));
     CHECK(back == in);
+    // Into a caller's buffer: the same bytes, and a short input or output is refused untouched.
+    bytes_v into(n * width, std::byte{0x5a});
+    CHECK(col::byte_stream_split_encode(in, width, n, std::span<std::byte>(into)));
+    CHECK(into == enc);
+    if (n > 0) {
+      bytes_v short_out(n * width - 1, std::byte{0x5a});
+      CHECK(!col::byte_stream_split_encode(in, width, n, std::span<std::byte>(short_out)));
+      CHECK(std::all_of(short_out.begin(), short_out.end(), [](std::byte b) { return b == std::byte{0x5a}; }));
+      CHECK(!col::byte_stream_split_encode(std::span<const std::byte>(in).first(n * width - 1), width, n,
+                                           std::span<std::byte>(into)));
+    }
   }
 }
 
