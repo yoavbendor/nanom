@@ -28,8 +28,8 @@ var NAVTREE =
     [ "Namespaces", "namespaces.html", [
       [ "Namespace List", "namespaces.html", "namespaces_dup" ],
       [ "Namespace Members", "namespacemembers.html", [
-        [ "All", "namespacemembers.html", null ],
-        [ "Functions", "namespacemembers_func.html", null ],
+        [ "All", "namespacemembers.html", "namespacemembers_dup" ],
+        [ "Functions", "namespacemembers_func.html", "namespacemembers_func" ],
         [ "Variables", "namespacemembers_vars.html", null ],
         [ "Typedefs", "namespacemembers_type.html", null ],
         [ "Enumerations", "namespacemembers_enum.html", null ]
@@ -40,9 +40,9 @@ var NAVTREE =
       [ "Class List", "annotated.html", "annotated_dup" ],
       [ "Class Index", "classes.html", null ],
       [ "Class Members", "functions.html", [
-        [ "All", "functions.html", null ],
+        [ "All", "functions.html", "functions_dup" ],
         [ "Functions", "functions_func.html", null ],
-        [ "Variables", "functions_vars.html", null ],
+        [ "Variables", "functions_vars.html", "functions_vars" ],
         [ "Typedefs", "functions_type.html", null ],
         [ "Related Symbols", "functions_rela.html", null ]
       ] ]
@@ -60,9 +60,16 @@ var NAVTREE =
 var NAVTREEINDEX =
 [
 "annotated.html",
-"namespacenanom.html#a5ac05598ae555f4012fce6644c7a4bd6",
-"nom_8hpp.html#ab4d8fceb38f3b2a1362467f5ed2177ef",
-"structnanom_1_1par__exec.html"
+"classnanom_1_1segments.html#ae91d2e82e34bc2bbfacc25783a9207a4",
+"namespacemembers_func_v.html",
+"namespacenanom.html#af731ff1d3ae530ed4c92d0c6851c6bcd",
+"nom_8hpp.html#a77fa5ceb3e0eeac187f9fc96ca435f9d",
+"segmented_8hpp.html#af5d47bce601abd7ea0cae5358b5385c6",
+"structnanom_1_1input.html#a6f105effdf5c9ead96ba44d48c283d4b",
+"structnanom__formats_1_1lance_1_1Bitpacked20.html",
+"structnanom__formats_1_1lance_1_1FullZipLayout.html#af79e2ddc656fc2cfd0a475f711db3b5b",
+"structnanom__formats_1_1parquet_1_1ColumnMetaData.html",
+"structnanom__formats_1_1parquet_1_1TimeUnit.html#a7008ab38de407b529bae5cc7366e63a9"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

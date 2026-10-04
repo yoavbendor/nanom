@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['le_0',['le',['../namespacenanom.html#a1bc4fb4ecfebd272419a2cb269c60d9f',1,'nanom']]]
+  ['column_5finfo_0',['column_info',['../classnanom_1_1bulk__table.html#a6c247ad028be2b997a71be6341c58b35',1,'nanom::bulk_table']]]
 ];

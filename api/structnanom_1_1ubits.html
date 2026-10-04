@@ -132,7 +132,7 @@ Static Public Attributes</h2></td></tr>
 <div class="textblock"><div class="compoundTemplParams">template&lt;unsigned N, <a class="el" href="namespacenanom.html#aa6d0e66bd0d3ab9431dc56579fc7d9f1">bit_order</a> O = bit_order::msb0&gt;<br />
 requires (N &gt;= 1 &amp;&amp; N &lt;= 64)<br />
 struct nanom::ubits&lt; N, O &gt;</div><p>ubits&lt;N&gt; / ibits&lt;N&gt; — an N-bit unsigned/signed field. </p>
-<p>Consecutive bit fields in a described struct are packed together; each run must end on a byte boundary (checked at compile time). Default bit order is msb0 (network); pass <a class="el" href="namespacenanom.html#aa6d0e66bd0d3ab9431dc56579fc7d9f1a25a72328b656e43fd71e9b6da13bfeab">bit_order::lsb0</a> for LSB-first register layouts. Orders may be mixed field-by-field. </p>
+<p>Consecutive bit fields in a described struct are packed together; each run must end on a byte boundary (checked at compile time). Default bit order is msb0 (network); pass <a class="el" href="namespacenanom.html#aa6d0e66bd0d3ab9431dc56579fc7d9f1a25a72328b656e43fd71e9b6da13bfeab">bit_order::lsb0</a> for LSB-first register layouts. Orders may be mixed between runs, but no byte may hold bits of both orders (msb0 fills a byte from the top, lsb0 from the bottom; a compile-time check enforces it). </p>
 </div><h2 class="groupheader">Member Typedef Documentation</h2>
 <a id="a62eba36283f14f3ccf1f12f2a4b568a0" name="a62eba36283f14f3ccf1f12f2a4b568a0"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a62eba36283f14f3ccf1f12f2a4b568a0">&#9670;&#160;</a></span>value_type</h2>

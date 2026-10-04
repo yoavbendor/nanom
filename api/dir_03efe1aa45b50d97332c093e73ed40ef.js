@@ -1,14 +1,25 @@
 var dir_03efe1aa45b50d97332c093e73ed40ef =
 [
+    [ "formats", "dir_33181c670b734b218c6d10227f46fec9.html", "dir_33181c670b734b218c6d10227f46fec9" ],
     [ "bulk.hpp", "bulk_8hpp.html", "bulk_8hpp" ],
+    [ "codec.hpp", "codec_8hpp.html", "codec_8hpp" ],
+    [ "columnar.hpp", "columnar_8hpp.html", "columnar_8hpp" ],
+    [ "columnar_encode.hpp", "columnar__encode_8hpp.html", "columnar__encode_8hpp" ],
     [ "describe_macro.hpp", "describe__macro_8hpp.html", "describe__macro_8hpp" ],
+    [ "emit.hpp", "emit_8hpp.html", "emit_8hpp" ],
     [ "generation.hpp", "generation_8hpp.html", null ],
     [ "nanom.hpp", "nanom_8hpp.html", null ],
     [ "nanom26.hpp", "nanom26_8hpp.html", null ],
     [ "nom.hpp", "nom_8hpp.html", "nom_8hpp" ],
     [ "prelude.hpp", "prelude_8hpp.html", "prelude_8hpp" ],
+    [ "protobuf.hpp", "protobuf_8hpp.html", "protobuf_8hpp" ],
+    [ "protobuf_encode.hpp", "protobuf__encode_8hpp.html", "protobuf__encode_8hpp" ],
     [ "reflect.hpp", "reflect_8hpp.html", "reflect_8hpp" ],
     [ "schema.hpp", "schema_8hpp.html", "schema_8hpp" ],
     [ "segmented.hpp", "segmented_8hpp.html", "segmented_8hpp" ],
-    [ "soa.hpp", "soa_8hpp.html", "soa_8hpp" ]
+    [ "sink.hpp", "sink_8hpp.html", "sink_8hpp" ],
+    [ "soa.hpp", "soa_8hpp.html", "soa_8hpp" ],
+    [ "tagged.hpp", "tagged_8hpp.html", "tagged_8hpp" ],
+    [ "tagged_encode.hpp", "tagged__encode_8hpp.html", "tagged__encode_8hpp" ],
+    [ "values.hpp", "values_8hpp.html", "values_8hpp" ]
 ];

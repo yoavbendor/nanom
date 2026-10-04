@@ -1,6 +1,26 @@
 var searchData=
 [
-  ['fields_0',['fields',['../structnanom_1_1schema__node.html#a9990b179c64157b1606cae8065bcdc40',1,'nanom::schema_node']]],
-  ['first_1',['first',['../structnanom_1_1input.html#a6f105effdf5c9ead96ba44d48c283d4b',1,'nanom::input']]],
-  ['float_5f_2',['float_',['../namespacenanom.html#abe7881d609370cb82bcc15f22608a963',1,'nanom']]]
+  ['field_0',['field',['../structnanom_1_1encode__error.html#a55d235cf1c13f38cc5c1d6802ac2bd81',1,'nanom::encode_error']]],
+  ['field_5fid_1',['field_id',['../structnanom__formats_1_1parquet_1_1SchemaElement.html#a0685d82464c05b8b29dfa30f894200bd',1,'nanom_formats::parquet::SchemaElement']]],
+  ['fields_2',['fields',['../structnanom_1_1computed.html#ad279cd60591d71f94fa9f92f80804d8a',1,'nanom::computed::fields'],['../structnanom__formats_1_1lance_1_1Schema.html#a09b664e8a832c46c05683c86f0d98dbf',1,'nanom_formats::lance::Schema::fields'],['../structnanom__formats_1_1lance_1_1DataFile.html#ad0dcd161d2d414f062e2c2a16cefef3e',1,'nanom_formats::lance::DataFile::fields'],['../structnanom__formats_1_1lance_1_1Manifest.html#a690057fe95d82f1686267258a556584b',1,'nanom_formats::lance::Manifest::fields'],['../structnanom__formats_1_1lance_1_1IndexMetadata.html#a18e0e7c49786c4aeeb4d56ac1190924c',1,'nanom_formats::lance::IndexMetadata::fields'],['../structnanom_1_1schema__node.html#a9990b179c64157b1606cae8065bcdc40',1,'nanom::schema_node::fields']]],
+  ['file_5fformat_3',['file_format',['../structnanom__formats_1_1lance_1_1DataStorageFormat.html#ac46b88c8e8a6ff7516e091d1827c548c',1,'nanom_formats::lance::DataStorageFormat']]],
+  ['file_5fmajor_5fversion_4',['file_major_version',['../structnanom__formats_1_1lance_1_1DataFile.html#aaaeb76076e96f911be07ac23e1e87991',1,'nanom_formats::lance::DataFile']]],
+  ['file_5fminor_5fversion_5',['file_minor_version',['../structnanom__formats_1_1lance_1_1DataFile.html#a791932678167e38c7a4662c9cb5a3a30',1,'nanom_formats::lance::DataFile']]],
+  ['file_5foffset_6',['file_offset',['../structnanom__formats_1_1parquet_1_1ColumnChunk.html#a6987b285bd2e071f68d74a9157f35ee4',1,'nanom_formats::parquet::ColumnChunk::file_offset'],['../structnanom__formats_1_1parquet_1_1RowGroup.html#a027d402ffb629d2b37e48f099d0a171f',1,'nanom_formats::parquet::RowGroup::file_offset']]],
+  ['file_5fpath_7',['file_path',['../structnanom__formats_1_1parquet_1_1ColumnChunk.html#a61360fba57788957e9d33ec7329dcc51',1,'nanom_formats::parquet::ColumnChunk']]],
+  ['file_5fsize_5fbytes_8',['file_size_bytes',['../structnanom__formats_1_1lance_1_1DataFile.html#a67b039a06551a6575af85d25e8a1ed4d',1,'nanom_formats::lance::DataFile']]],
+  ['file_5ftype_9',['file_type',['../structnanom__formats_1_1lance_1_1DeletionFile.html#a6bec71521ee37def13b06fa5ab69deb3',1,'nanom_formats::lance::DeletionFile']]],
+  ['files_10',['files',['../structnanom__formats_1_1lance_1_1IndexMetadata.html#aa2c9863b9b1e2a3cf514eda581807a56',1,'nanom_formats::lance::IndexMetadata::files'],['../structnanom__formats_1_1lance_1_1DataFragment.html#a628981fe821b6efde83b0f4ee2dd6d02',1,'nanom_formats::lance::DataFragment::files']]],
+  ['first_11',['first',['../structnanom_1_1input.html#a6f105effdf5c9ead96ba44d48c283d4b',1,'nanom::input']]],
+  ['first_5frow_5findex_12',['first_row_index',['../structnanom__formats_1_1parquet_1_1PageLocation.html#a6844a26003cd1678fbdb46ea22746d83',1,'nanom_formats::parquet::PageLocation']]],
+  ['fixed_5fsize_5fbinary_13',['fixed_size_binary',['../structnanom__formats_1_1lance_1_1ArrayEncoding.html#a1b7ae1113e89b2ecce046fcbb6ff8bb8',1,'nanom_formats::lance::ArrayEncoding']]],
+  ['fixed_5fsize_5flist_14',['fixed_size_list',['../structnanom__formats_1_1lance_1_1CompressiveEncoding.html#a6620a5aaf4c1d2c7568d04af41ec2f27',1,'nanom_formats::lance::CompressiveEncoding::fixed_size_list'],['../structnanom__formats_1_1lance_1_1ArrayEncoding.html#a55896a750772a79c8394631f9c78b453',1,'nanom_formats::lance::ArrayEncoding::fixed_size_list']]],
+  ['flat_15',['flat',['../structnanom__formats_1_1lance_1_1CompressiveEncoding.html#a487d5e89e9bcc57ba832628ae3679ba8',1,'nanom_formats::lance::CompressiveEncoding::flat'],['../structnanom__formats_1_1lance_1_1ArrayEncoding.html#a6fb4f7ee5b57d2761c9562aaf8d03748',1,'nanom_formats::lance::ArrayEncoding::flat']]],
+  ['float16_16',['FLOAT16',['../structnanom__formats_1_1parquet_1_1LogicalType.html#a5fc138db31c0181af449f2f2947f015f',1,'nanom_formats::parquet::LogicalType']]],
+  ['float_5f_17',['float_',['../namespacenanom.html#abe7881d609370cb82bcc15f22608a963',1,'nanom']]],
+  ['fn_18',['fn',['../structnanom_1_1calc__t.html#a4e51fd03b8ed3776d69f456d8ad7acb3',1,'nanom::calc_t::fn'],['../structnanom_1_1checksum__t.html#ac62f62c22ade5d1af3e66d32b963e4d3',1,'nanom::checksum_t::fn']]],
+  ['fragment_5fbitmap_19',['fragment_bitmap',['../structnanom__formats_1_1lance_1_1IndexMetadata.html#abcbfa22e0007697eec41c5f2ddd6ab48',1,'nanom_formats::lance::IndexMetadata']]],
+  ['fragments_20',['fragments',['../structnanom__formats_1_1lance_1_1Manifest.html#a80d2aa9d5a331f9aacd8f1f88cc75f11',1,'nanom_formats::lance::Manifest']]],
+  ['fsst_21',['fsst',['../structnanom__formats_1_1lance_1_1CompressiveEncoding.html#a871464bacee1ba3aa354f8f2553ba961',1,'nanom_formats::lance::CompressiveEncoding::fsst'],['../structnanom__formats_1_1lance_1_1ArrayEncoding.html#a96512d3c0e985c1cec90f9d34b295d69',1,'nanom_formats::lance::ArrayEncoding::fsst']]],
+  ['full_5fzip_5flayout_22',['full_zip_layout',['../structnanom__formats_1_1lance_1_1PageLayout.html#a7da7d3f535f855dd75082d976474a6ef',1,'nanom_formats::lance::PageLayout']]]
 ];

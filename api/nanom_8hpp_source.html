@@ -115,48 +115,51 @@ $(document).ready(function(){initNavTree('nanom_8hpp_source.html',''); initResiz
 <div class="line"><a id="l00014" name="l00014"></a><span class="lineno">   14</span><span class="comment">//   segmented.hpp parsing over disjoint byte ranges       (scatter-gather input)</span></div>
 <div class="line"><a id="l00015" name="l00015"></a><span class="lineno">   15</span><span class="comment">//   schema.hpp    schemas + Arrow/Avro/JSON/CSV emission  (extra)</span></div>
 <div class="line"><a id="l00016" name="l00016"></a><span class="lineno">   16</span><span class="comment">//   soa.hpp       columnar Struct-of-Arrays storage       (extra)</span></div>
-<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="comment">//   bulk.hpp      data-parallel (GPU-ready) scatter        (separate, opt-in)</span></div>
-<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span><span class="comment">//</span></div>
-<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><span class="comment">// Quick start (see README.md for more copy-paste examples):</span></div>
-<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span><span class="comment">//</span></div>
-<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="comment">//   #include &lt;nanom/nanom.hpp&gt;</span></div>
-<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span><span class="comment">//   namespace nm = nanom;</span></div>
-<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="comment">//</span></div>
-<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="comment">//   struct eth_hdr {</span></div>
-<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span><span class="comment">//     std::array&lt;std::uint8_t,6&gt; dst, src;</span></div>
-<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="comment">//     nm::be&lt;std::uint16_t&gt;      eth_type;</span></div>
-<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span><span class="comment">//   };</span></div>
-<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="comment">//   NANOM_DESCRIBE(eth_hdr, dst, src, eth_type);   // (optional under C++26 reflection)</span></div>
-<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="comment">//</span></div>
-<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="comment">//   nm::input in = nm::from(buffer);</span></div>
-<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span><span class="comment">//   auto r = nm::strct&lt;eth_hdr&gt;()(in);              // parse by value</span></div>
-<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="comment">//   if (!r) { std::puts(r.error().render(in).c_str()); return; }</span></div>
-<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span><span class="comment">//   std::uint16_t t = r-&gt;value.eth_type;            // decoded, host order</span></div>
-<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="comment">//   nm::input rest = r-&gt;rest;                       // zero-copy remainder</span></div>
-<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span><span class="comment">//</span></div>
-<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span><span class="comment">// Everything a rust-nom user knows exists under the same name (see</span></div>
-<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span><span class="comment">// docs/CHEATSHEET.md): tag, take, take_while1, alt, opt, many0, preceded,</span></div>
-<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span><span class="comment">// delimited, separated_list0, length_data, map, verify, cut, context, be_u16…</span></div>
-<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="comment">//</span></div>
-<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span><span class="comment">// SPDX-License-Identifier: Apache-2.0</span></div>
-<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span><span class="comment">// ============================================================================</span></div>
-<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span><span class="preprocessor">#ifndef NANOM_HPP_INCLUDED</span></div>
-<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span><span class="preprocessor">#define NANOM_HPP_INCLUDED</span></div>
-<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span> </div>
-<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span><span class="preprocessor">#include &quot;<a class="code" href="prelude_8hpp.html">prelude.hpp</a>&quot;</span>   <span class="comment">// shared config (includes, NANOM_HD, feature probes)</span></div>
-<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="preprocessor">#include &quot;<a class="code" href="nom_8hpp.html">nom.hpp</a>&quot;</span>       <span class="comment">// the nom-parallel parser (core + combinators + numbers + bits)</span></div>
-<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><span class="preprocessor">#include &quot;<a class="code" href="reflect_8hpp.html">reflect.hpp</a>&quot;</span>   <span class="comment">// struct reflection + strct&lt;&gt;/overlay&lt;&gt; (pulls in the describe&lt;T&gt; providers)</span></div>
-<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span><span class="preprocessor">#include &quot;<a class="code" href="segmented_8hpp.html">segmented.hpp</a>&quot;</span> <span class="comment">// parsing over disjoint byte ranges (scatter-gather input)</span></div>
-<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span><span class="preprocessor">#include &quot;<a class="code" href="schema_8hpp.html">schema.hpp</a>&quot;</span>    <span class="comment">// schema / Arrow / Avro / JSON / CSV</span></div>
-<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span><span class="preprocessor">#include &quot;<a class="code" href="soa_8hpp.html">soa.hpp</a>&quot;</span>       <span class="comment">// columnar (SoA) storage</span></div>
-<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span> </div>
-<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span><span class="preprocessor">#endif  </span><span class="comment">// NANOM_HPP_INCLUDED</span></div>
+<div class="line"><a id="l00017" name="l00017"></a><span class="lineno">   17</span><span class="comment">//   tagged.hpp    reflected tagged messages: Thrift compact codec (extra)</span></div>
+<div class="line"><a id="l00018" name="l00018"></a><span class="lineno">   18</span><span class="comment">//   bulk.hpp      data-parallel (GPU-ready) scatter        (separate, opt-in)</span></div>
+<div class="line"><a id="l00019" name="l00019"></a><span class="lineno">   19</span><span class="comment">//</span></div>
+<div class="line"><a id="l00020" name="l00020"></a><span class="lineno">   20</span><span class="comment">// Quick start (see README.md for more copy-paste examples):</span></div>
+<div class="line"><a id="l00021" name="l00021"></a><span class="lineno">   21</span><span class="comment">//</span></div>
+<div class="line"><a id="l00022" name="l00022"></a><span class="lineno">   22</span><span class="comment">//   #include &lt;nanom/nanom.hpp&gt;</span></div>
+<div class="line"><a id="l00023" name="l00023"></a><span class="lineno">   23</span><span class="comment">//   namespace nm = nanom;</span></div>
+<div class="line"><a id="l00024" name="l00024"></a><span class="lineno">   24</span><span class="comment">//</span></div>
+<div class="line"><a id="l00025" name="l00025"></a><span class="lineno">   25</span><span class="comment">//   struct eth_hdr {</span></div>
+<div class="line"><a id="l00026" name="l00026"></a><span class="lineno">   26</span><span class="comment">//     std::array&lt;std::uint8_t,6&gt; dst, src;</span></div>
+<div class="line"><a id="l00027" name="l00027"></a><span class="lineno">   27</span><span class="comment">//     nm::be&lt;std::uint16_t&gt;      eth_type;</span></div>
+<div class="line"><a id="l00028" name="l00028"></a><span class="lineno">   28</span><span class="comment">//   };</span></div>
+<div class="line"><a id="l00029" name="l00029"></a><span class="lineno">   29</span><span class="comment">//   NANOM_DESCRIBE(eth_hdr, dst, src, eth_type);   // (optional under C++26 reflection)</span></div>
+<div class="line"><a id="l00030" name="l00030"></a><span class="lineno">   30</span><span class="comment">//</span></div>
+<div class="line"><a id="l00031" name="l00031"></a><span class="lineno">   31</span><span class="comment">//   nm::input in = nm::from(buffer);</span></div>
+<div class="line"><a id="l00032" name="l00032"></a><span class="lineno">   32</span><span class="comment">//   auto r = nm::strct&lt;eth_hdr&gt;()(in);              // parse by value</span></div>
+<div class="line"><a id="l00033" name="l00033"></a><span class="lineno">   33</span><span class="comment">//   if (!r) { std::puts(r.error().render(in).c_str()); return; }</span></div>
+<div class="line"><a id="l00034" name="l00034"></a><span class="lineno">   34</span><span class="comment">//   std::uint16_t t = r-&gt;value.eth_type;            // decoded, host order</span></div>
+<div class="line"><a id="l00035" name="l00035"></a><span class="lineno">   35</span><span class="comment">//   nm::input rest = r-&gt;rest;                       // zero-copy remainder</span></div>
+<div class="line"><a id="l00036" name="l00036"></a><span class="lineno">   36</span><span class="comment">//</span></div>
+<div class="line"><a id="l00037" name="l00037"></a><span class="lineno">   37</span><span class="comment">// Everything a rust-nom user knows exists under the same name (see</span></div>
+<div class="line"><a id="l00038" name="l00038"></a><span class="lineno">   38</span><span class="comment">// docs/CHEATSHEET.md): tag, take, take_while1, alt, opt, many0, preceded,</span></div>
+<div class="line"><a id="l00039" name="l00039"></a><span class="lineno">   39</span><span class="comment">// delimited, separated_list0, length_data, map, verify, cut, context, be_u16…</span></div>
+<div class="line"><a id="l00040" name="l00040"></a><span class="lineno">   40</span><span class="comment">//</span></div>
+<div class="line"><a id="l00041" name="l00041"></a><span class="lineno">   41</span><span class="comment">// SPDX-License-Identifier: Apache-2.0</span></div>
+<div class="line"><a id="l00042" name="l00042"></a><span class="lineno">   42</span><span class="comment">// ============================================================================</span></div>
+<div class="line"><a id="l00043" name="l00043"></a><span class="lineno">   43</span><span class="preprocessor">#ifndef NANOM_HPP_INCLUDED</span></div>
+<div class="line"><a id="l00044" name="l00044"></a><span class="lineno">   44</span><span class="preprocessor">#define NANOM_HPP_INCLUDED</span></div>
+<div class="line"><a id="l00045" name="l00045"></a><span class="lineno">   45</span> </div>
+<div class="line"><a id="l00046" name="l00046"></a><span class="lineno">   46</span><span class="preprocessor">#include &quot;<a class="code" href="prelude_8hpp.html">prelude.hpp</a>&quot;</span>   <span class="comment">// shared config (includes, NANOM_HD, feature probes)</span></div>
+<div class="line"><a id="l00047" name="l00047"></a><span class="lineno">   47</span><span class="preprocessor">#include &quot;<a class="code" href="nom_8hpp.html">nom.hpp</a>&quot;</span>       <span class="comment">// the nom-parallel parser (core + combinators + numbers + bits)</span></div>
+<div class="line"><a id="l00048" name="l00048"></a><span class="lineno">   48</span><span class="preprocessor">#include &quot;<a class="code" href="reflect_8hpp.html">reflect.hpp</a>&quot;</span>   <span class="comment">// struct reflection + strct&lt;&gt;/overlay&lt;&gt; (pulls in the describe&lt;T&gt; providers)</span></div>
+<div class="line"><a id="l00049" name="l00049"></a><span class="lineno">   49</span><span class="preprocessor">#include &quot;<a class="code" href="segmented_8hpp.html">segmented.hpp</a>&quot;</span> <span class="comment">// parsing over disjoint byte ranges (scatter-gather input)</span></div>
+<div class="line"><a id="l00050" name="l00050"></a><span class="lineno">   50</span><span class="preprocessor">#include &quot;<a class="code" href="schema_8hpp.html">schema.hpp</a>&quot;</span>    <span class="comment">// schema / Arrow / Avro / JSON / CSV</span></div>
+<div class="line"><a id="l00051" name="l00051"></a><span class="lineno">   51</span><span class="preprocessor">#include &quot;<a class="code" href="soa_8hpp.html">soa.hpp</a>&quot;</span>       <span class="comment">// columnar (SoA) storage</span></div>
+<div class="line"><a id="l00052" name="l00052"></a><span class="lineno">   52</span><span class="preprocessor">#include &quot;<a class="code" href="tagged_8hpp.html">tagged.hpp</a>&quot;</span>    <span class="comment">// reflected tagged messages (Thrift compact; Parquet/Lance metadata)</span></div>
+<div class="line"><a id="l00053" name="l00053"></a><span class="lineno">   53</span> </div>
+<div class="line"><a id="l00054" name="l00054"></a><span class="lineno">   54</span><span class="preprocessor">#endif  </span><span class="comment">// NANOM_HPP_INCLUDED</span></div>
 <div class="ttc" id="anom_8hpp_html"><div class="ttname"><a href="nom_8hpp.html">nom.hpp</a></div></div>
 <div class="ttc" id="aprelude_8hpp_html"><div class="ttname"><a href="prelude_8hpp.html">prelude.hpp</a></div></div>
 <div class="ttc" id="areflect_8hpp_html"><div class="ttname"><a href="reflect_8hpp.html">reflect.hpp</a></div></div>
 <div class="ttc" id="aschema_8hpp_html"><div class="ttname"><a href="schema_8hpp.html">schema.hpp</a></div></div>
 <div class="ttc" id="asegmented_8hpp_html"><div class="ttname"><a href="segmented_8hpp.html">segmented.hpp</a></div></div>
 <div class="ttc" id="asoa_8hpp_html"><div class="ttname"><a href="soa_8hpp.html">soa.hpp</a></div></div>
+<div class="ttc" id="atagged_8hpp_html"><div class="ttname"><a href="tagged_8hpp.html">tagged.hpp</a></div></div>
 </div><!-- fragment --></div><!-- contents -->
 </div><!-- doc-content -->
 <!-- start footer part -->

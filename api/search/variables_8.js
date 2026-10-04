@@ -1,4 +1,26 @@
 var searchData=
 [
-  ['kind_0',['kind',['../structnanom_1_1error.html#afa24bdd3f33aa619b4a81fb7be4ddd41',1,'nanom::error::kind'],['../structnanom_1_1schema__field.html#a30b9044d42ac9a190ca6516db5a1eaab',1,'nanom::schema_field::kind'],['../structnanom_1_1soa_1_1column__info.html#a61e2708f24d362ee8163ccc05aa2d2ff',1,'nanom::soa::column_info::kind']]]
+  ['i8_0',['i8',['../namespacenanom.html#a56489ab13d93002b7a19005cdee7284d',1,'nanom']]],
+  ['id_1',['id',['../structnanom__formats_1_1lance_1_1DeletionFile.html#aed0eaf5b4dfffad314e793c771b08e83',1,'nanom_formats::lance::DeletionFile::id'],['../structnanom__formats_1_1lance_1_1Field.html#a602e27677643e0bc9d25e984ad44a342',1,'nanom_formats::lance::Field::id'],['../structnanom_1_1field.html#a33a9bff54c11dd981a1491dc50b20193',1,'nanom::field::id'],['../structnanom__formats_1_1lance_1_1DataFragment.html#a8f03772352988e2c41dfed0b62464c88',1,'nanom_formats::lance::DataFragment::id']]],
+  ['in_2',['in',['../structnanom_1_1bit__input.html#add8089a5d4b3667dd6b5682dc8579696',1,'nanom::bit_input']]],
+  ['index_5fdetails_3',['index_details',['../structnanom__formats_1_1lance_1_1IndexMetadata.html#a5f7a8a124d47a02404b45d5bd767cf16',1,'nanom_formats::lance::IndexMetadata']]],
+  ['index_5fpage_5fheader_4',['index_page_header',['../structnanom__formats_1_1parquet_1_1PageHeader.html#afc82459eedfa6a0dd187ad72a1081b01',1,'nanom_formats::parquet::PageHeader']]],
+  ['index_5fpage_5foffset_5',['index_page_offset',['../structnanom__formats_1_1parquet_1_1ColumnMetaData.html#a333033d1f73dbaafd515707d7a00b6f7',1,'nanom_formats::parquet::ColumnMetaData']]],
+  ['index_5fsection_6',['index_section',['../structnanom__formats_1_1lance_1_1Manifest.html#ae1e850487cd9051cb4e2f7a5f0d27fdb',1,'nanom_formats::lance::Manifest']]],
+  ['index_5fversion_7',['index_version',['../structnanom__formats_1_1lance_1_1IndexMetadata.html#aeb53a000bc1ac4e3ce5e1f9d2a8274e5',1,'nanom_formats::lance::IndexMetadata']]],
+  ['indices_8',['indices',['../structnanom__formats_1_1lance_1_1Binary.html#ac11c16d51799cd0c32732cc802a61ecb',1,'nanom_formats::lance::Binary::indices'],['../structnanom__formats_1_1lance_1_1Dictionary20.html#a98197e6b9fcb8acf053ebeba8b445fb9',1,'nanom_formats::lance::Dictionary20::indices'],['../structnanom__formats_1_1lance_1_1IndexSection.html#a1a84cce5fc516db30785c430a2418db6',1,'nanom_formats::lance::IndexSection::indices']]],
+  ['inline_5fbitpacking_9',['inline_bitpacking',['../structnanom__formats_1_1lance_1_1CompressiveEncoding.html#a4910019aaef0940e8f22699aa248f5c8',1,'nanom_formats::lance::CompressiveEncoding']]],
+  ['inline_5fvalue_10',['inline_value',['../structnanom__formats_1_1lance_1_1ConstantLayout.html#a96556ecf545642d2622e4ebba7a42aed',1,'nanom_formats::lance::ConstantLayout']]],
+  ['inner_11',['inner',['../structnanom__formats_1_1lance_1_1PackedStruct.html#a1ad8ffc5224ee796869679852a786467',1,'nanom_formats::lance::PackedStruct']]],
+  ['input_5fadvance_5fvalidates_5fbounds_12',['input_advance_validates_bounds',['../namespacenanom.html#abf8c724a05240326602043c5f1d4222f',1,'nanom']]],
+  ['input_5fsubscript_5fis_5fbounds_5fchecked_13',['input_subscript_is_bounds_checked',['../namespacenanom.html#a479ec03c37d4d9cc1671e3cdc6340275',1,'nanom']]],
+  ['integer_14',['INTEGER',['../structnanom__formats_1_1parquet_1_1LogicalType.html#a15dc94b07804bdbd50dfcc27225651c9',1,'nanom_formats::parquet::LogicalType']]],
+  ['is_5fcompressed_15',['is_compressed',['../structnanom__formats_1_1parquet_1_1DataPageHeaderV2.html#a61fd21fd3da3ea6cadb011d8e903f3f9',1,'nanom_formats::parquet::DataPageHeaderV2']]],
+  ['is_5fmax_5fvalue_5fexact_16',['is_max_value_exact',['../structnanom__formats_1_1parquet_1_1Statistics.html#ad96b51187d200be37ed97082906f6d8a',1,'nanom_formats::parquet::Statistics']]],
+  ['is_5fmin_5fvalue_5fexact_17',['is_min_value_exact',['../structnanom__formats_1_1parquet_1_1Statistics.html#a7250618fbe7ef8c684b23abe0dfea452',1,'nanom_formats::parquet::Statistics']]],
+  ['is_5fsorted_18',['is_sorted',['../structnanom__formats_1_1parquet_1_1DictionaryPageHeader.html#a123171c5810513d732605df971a93fcc',1,'nanom_formats::parquet::DictionaryPageHeader']]],
+  ['isadjustedtoutc_19',['isadjustedtoutc',['../structnanom__formats_1_1parquet_1_1TimestampType.html#a6707e97e0c0037981835c23739739ff9',1,'nanom_formats::parquet::TimestampType::isAdjustedToUTC'],['../structnanom__formats_1_1parquet_1_1TimeType.html#a5962a839832d65f8ee12cc26b068593c',1,'nanom_formats::parquet::TimeType::isAdjustedToUTC']]],
+  ['issigned_20',['isSigned',['../structnanom__formats_1_1parquet_1_1IntType.html#a846e5f6b4aa9c15416df8bf70128cf80',1,'nanom_formats::parquet::IntType']]],
+  ['items_21',['items',['../structnanom__formats_1_1lance_1_1FixedSizeList20.html#a8af7bafdb54a70d8212dfd00cc9c702a',1,'nanom_formats::lance::FixedSizeList20::items'],['../structnanom__formats_1_1lance_1_1Dictionary20.html#a228cf7d3680d61982acdf2b4a10e630d',1,'nanom_formats::lance::Dictionary20::items']]],
+  ['items_5fper_5fvalue_22',['items_per_value',['../structnanom__formats_1_1lance_1_1FixedSizeList21.html#a22ce8ea762c86f2ce04f331c6e5304cb',1,'nanom_formats::lance::FixedSizeList21']]]
 ];

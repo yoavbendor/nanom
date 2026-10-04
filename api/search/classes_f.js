@@ -1,0 +1,22 @@
+var searchData=
+[
+  ['schema_0',['Schema',['../structnanom__formats_1_1lance_1_1Schema.html',1,'nanom_formats::lance']]],
+  ['schema_5ffield_1',['schema_field',['../structnanom_1_1schema__field.html',1,'nanom']]],
+  ['schema_5fnode_2',['schema_node',['../structnanom_1_1schema__node.html',1,'nanom']]],
+  ['schemaelement_3',['SchemaElement',['../structnanom__formats_1_1parquet_1_1SchemaElement.html',1,'nanom_formats::parquet']]],
+  ['seg_5fdone_4',['seg_done',['../structnanom_1_1seg__done.html',1,'nanom']]],
+  ['seg_5finput_5',['seg_input',['../structnanom_1_1seg__input.html',1,'nanom']]],
+  ['seg_5fsubrange_6',['seg_subrange',['../classnanom_1_1seg__subrange.html',1,'nanom']]],
+  ['seg_5fwindow_7',['seg_window',['../classnanom_1_1seg__window.html',1,'nanom']]],
+  ['segments_8',['segments',['../classnanom_1_1segments.html',1,'nanom']]],
+  ['seq_5fexec_9',['seq_exec',['../structnanom_1_1seq__exec.html',1,'nanom']]],
+  ['single_5fsegment_10',['single_segment',['../classnanom_1_1single__segment.html',1,'nanom']]],
+  ['slot_5fcounts_11',['slot_counts',['../structnanom_1_1columnar_1_1slot__counts.html',1,'nanom::columnar']]],
+  ['soa_12',['soa',['../classnanom_1_1soa.html',1,'nanom']]],
+  ['somenull_13',['SomeNull',['../structnanom__formats_1_1lance_1_1SomeNull.html',1,'nanom_formats::lance']]],
+  ['sortingcolumn_14',['SortingColumn',['../structnanom__formats_1_1parquet_1_1SortingColumn.html',1,'nanom_formats::parquet']]],
+  ['span_5fsink_15',['span_sink',['../structnanom_1_1span__sink.html',1,'nanom']]],
+  ['statistics_16',['Statistics',['../structnanom__formats_1_1parquet_1_1Statistics.html',1,'nanom_formats::parquet']]],
+  ['string_5fdictionary_17',['string_dictionary',['../classnanom_1_1columnar_1_1string__dictionary.html',1,'nanom::columnar']]],
+  ['stringentry_18',['StringEntry',['../structnanom__formats_1_1lance_1_1StringEntry.html',1,'nanom_formats::lance']]]
+];

@@ -1,4 +1,26 @@
 var searchData=
 [
-  ['u8_0',['u8',['../namespacenanom.html#afa7974bd70ebc29798de9e3e04c8f06c',1,'nanom']]]
+  ['scale_0',['scale',['../structnanom__formats_1_1parquet_1_1SchemaElement.html#af4538e9c36e73efb1eaf71a24b3a8dcd',1,'nanom_formats::parquet::SchemaElement::scale'],['../structnanom__formats_1_1parquet_1_1DecimalType.html#a274ea49b138556c652bbb9f43642bf56',1,'nanom_formats::parquet::DecimalType::scale']]],
+  ['schema_1',['schema',['../structnanom__formats_1_1lance_1_1FileDescriptor.html#a9604249338baeb0563f5ca8825cbe459',1,'nanom_formats::lance::FileDescriptor::schema'],['../structnanom__formats_1_1parquet_1_1FileMetaData.html#a3d4e81b0bcf3ff5a5daa702283a76b27',1,'nanom_formats::parquet::FileMetaData::schema']]],
+  ['schema_5fmetadata_2',['schema_metadata',['../structnanom__formats_1_1lance_1_1Manifest.html#a84536166a3af765cb253864cd944de96',1,'nanom_formats::lance::Manifest']]],
+  ['scheme_3',['scheme',['../structnanom__formats_1_1lance_1_1BufferCompression.html#a5c7dfe671f3b1629acf7cbd556fe672a',1,'nanom_formats::lance::BufferCompression::scheme'],['../structnanom__formats_1_1lance_1_1Compression.html#a449892ef81f2bfcb1d5b857ff11eff9b',1,'nanom_formats::lance::Compression::scheme']]],
+  ['seconds_4',['seconds',['../structnanom__formats_1_1lance_1_1Timestamp.html#ac9e0446784247a2119603810b448e524',1,'nanom_formats::lance::Timestamp']]],
+  ['seg_5fend_5',['seg_end',['../structnanom_1_1seg__input.html#afd5d8849227db8334b9b09d9f570c640',1,'nanom::seg_input']]],
+  ['seg_5fi_6',['seg_i',['../structnanom_1_1seg__input.html#a32a275dbf772ab911fa26823f306b2e3',1,'nanom::seg_input']]],
+  ['seg_5fmax_5fparts_7',['seg_max_parts',['../namespacenanom.html#aa5622c7ac77421db4609a143bb75a0db',1,'nanom']]],
+  ['signed_5f_8',['signed_',['../structnanom__formats_1_1lance_1_1Bitpacked20.html#af5ab934a08594b40271d4c8afb48112f',1,'nanom_formats::lance::Bitpacked20']]],
+  ['size_9',['size',['../structnanom__formats_1_1lance_1_1IndexFile.html#aa7a0ba2ccdc6409dcd08cf99e7a870ed',1,'nanom_formats::lance::IndexFile::size'],['../structnanom_1_1schema__field.html#a5b05bef5c3c0a9f898c107df03a269fc',1,'nanom::schema_field::size']]],
+  ['slots_10',['slots',['../structnanom_1_1columnar_1_1enc__detail_1_1probe__slots.html#a6b0bb90506328dd182f65420da28d1cf',1,'nanom::columnar::enc_detail::probe_slots::slots'],['../structnanom_1_1columnar_1_1slot__counts.html#a95cf686f273dc50727404278c0f258a9',1,'nanom::columnar::slot_counts::slots']]],
+  ['snappy_5fextra_5fmask_11',['snappy_extra_mask',['../namespacenanom_1_1codec_1_1detail.html#a655f9bf3370faac22f900008d36fcf85',1,'nanom::codec::detail']]],
+  ['snappy_5ftags_12',['snappy_tags',['../namespacenanom_1_1codec_1_1detail.html#af0164468449f8c31e38698a7d4464c23',1,'nanom::codec::detail']]],
+  ['some_5fnulls_13',['some_nulls',['../structnanom__formats_1_1lance_1_1Nullable.html#a89bdfa0ce4e5011b6fc6d4a083bc89fb',1,'nanom_formats::lance::Nullable']]],
+  ['sorting_5fcolumns_14',['sorting_columns',['../structnanom__formats_1_1parquet_1_1RowGroup.html#ae7124791e8f776e47e3c6a06c2c57a59',1,'nanom_formats::parquet::RowGroup']]],
+  ['space0_15',['space0',['../namespacenanom.html#ab697bf8f81833cf286f710581225700f',1,'nanom']]],
+  ['space1_16',['space1',['../namespacenanom.html#a200b20da9542ffcfa4e06dbe42a55264',1,'nanom']]],
+  ['span_5flifetime_5fis_5fcaller_5fscoped_17',['span_lifetime_is_caller_scoped',['../namespacenanom.html#ac9c22bc09f8b4f30f28cef738130758a',1,'nanom']]],
+  ['src_18',['src',['../structnanom_1_1seg__input.html#ae3c20fc5ef50c1320b6d33f05de5cee0',1,'nanom::seg_input']]],
+  ['statistics_19',['statistics',['../structnanom__formats_1_1parquet_1_1DataPageHeader.html#aa7bfc8437ca9353ae94bf0d8ed37033e',1,'nanom_formats::parquet::DataPageHeader::statistics'],['../structnanom__formats_1_1parquet_1_1DataPageHeaderV2.html#a864e769b6217cbf964b967e0e663a474',1,'nanom_formats::parquet::DataPageHeaderV2::statistics'],['../structnanom__formats_1_1parquet_1_1ColumnMetaData.html#a028fa03361ff5e48b3d146e535518ffa',1,'nanom_formats::parquet::ColumnMetaData::statistics']]],
+  ['string_20',['STRING',['../structnanom__formats_1_1parquet_1_1LogicalType.html#a2fe6ccbb4c2f674477b61c5d9ebc8ebd',1,'nanom_formats::parquet::LogicalType']]],
+  ['struct_5f_21',['struct_',['../structnanom__formats_1_1lance_1_1ArrayEncoding.html#a0f957d4da5e518460fb323551a90b140',1,'nanom_formats::lance::ArrayEncoding']]],
+  ['symbol_5ftable_22',['symbol_table',['../structnanom__formats_1_1lance_1_1Fsst.html#a4c4c591c6724f49784e0fcfe752e4f3a',1,'nanom_formats::lance::Fsst::symbol_table'],['../structnanom__formats_1_1lance_1_1Fsst20.html#a87597369bdbb52e4643a5948538f6212',1,'nanom_formats::lance::Fsst20::symbol_table']]]
 ];

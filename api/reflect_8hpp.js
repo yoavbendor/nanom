@@ -8,6 +8,7 @@ var reflect_8hpp =
     [ "nanom::Described", "conceptnanom_1_1Described.html", null ],
     [ "be", "reflect_8hpp.html#a2cb1eeb47b70a1e8f6b109642a541fe2", null ],
     [ "le", "reflect_8hpp.html#a1bc4fb4ecfebd272419a2cb269c60d9f", null ],
+    [ "footer", "reflect_8hpp.html#a0571ff0b0292a5064e8ef22567e6f0a7", null ],
     [ "overlay", "reflect_8hpp.html#a44eb2817eaa48f8d02c36b0465d6974c", null ],
     [ "strct", "reflect_8hpp.html#ace252f499d7aef868ff1ea7efe58bbef", null ],
     [ "overlay_wire_must_be_immutable", "reflect_8hpp.html#ad25a10d8efd4b863807f5d42dd95c1fb", null ],

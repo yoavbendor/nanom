@@ -1,5 +1,19 @@
 var searchData=
 [
-  ['v_0',['v',['../structnanom_1_1ubits.html#ac6119a74d9fd40e5725963242feaecb9',1,'nanom::ubits::v'],['../structnanom_1_1ibits.html#a03dd740f321f1c68b77909acb0941ebc',1,'nanom::ibits::v']]],
-  ['value_1',['value',['../structnanom_1_1done.html#aaf83348febaa9b4c1763414666d70b8e',1,'nanom::done::value'],['../structnanom_1_1bdone.html#aa31d6010f0085d00fb33fcbe228bd33b',1,'nanom::bdone::value'],['../structnanom_1_1seg__done.html#a8f5a845d00aef5c574cd06f3725920df',1,'nanom::seg_done::value']]]
+  ['tab_0',['tab',['../namespacenanom.html#a794950db65b51eec8f1e8f825607fb36',1,'nanom']]],
+  ['table_5fmetadata_1',['table_metadata',['../structnanom__formats_1_1lance_1_1Manifest.html#a242802c565bfb3900ae2fe8f9f583742',1,'nanom_formats::lance::Manifest']]],
+  ['tag_2',['tag',['../structnanom__formats_1_1lance_1_1Manifest.html#a5785cb1c6c2c21cb98d332fbe24c1932',1,'nanom_formats::lance::Manifest']]],
+  ['threads_3',['threads',['../structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813',1,'nanom::par_exec']]],
+  ['thrift_5fcompact_5fskip_4',['thrift_compact_skip',['../namespacenanom.html#a11770c71447c8bf5ddb74673ddc8f1d5',1,'nanom']]],
+  ['time_5',['TIME',['../structnanom__formats_1_1parquet_1_1LogicalType.html#adcec5eff7c3129d1133adee7fb1d6121',1,'nanom_formats::parquet::LogicalType']]],
+  ['timestamp_6',['timestamp',['../structnanom__formats_1_1lance_1_1Manifest.html#ab1be5a39183b41da11614a8392768180',1,'nanom_formats::lance::Manifest::timestamp'],['../structnanom__formats_1_1parquet_1_1LogicalType.html#ab9a5582f319d342c4ae97c91d88981aa',1,'nanom_formats::parquet::LogicalType::TIMESTAMP']]],
+  ['total_5fbyte_5fsize_7',['total_byte_size',['../structnanom__formats_1_1parquet_1_1RowGroup.html#a8d35da64c7909d9422d5541f32f5ba61',1,'nanom_formats::parquet::RowGroup']]],
+  ['total_5fcompressed_5fsize_8',['total_compressed_size',['../structnanom__formats_1_1parquet_1_1RowGroup.html#ad62881947934ddcd2c1e5655f88b0f95',1,'nanom_formats::parquet::RowGroup::total_compressed_size'],['../structnanom__formats_1_1parquet_1_1ColumnMetaData.html#ad7eb580d416ceb2063f78203ddee0ba8',1,'nanom_formats::parquet::ColumnMetaData::total_compressed_size']]],
+  ['total_5funcompressed_5fsize_9',['total_uncompressed_size',['../structnanom__formats_1_1parquet_1_1ColumnMetaData.html#a997aa755359063857a5e729e9b9fd943',1,'nanom_formats::parquet::ColumnMetaData']]],
+  ['transaction_5ffile_10',['transaction_file',['../structnanom__formats_1_1lance_1_1Manifest.html#a3cc7915a84fe447e444556a5ee235d08',1,'nanom_formats::lance::Manifest']]],
+  ['transaction_5fsection_11',['transaction_section',['../structnanom__formats_1_1lance_1_1Manifest.html#a8ac6858647f5de5fc15694f703de3d3d',1,'nanom_formats::lance::Manifest']]],
+  ['type_12',['type',['../structnanom__formats_1_1lance_1_1Field.html#aee91c3dfef4a9a0a7663667a7419afd7',1,'nanom_formats::lance::Field::type'],['../structnanom__formats_1_1parquet_1_1SchemaElement.html#a2b11330a04e28893693ab5f282d0cd4f',1,'nanom_formats::parquet::SchemaElement::type'],['../structnanom__formats_1_1parquet_1_1ColumnMetaData.html#a16b4573b2147fe2629233f7a76fc1101',1,'nanom_formats::parquet::ColumnMetaData::type'],['../structnanom__formats_1_1parquet_1_1PageHeader.html#a5ce3a7cd5bbb06423b70175088da5b35',1,'nanom_formats::parquet::PageHeader::type']]],
+  ['type_5flength_13',['type_length',['../structnanom__formats_1_1parquet_1_1SchemaElement.html#add83ae74d5f7de9f334bc07bbdc45958',1,'nanom_formats::parquet::SchemaElement']]],
+  ['type_5forder_14',['TYPE_ORDER',['../structnanom__formats_1_1parquet_1_1ColumnOrder.html#a2509d2002b87b5338454d07f0d4b1dbf',1,'nanom_formats::parquet::ColumnOrder']]],
+  ['type_5furl_15',['type_url',['../structnanom__formats_1_1lance_1_1EncodingAny.html#a724b46cd2480bf48673adf657f03339c',1,'nanom_formats::lance::EncodingAny::type_url'],['../structnanom__formats_1_1lance_1_1Any.html#aeda1dcfa87f6a58df335e79cd7cd419d',1,'nanom_formats::lance::Any::type_url']]]
 ];

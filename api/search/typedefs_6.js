@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['type_0',['type',['../structnanom_1_1done.html#a8a0f9a600956215f2d9ce5fd541ac5d2',1,'nanom::done::type'],['../structnanom_1_1bdone.html#ac72a34838d88bceedbd8e34dbf8ec9e0',1,'nanom::bdone::type'],['../structnanom_1_1seg__done.html#af239028ae40a0ca9a451fbfa17258e9a',1,'nanom::seg_done::type']]]
+  ['result_0',['result',['../namespacenanom.html#ae8763c24c61dc3c46bdacd4b38850e70',1,'nanom']]]
 ];

@@ -1,8 +1,27 @@
 var searchData=
 [
-  ['oct_5fdigit0_0',['oct_digit0',['../namespacenanom.html#a79ee5283a516ffde59f8d69f8d16cb67',1,'nanom']]],
-  ['oct_5fdigit1_1',['oct_digit1',['../namespacenanom.html#a124fa7b039246bac828356020fdb7a7c',1,'nanom']]],
-  ['offset_2',['offset',['../structnanom_1_1error_1_1frame.html#a0594c8780a33e794de566e912553bf75',1,'nanom::error::frame::offset'],['../structnanom_1_1error.html#a8875b9d3aced3cda81da35d7c2c955fe',1,'nanom::error::offset']]],
-  ['order_3',['order',['../structnanom_1_1endian__scalar.html#a2a0509e24f5272081fa514cc3977bd4f',1,'nanom::endian_scalar::order'],['../structnanom_1_1ubits.html#ac106d085669029df109d464d417d0847',1,'nanom::ubits::order'],['../structnanom_1_1ibits.html#a1cc140d0d81639a435fa8342cdb91d98',1,'nanom::ibits::order']]],
-  ['overlay_5fwire_5fmust_5fbe_5fimmutable_4',['overlay_wire_must_be_immutable',['../namespacenanom.html#ad25a10d8efd4b863807f5d42dd95c1fb',1,'nanom']]]
+  ['magic_0',['magic',['../namespacenanom__formats_1_1parquet.html#a6f6f5ace5d01c8cf48c5d9a157ac49d9',1,'nanom_formats::parquet']]],
+  ['manifest_5fposition_1',['manifest_position',['../structnanom__formats_1_1lance_1_1Metadata.html#a4c5e3809498395efa8dfef448b3b1b79',1,'nanom_formats::lance::Metadata']]],
+  ['many0_5fguards_5fzero_5fconsumption_2',['many0_guards_zero_consumption',['../namespacenanom.html#acaf6cc260fec56602e1108104f035432',1,'nanom']]],
+  ['map_3',['MAP',['../structnanom__formats_1_1parquet_1_1LogicalType.html#a02d5c12a40ae17c35fd754e8674af3f2',1,'nanom_formats::parquet::LogicalType']]],
+  ['max_4',['max',['../structnanom__formats_1_1parquet_1_1Statistics.html#a393f33d8e1f6d3ec8303fae00cbc3eee',1,'nanom_formats::parquet::Statistics::max'],['../structnanom_1_1columnar_1_1binary__stats.html#a407f1bd3a49480c62c01f360e66dbf6b',1,'nanom::columnar::binary_stats::max'],['../structnanom_1_1columnar_1_1value__stats.html#abe2584d7086b6fb2fd7448e4c43de0b0',1,'nanom::columnar::value_stats::max']]],
+  ['max_5fcontext_5',['max_context',['../namespacenanom.html#ad2da395ef8906df6c3277c1732ff7eb7',1,'nanom']]],
+  ['max_5ffragment_5fid_6',['max_fragment_id',['../structnanom__formats_1_1lance_1_1Manifest.html#a23fb37baccd1dbb40a0d5eb53223e983',1,'nanom_formats::lance::Manifest']]],
+  ['max_5fincomplete_5fneeded_7',['max_incomplete_needed',['../namespacenanom.html#a7125ded5e2186141bdbcdecfbc48556d',1,'nanom']]],
+  ['max_5ftagged_5fdepth_8',['max_tagged_depth',['../namespacenanom.html#a109931fb549474bc24797a986a69bdfe',1,'nanom']]],
+  ['max_5fvalue_9',['max_value',['../structnanom__formats_1_1parquet_1_1Statistics.html#a50c8ba9a79abfe71f0beb1c98df1f651',1,'nanom_formats::parquet::Statistics']]],
+  ['max_5fvalues_10',['max_values',['../structnanom__formats_1_1parquet_1_1ColumnIndex.html#ad2974b28ae4e35946c7968f5e82346a3',1,'nanom_formats::parquet::ColumnIndex']]],
+  ['message_11',['message',['../structnanom_1_1encode__error.html#ac7a6d1e22b573e4bab98a5bc28285f8b',1,'nanom::encode_error']]],
+  ['meta_5fdata_12',['meta_data',['../structnanom__formats_1_1parquet_1_1ColumnChunk.html#a5ad44ad0d0e4436fe2e7f26ce633d08d',1,'nanom_formats::parquet::ColumnChunk']]],
+  ['metadata_13',['metadata',['../structnanom__formats_1_1lance_1_1Field.html#a80e8310f55acb75a9e0b9ba2b4897a77',1,'nanom_formats::lance::Field::metadata'],['../structnanom__formats_1_1lance_1_1Schema.html#ad52196e6a6a67aaa88305d669a86aaf3',1,'nanom_formats::lance::Schema::metadata']]],
+  ['metadata_5flength_14',['metadata_length',['../structnanom__formats_1_1parquet_1_1footer__location.html#a187c6b9c0f4d6e55feb79a65fd30124d',1,'nanom_formats::parquet::footer_location']]],
+  ['metadata_5foffset_15',['metadata_offset',['../structnanom__formats_1_1parquet_1_1footer__location.html#ab8e9b3f78bf4166caa2c28697c80acf3',1,'nanom_formats::parquet::footer_location']]],
+  ['micros_16',['MICROS',['../structnanom__formats_1_1parquet_1_1TimeUnit.html#ac75d20f451080862ceea2e9546a31f87',1,'nanom_formats::parquet::TimeUnit']]],
+  ['millis_17',['MILLIS',['../structnanom__formats_1_1parquet_1_1TimeUnit.html#a7008ab38de407b529bae5cc7366e63a9',1,'nanom_formats::parquet::TimeUnit']]],
+  ['min_18',['min',['../structnanom__formats_1_1parquet_1_1Statistics.html#a111b709e1bfdef80e19759834dcbedda',1,'nanom_formats::parquet::Statistics::min'],['../structnanom_1_1columnar_1_1binary__stats.html#a5d2e07a41243067900c50c80dac9f505',1,'nanom::columnar::binary_stats::min'],['../structnanom_1_1columnar_1_1value__stats.html#a1b9185b5c1759466c05160422481821d',1,'nanom::columnar::value_stats::min']]],
+  ['min_5fvalue_19',['min_value',['../structnanom__formats_1_1parquet_1_1Statistics.html#a189bbeb2bd1ad403db2b788da244cd6b',1,'nanom_formats::parquet::Statistics']]],
+  ['min_5fvalues_20',['min_values',['../structnanom__formats_1_1parquet_1_1ColumnIndex.html#ad5b8cc8949de29893928a17ed9c055e2',1,'nanom_formats::parquet::ColumnIndex']]],
+  ['mini_5fblock_5flayout_21',['mini_block_layout',['../structnanom__formats_1_1lance_1_1PageLayout.html#a6573ee2f34a1b9b51722bc8d7c0b64ce',1,'nanom_formats::lance::PageLayout']]],
+  ['multispace0_22',['multispace0',['../namespacenanom.html#a7433fb66e3d97d9f36250bf06ff8d7e2',1,'nanom']]],
+  ['multispace1_23',['multispace1',['../namespacenanom.html#a020a24214721b22a79b57e8f615953a7',1,'nanom']]]
 ];

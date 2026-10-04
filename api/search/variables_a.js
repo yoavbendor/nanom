@@ -1,8 +1,8 @@
 var searchData=
 [
-  ['many0_5fguards_5fzero_5fconsumption_0',['many0_guards_zero_consumption',['../namespacenanom.html#acaf6cc260fec56602e1108104f035432',1,'nanom']]],
-  ['max_5fcontext_1',['max_context',['../namespacenanom.html#ad2da395ef8906df6c3277c1732ff7eb7',1,'nanom']]],
-  ['max_5fincomplete_5fneeded_2',['max_incomplete_needed',['../namespacenanom.html#a7125ded5e2186141bdbcdecfbc48556d',1,'nanom']]],
-  ['multispace0_3',['multispace0',['../namespacenanom.html#a7433fb66e3d97d9f36250bf06ff8d7e2',1,'nanom']]],
-  ['multispace1_4',['multispace1',['../namespacenanom.html#a020a24214721b22a79b57e8f615953a7',1,'nanom']]]
+  ['kernel_5fok_0',['kernel_ok',['../namespacenanom_1_1columnar.html#a3aeea36a6d149682615d7503d598e375',1,'nanom::columnar']]],
+  ['key_1',['key',['../structnanom__formats_1_1lance_1_1MetadataEntry.html#a16718250a979080c5cbcfc4cae8664e1',1,'nanom_formats::lance::MetadataEntry::key'],['../structnanom__formats_1_1lance_1_1StringEntry.html#a5274f640dcbdf69ec066512d31edc66a',1,'nanom_formats::lance::StringEntry::key'],['../structnanom__formats_1_1parquet_1_1KeyValue.html#ab069acbddb0f76422824187f0d316e74',1,'nanom_formats::parquet::KeyValue::key']]],
+  ['key_5fvalue_5fmetadata_2',['key_value_metadata',['../structnanom__formats_1_1parquet_1_1ColumnMetaData.html#a0059dbc4bb21d9115edecd5887b7f1be',1,'nanom_formats::parquet::ColumnMetaData::key_value_metadata'],['../structnanom__formats_1_1parquet_1_1FileMetaData.html#a07bd1391466c30681aed748ca0ca4702',1,'nanom_formats::parquet::FileMetaData::key_value_metadata']]],
+  ['kind_3',['kind',['../structnanom_1_1error.html#afa24bdd3f33aa619b4a81fb7be4ddd41',1,'nanom::error::kind'],['../structnanom_1_1schema__field.html#a30b9044d42ac9a190ca6516db5a1eaab',1,'nanom::schema_field::kind'],['../structnanom_1_1soa_1_1column__info.html#a61e2708f24d362ee8163ccc05aa2d2ff',1,'nanom::soa::column_info::kind']]],
+  ['kvalueslack_4',['kValueSlack',['../namespacenanom_1_1columnar.html#a8a999991bbbae7c78acccd4da48f6e9e',1,'nanom::columnar']]]
 ];

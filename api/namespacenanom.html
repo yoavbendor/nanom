@@ -105,7 +105,13 @@ $(document).ready(function(){initNavTree('namespacenanom.html',''); initResizabl
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="namespaces" name="namespaces"></a>
 Namespaces</h2></td></tr>
+<tr class="memitem:namespacenanom_1_1codec" id="r_namespacenanom_1_1codec"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1codec.html">codec</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:namespacenanom_1_1columnar" id="r_namespacenanom_1_1columnar"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1columnar.html">columnar</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:namespacenanom_1_1detail__seg" id="r_namespacenanom_1_1detail__seg"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1detail__seg.html">detail_seg</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:namespacenanom_1_1thrift" id="r_namespacenanom_1_1thrift"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1thrift.html">thrift</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="nested-classes" name="nested-classes"></a>
@@ -118,11 +124,30 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1bulk__table.html">bulk_table</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Column-major, index-addressed table: one contiguous buffer per flattened leaf column, pre-sized to N rows.  <a href="classnanom_1_1bulk__table.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1calc__t.html">calc_t</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1checksum__t.html">checksum_t</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1computed.html">computed</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Specialize with <code>static constexpr auto fields = std::tuple{calc&lt;"…"&gt;(…), checksum&lt;"…"&gt;(…)};</code>.  <a href="structnanom_1_1computed.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1counting__sink.html">counting_sink</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Counts bytes without storing them (exact encoded size).  <a href="structnanom_1_1counting__sink.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1describe.html">describe</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Specialized by NANOM_DESCRIBE.  <a href="structnanom_1_1describe.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1done.html">done</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Successful parse: the produced value plus the un-consumed rest.  <a href="structnanom_1_1done.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1emit__ctx.html">emit_ctx</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">What computed fields may look at: the bytes written after the struct (a frame's payload).  <a href="structnanom_1_1emit__ctx.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1empty__struct.html">empty_struct</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Thrift <code>struct Foo {}</code> (Parquet's StringType, DateType, MilliSeconds, …): no members to reflect.  <a href="structnanom_1_1empty__struct.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1encode__error.html">encode_error</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Why an encode failed, and where: the struct (describe&lt;M&gt;::name()) and field being written.  <a href="structnanom_1_1encode__error.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1endian__scalar.html">endian_scalar</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">be&lt;T&gt; / le&lt;T&gt; — an explicitly big/little-endian wire scalar.  <a href="structnanom_1_1endian__scalar.html#details">More...</a><br /></td></tr>
@@ -132,6 +157,9 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1expected.html">expected</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Just enough of std::expected for nanom's needs.  <a href="classnanom_1_1expected.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1field.html">field</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">One field of a tagged message: the wire field id + the value type, in the type.  <a href="structnanom_1_1field.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1fixed__string.html">fixed_string</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1ibits.html">ibits</a></td></tr>
@@ -139,8 +167,29 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1input.html">input</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A cursor into the buffer under parse.  <a href="structnanom_1_1input.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1lazy.html">lazy</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A nested message decoded on demand: holds the struct's (structurally validated) bytes.  <a href="classnanom_1_1lazy.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1le__array.html">le_array</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">le_array&lt;T&gt; — n little-endian T values sitting in the buffer, decoded on access.  <a href="classnanom_1_1le__array.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1list.html">list</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A lazily decoded list: the validated element bytes, the element count, and the element wire type.  <a href="classnanom_1_1list.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1par__exec.html">par_exec</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">CPU thread-pool executor: partitions [0, n) into <code>threads</code> disjoint ranges.  <a href="structnanom_1_1par__exec.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1pb__box.html">pb_box</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">An optional message held on the heap, for recursive protobuf models (a message that contains one of its own type: <code>nm::field&lt;1, nm::pb_box&lt;Node&gt;, nm::presence::defaulted&gt; child;</code>, which a std::optional&lt;Node&gt; member cannot express).  <a href="classnanom_1_1pb__box.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1pb__fixed.html">pb_fixed</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">proto fixed32 / fixed64 / sfixed32 / sfixed64: little-endian, 4 or 8 bytes on the wire.  <a href="structnanom_1_1pb__fixed.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1pb__lazy.html">pb_lazy</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A nested message kept as its wire bytes and decoded on demand: the protobuf counterpart of the Thrift codec's lazy&lt;M&gt;.  <a href="classnanom_1_1pb__lazy.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1pb__sint.html">pb_sint</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">proto sint32 / sint64: a signed integer zigzag-encoded on the wire.  <a href="structnanom_1_1pb__sint.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1pkt__ref.html">pkt_ref</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">POD packet descriptor — trivially copyable, safe to memcpy to a device.  <a href="structnanom_1_1pkt__ref.html#details">More...</a><br /></td></tr>
@@ -172,6 +221,9 @@ Classes</h2></td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="classnanom_1_1soa.html">soa</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Column-oriented accumulator: <a class="el" href="classnanom_1_1soa.html#ad8d3d77978a903f31394b238cbd07be1">push()</a> decomposes each struct into flat, host-order leaf columns; full chunks are sealed at chunk_rows so buffers can be handed to ArrowArray / Lance fragment writers without a transpose.  <a href="classnanom_1_1soa.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1span__sink.html">span_sink</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Writes into a fixed buffer; refuses (writing nothing) what does not fit.  <a href="structnanom_1_1span__sink.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1ubits.html">ubits</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">ubits&lt;N&gt; / ibits&lt;N&gt; — an N-bit unsigned/signed field.  <a href="structnanom_1_1ubits.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -179,6 +231,12 @@ Classes</h2></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1unit.html">unit</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">value of parsers that produce nothing (eof, not_, tag ok…)  <a href="structnanom_1_1unit.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1unknown__fields.html">unknown_fields</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">The wire bytes of the fields a protobuf message model does not declare (key and value, in the order read), so a read-modify-write keeps what a newer writer added.  <a href="structnanom_1_1unknown__fields.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1vector__sink.html">vector_sink</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Appends to a vector (grows as needed).  <a href="structnanom_1_1vector__sink.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">struct &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="structnanom_1_1view.html">view</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A zero-copy overlay of T's wire format over the original buffer.  <a href="structnanom_1_1view.html#details">More...</a><br /></td></tr>
@@ -193,6 +251,12 @@ Concepts</h2></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A bit parser: (bit_input) -&gt; bresult&lt;T&gt;. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">concept &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="conceptnanom_1_1Described.html">Described</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">concept &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="conceptnanom_1_1byte__sink.html">byte_sink</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Anything bytes can be written to: put() returns false when it cannot take them all (a full buffer, a failed stream); the encoder then stops and reports the error. <br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">concept &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="conceptnanom_1_1Message.html">Message</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A tagged message: a described struct whose every member is a nanom::field&lt;&gt;. <br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="typedef-members" name="typedef-members"></a>
@@ -221,6 +285,9 @@ Typedefs</h2></td></tr>
 <tr class="memitem:a552de83d4e047718d5d2c94279bc73d1" id="r_a552de83d4e047718d5d2c94279bc73d1"><td class="memTemplParams" colspan="2">template&lt;class T &gt; </td></tr>
 <tr class="memitem:a552de83d4e047718d5d2c94279bc73d1"><td class="memTemplItemLeft" align="right" valign="top">using&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a552de83d4e047718d5d2c94279bc73d1">seg_result</a> = <a class="el" href="classnanom_1_1expected.html">expected</a>&lt; <a class="el" href="structnanom_1_1seg__done.html">seg_done</a>&lt; T &gt;, <a class="el" href="structnanom_1_1error.html">error</a> &gt;</td></tr>
 <tr class="separator:a552de83d4e047718d5d2c94279bc73d1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af1469e7a349bac1fc5cf4d4dee77daf6" id="r_af1469e7a349bac1fc5cf4d4dee77daf6"><td class="memItemLeft" align="right" valign="top">using&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#af1469e7a349bac1fc5cf4d4dee77daf6">pb_unknown</a> = <a class="el" href="structnanom_1_1field.html">field</a>&lt; 0, <a class="el" href="structnanom_1_1unknown__fields.html">unknown_fields</a>, <a class="el" href="namespacenanom.html#a161f695775975f15b7e7785d56c238a8a09ecb6438e46ddb2614bc58b9e2a8b41">presence::defaulted</a> &gt;</td></tr>
+<tr class="memdesc:af1469e7a349bac1fc5cf4d4dee77daf6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Opt-in unknown-field preservation for protobuf (<a class="el" href="protobuf_8hpp.html">nanom/protobuf.hpp</a>): declare <code>nm::pb_unknown unknown;</code> as the message's FIRST member (its id is 0, which no protobuf field can have).  <br /></td></tr>
+<tr class="separator:af1469e7a349bac1fc5cf4d4dee77daf6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="enum-members" name="enum-members"></a>
 Enumerations</h2></td></tr>
@@ -255,6 +322,14 @@ Enumerations</h2></td></tr>
 <br />
  }</td></tr>
 <tr class="separator:ade5643fd7a4b85b5990807724eecdbd1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a161f695775975f15b7e7785d56c238a8" id="r_a161f695775975f15b7e7785d56c238a8"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a161f695775975f15b7e7785d56c238a8">presence</a> : std::uint8_t { <a class="el" href="namespacenanom.html#a161f695775975f15b7e7785d56c238a8aac67ede5a84eb5a1add7ff4440e9a485">required</a>
+, <a class="el" href="namespacenanom.html#a161f695775975f15b7e7785d56c238a8a09ecb6438e46ddb2614bc58b9e2a8b41">defaulted</a>
+ }</td></tr>
+<tr class="memdesc:a161f695775975f15b7e7785d56c238a8"><td class="mdescLeft">&#160;</td><td class="mdescRight">What happens when a field does not appear on the wire.  <a href="namespacenanom.html#a161f695775975f15b7e7785d56c238a8">More...</a><br /></td></tr>
+<tr class="separator:a161f695775975f15b7e7785d56c238a8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa957b4e38d048a0382000595f807b77e" id="r_aa957b4e38d048a0382000595f807b77e"><td class="memItemLeft" align="right" valign="top">enum class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aa957b4e38d048a0382000595f807b77e">tagged_wire</a> : std::uint8_t { <a class="el" href="namespacenanom.html#aa957b4e38d048a0382000595f807b77ea44230bd6defcafe5cf3f45ddee046356">thrift_compact</a>
+ }</td></tr>
+<tr class="separator:aa957b4e38d048a0382000595f807b77e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
 Functions</h2></td></tr>
@@ -268,6 +343,34 @@ Functions</h2></td></tr>
 <tr class="memitem:a8875abba328950b56473ed4c7b550960" id="r_a8875abba328950b56473ed4c7b550960"><td class="memTemplParams" colspan="2">template&lt;Described Row, class Kernel , class Exec  = par_exec&gt; </td></tr>
 <tr class="memitem:a8875abba328950b56473ed4c7b550960"><td class="memTemplItemLeft" align="right" valign="top">std::size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a8875abba328950b56473ed4c7b550960">bulk_decode</a> (std::span&lt; const <a class="el" href="structnanom_1_1pkt__ref.html">pkt_ref</a> &gt; pkts, <a class="el" href="classnanom_1_1bulk__table.html">bulk_table</a>&lt; Row &gt; &amp;tbl, Kernel kernel, Exec exec={})</td></tr>
 <tr class="separator:a8875abba328950b56473ed4c7b550960"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa864269d1c1bd76229136cc32aec3d90" id="r_aa864269d1c1bd76229136cc32aec3d90"><td class="memTemplParams" colspan="2">template&lt;<a class="el" href="structnanom_1_1fixed__string.html">fixed_string</a> Name, class Fn &gt; </td></tr>
+<tr class="memitem:aa864269d1c1bd76229136cc32aec3d90"><td class="memTemplItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1calc__t.html">calc_t</a>&lt; Name, Fn &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aa864269d1c1bd76229136cc32aec3d90">calc</a> (Fn fn)</td></tr>
+<tr class="memdesc:aa864269d1c1bd76229136cc32aec3d90"><td class="mdescLeft">&#160;</td><td class="mdescRight">A field computed from the value and the context before encoding: fn(const T&amp;, const emit_ctx&amp;).  <br /></td></tr>
+<tr class="separator:aa864269d1c1bd76229136cc32aec3d90"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8b1a64dcde346d59719df107c6fb902b" id="r_a8b1a64dcde346d59719df107c6fb902b"><td class="memTemplParams" colspan="2">template&lt;<a class="el" href="structnanom_1_1fixed__string.html">fixed_string</a> Name, class Fn &gt; </td></tr>
+<tr class="memitem:a8b1a64dcde346d59719df107c6fb902b"><td class="memTemplItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1checksum__t.html">checksum_t</a>&lt; Name, Fn &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a8b1a64dcde346d59719df107c6fb902b">checksum</a> (Fn fn)</td></tr>
+<tr class="memdesc:a8b1a64dcde346d59719df107c6fb902b"><td class="mdescLeft">&#160;</td><td class="mdescRight">A field computed from the encoded struct (with this field zeroed) and the context: fn(std::span&lt;const std::byte&gt;, const emit_ctx&amp;).  <br /></td></tr>
+<tr class="separator:a8b1a64dcde346d59719df107c6fb902b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6b8d0b1cbea5c937e7b407a5c8940f58" id="r_a6b8d0b1cbea5c937e7b407a5c8940f58"><td class="memTemplParams" colspan="2">template&lt;Described T&gt; </td></tr>
+<tr class="memitem:a6b8d0b1cbea5c937e7b407a5c8940f58"><td class="memTemplItemLeft" align="right" valign="top">constexpr <a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::array&lt; std::byte, <a class="el" href="namespacenanom.html#ad47fb5a1b8437c490c3a9b56faa24e8d">wire_size_v</a>&lt; T &gt; &gt;, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a6b8d0b1cbea5c937e7b407a5c8940f58">to_bytes</a> (const T &amp;v, const <a class="el" href="structnanom_1_1emit__ctx.html">emit_ctx</a> &amp;ctx={}, std::endian dflt=std::endian::native)</td></tr>
+<tr class="memdesc:a6b8d0b1cbea5c937e7b407a5c8940f58"><td class="mdescLeft">&#160;</td><td class="mdescRight">The wire bytes of v (computed fields applied). Usable in constant expressions.  <br /></td></tr>
+<tr class="separator:a6b8d0b1cbea5c937e7b407a5c8940f58"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad6b54d47f3edd506eb1a475b38765876" id="r_ad6b54d47f3edd506eb1a475b38765876"><td class="memTemplParams" colspan="2">template&lt;Described T&gt; </td></tr>
+<tr class="memitem:ad6b54d47f3edd506eb1a475b38765876"><td class="memTemplItemLeft" align="right" valign="top">constexpr <a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#ad6b54d47f3edd506eb1a475b38765876">emit</a> (const T &amp;v, std::span&lt; std::byte &gt; out, const <a class="el" href="structnanom_1_1emit__ctx.html">emit_ctx</a> &amp;ctx={}, std::endian dflt=std::endian::native)</td></tr>
+<tr class="memdesc:ad6b54d47f3edd506eb1a475b38765876"><td class="mdescLeft">&#160;</td><td class="mdescRight">Encode v into the start of <code>out</code> (which must hold wire_size_v&lt;T&gt; bytes); returns the size.  <br /></td></tr>
+<tr class="separator:ad6b54d47f3edd506eb1a475b38765876"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad7c58fd7c672698cb29b30c540bd00cd" id="r_ad7c58fd7c672698cb29b30c540bd00cd"><td class="memTemplParams" colspan="2">template&lt;Described T, byte_sink S&gt; </td></tr>
+<tr class="memitem:ad7c58fd7c672698cb29b30c540bd00cd"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#ad7c58fd7c672698cb29b30c540bd00cd">emit_to</a> (const T &amp;v, S &amp;sink, const <a class="el" href="structnanom_1_1emit__ctx.html">emit_ctx</a> &amp;ctx={}, std::endian dflt=std::endian::native)</td></tr>
+<tr class="memdesc:ad7c58fd7c672698cb29b30c540bd00cd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Encode v into any byte sink.  <br /></td></tr>
+<tr class="separator:ad7c58fd7c672698cb29b30c540bd00cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae7c19c25d296f22cf0e46af32f33c3eb" id="r_ae7c19c25d296f22cf0e46af32f33c3eb"><td class="memTemplParams" colspan="2">template&lt;Described T, byte_sink S&gt; </td></tr>
+<tr class="memitem:ae7c19c25d296f22cf0e46af32f33c3eb"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#ae7c19c25d296f22cf0e46af32f33c3eb">emit_frame</a> (const T &amp;v, std::span&lt; const std::byte &gt; payload, S &amp;sink, std::endian dflt=std::endian::native)</td></tr>
+<tr class="memdesc:ae7c19c25d296f22cf0e46af32f33c3eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">A frame: v (with computed fields seeing <code>payload</code>), then the payload itself, passed to the sink as is (no copy).  <br /></td></tr>
+<tr class="separator:ae7c19c25d296f22cf0e46af32f33c3eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8c3427c8a0598015c37646a7d4c88734" id="r_a8c3427c8a0598015c37646a7d4c88734"><td class="memTemplParams" colspan="2">template&lt;Described T&gt; </td></tr>
+<tr class="memitem:a8c3427c8a0598015c37646a7d4c88734"><td class="memTemplItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a8c3427c8a0598015c37646a7d4c88734">verify_computed</a> (std::span&lt; const std::byte &gt; wire, const <a class="el" href="structnanom_1_1emit__ctx.html">emit_ctx</a> &amp;ctx={}, std::endian dflt=std::endian::native)</td></tr>
+<tr class="memdesc:a8c3427c8a0598015c37646a7d4c88734"><td class="mdescLeft">&#160;</td><td class="mdescRight">Read side: do the computed fields stored in <code>wire</code> (wire_size_v&lt;T&gt; bytes) match what writing the decoded value would compute? (A received IPv4 header's checksum and total length, say.)  <br /></td></tr>
+<tr class="separator:a8c3427c8a0598015c37646a7d4c88734"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6f10fa3e9cecc6db153a82f11da4c4b7" id="r_a6f10fa3e9cecc6db153a82f11da4c4b7"><td class="memItemLeft" align="right" valign="top">constexpr <a class="el" href="structnanom_1_1input.html">input</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a6f10fa3e9cecc6db153a82f11da4c4b7">from</a> (<a class="el" href="namespacenanom.html#a33fb7671e88c21f98371111307cce1e4">bytes</a> b <a class="el" href="prelude_8hpp.html#a26597fd54a24c7481cdd69ad838ed925">NANOM_LIFETIMEBOUND</a>)</td></tr>
 <tr class="memdesc:a6f10fa3e9cecc6db153a82f11da4c4b7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Make an input from anything byte-like.  <br /></td></tr>
 <tr class="separator:a6f10fa3e9cecc6db153a82f11da4c4b7"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -516,6 +619,43 @@ requires std::integral&lt;T&gt;</td></tr>
 <tr class="memitem:add1c41f255362975061f662cd7db2395"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#add1c41f255362975061f662cd7db2395">uint_</a> (std::endian order)</td></tr>
 <tr class="memdesc:add1c41f255362975061f662cd7db2395"><td class="mdescLeft">&#160;</td><td class="mdescRight">uint&lt;T&gt;(order) — integer of T's width with an endianness chosen at runtime.  <br /></td></tr>
 <tr class="separator:add1c41f255362975061f662cd7db2395"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad1df5426a88bbe6fbea6e58876b7ce04" id="r_ad1df5426a88bbe6fbea6e58876b7ce04"><td class="memTemplParams" colspan="2">template&lt;std::unsigned_integral U&gt; </td></tr>
+<tr class="memitem:ad1df5426a88bbe6fbea6e58876b7ce04"><td class="memTemplItemLeft" align="right" valign="top">constexpr std::make_signed_t&lt; U &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#ad1df5426a88bbe6fbea6e58876b7ce04">zigzag_decode</a> (U u)</td></tr>
+<tr class="memdesc:ad1df5426a88bbe6fbea6e58876b7ce04"><td class="mdescLeft">&#160;</td><td class="mdescRight">zigzag: maps signed to unsigned so small magnitudes stay small (0,-1,1,-2 -&gt; 0,1,2,3).  <br /></td></tr>
+<tr class="separator:ad1df5426a88bbe6fbea6e58876b7ce04"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7bd4164d1fdc637b5bdcd49a984948e0" id="r_a7bd4164d1fdc637b5bdcd49a984948e0"><td class="memTemplParams" colspan="2">template&lt;std::signed_integral S&gt; </td></tr>
+<tr class="memitem:a7bd4164d1fdc637b5bdcd49a984948e0"><td class="memTemplItemLeft" align="right" valign="top">constexpr std::make_unsigned_t&lt; S &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a7bd4164d1fdc637b5bdcd49a984948e0">zigzag_encode</a> (S s)</td></tr>
+<tr class="separator:a7bd4164d1fdc637b5bdcd49a984948e0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a09da28f299d4fb3c5b9425fd54627167" id="r_a09da28f299d4fb3c5b9425fd54627167"><td class="memTemplParams" colspan="2">template&lt;std::unsigned_integral U = std::uint64_t&gt; </td></tr>
+<tr class="memitem:a09da28f299d4fb3c5b9425fd54627167"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a09da28f299d4fb3c5b9425fd54627167">uleb128</a> ()</td></tr>
+<tr class="memdesc:a09da28f299d4fb3c5b9425fd54627167"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="namespacenanom.html#a09da28f299d4fb3c5b9425fd54627167" title="uleb128&lt;U&gt;() — unsigned LEB128 / protobuf &quot;varint&quot; into U (std::uint32_t or std::uint64_t).">uleb128&lt;U&gt;()</a> — unsigned LEB128 / protobuf "varint" into U (std::uint32_t or std::uint64_t).  <br /></td></tr>
+<tr class="separator:a09da28f299d4fb3c5b9425fd54627167"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5c777ecdb90ad0009d86e7a4884d6179" id="r_a5c777ecdb90ad0009d86e7a4884d6179"><td class="memTemplParams" colspan="2">template&lt;std::signed_integral S = std::int64_t&gt; </td></tr>
+<tr class="memitem:a5c777ecdb90ad0009d86e7a4884d6179"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a5c777ecdb90ad0009d86e7a4884d6179">sleb128</a> ()</td></tr>
+<tr class="memdesc:a5c777ecdb90ad0009d86e7a4884d6179"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="namespacenanom.html#a5c777ecdb90ad0009d86e7a4884d6179" title="sleb128&lt;S&gt;() — signed LEB128 (sign-extended from the last byte&#39;s bit 6; DWARF / WebAssembly).">sleb128&lt;S&gt;()</a> — signed LEB128 (sign-extended from the last byte's bit 6; DWARF / WebAssembly).  <br /></td></tr>
+<tr class="separator:a5c777ecdb90ad0009d86e7a4884d6179"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af003fe0b0c2af548acb45983a5a21a78" id="r_af003fe0b0c2af548acb45983a5a21a78"><td class="memTemplParams" colspan="2">template&lt;std::signed_integral S&gt; </td></tr>
+<tr class="memitem:af003fe0b0c2af548acb45983a5a21a78"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#af003fe0b0c2af548acb45983a5a21a78">zigzag_varint</a> ()</td></tr>
+<tr class="memdesc:af003fe0b0c2af548acb45983a5a21a78"><td class="mdescLeft">&#160;</td><td class="mdescRight">zigzag varint (protobuf sint32/sint64, Thrift compact i16/i32/i64) decoded into S.  <br /></td></tr>
+<tr class="separator:af003fe0b0c2af548acb45983a5a21a78"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a11cbb41eabedf2995ff9eb44486e3446" id="r_a11cbb41eabedf2995ff9eb44486e3446"><td class="memTemplParams" colspan="2">template&lt;std::unsigned_integral U&gt; </td></tr>
+<tr class="memitem:a11cbb41eabedf2995ff9eb44486e3446"><td class="memTemplItemLeft" align="right" valign="top">constexpr std::size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a11cbb41eabedf2995ff9eb44486e3446">uleb128_encode</a> (U v, std::byte *out)</td></tr>
+<tr class="memdesc:a11cbb41eabedf2995ff9eb44486e3446"><td class="mdescLeft">&#160;</td><td class="mdescRight">Encode v as ULEB128 into out (which must hold leb128_max_bytes<u> bytes); returns bytes written. </u> <br /></td></tr>
+<tr class="separator:a11cbb41eabedf2995ff9eb44486e3446"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6f05c14c43c5b5c1feea888bbf724892" id="r_a6f05c14c43c5b5c1feea888bbf724892"><td class="memItemLeft" align="right" valign="top">constexpr bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a6f05c14c43c5b5c1feea888bbf724892">count_fits</a> (<a class="el" href="structnanom_1_1input.html">input</a> in, std::uint64_t <a class="el" href="namespacenanom.html#a1344db56c51b3e2cc4ac743b1793129e">count</a>, std::size_t min_item_bytes)</td></tr>
+<tr class="memdesc:a6f05c14c43c5b5c1feea888bbf724892"><td class="mdescLeft">&#160;</td><td class="mdescRight">True when <code>count</code> items of at least <code>min_item_bytes</code> each can still fit in <code>in</code>.  <br /></td></tr>
+<tr class="separator:a6f05c14c43c5b5c1feea888bbf724892"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a60b4a68de64ebfdf9e71631e448f3607" id="r_a60b4a68de64ebfdf9e71631e448f3607"><td class="memTemplParams" colspan="2">template&lt;std::unsigned_integral U&gt; </td></tr>
+<tr class="memitem:a60b4a68de64ebfdf9e71631e448f3607"><td class="memTemplItemLeft" align="right" valign="top">constexpr std::optional&lt; U &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a60b4a68de64ebfdf9e71631e448f3607">checked_mul</a> (U a, U b)</td></tr>
+<tr class="memdesc:a60b4a68de64ebfdf9e71631e448f3607"><td class="mdescLeft">&#160;</td><td class="mdescRight">checked_mul / checked_add — overflow-checked size arithmetic for wire-derived values.  <br /></td></tr>
+<tr class="separator:a60b4a68de64ebfdf9e71631e448f3607"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a45f86c162a89c33797363684c033177e" id="r_a45f86c162a89c33797363684c033177e"><td class="memTemplParams" colspan="2">template&lt;std::unsigned_integral U&gt; </td></tr>
+<tr class="memitem:a45f86c162a89c33797363684c033177e"><td class="memTemplItemLeft" align="right" valign="top">constexpr std::optional&lt; U &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a45f86c162a89c33797363684c033177e">checked_add</a> (U a, U b)</td></tr>
+<tr class="separator:a45f86c162a89c33797363684c033177e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a983b0b6c65cf9da9dd875544146bef72" id="r_a983b0b6c65cf9da9dd875544146bef72"><td class="memTemplParams" colspan="2">template&lt;class T &gt; </td></tr>
+<tr class="memitem:a983b0b6c65cf9da9dd875544146bef72"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a983b0b6c65cf9da9dd875544146bef72">le_array_of</a> (std::size_t n)</td></tr>
+<tr class="memdesc:a983b0b6c65cf9da9dd875544146bef72"><td class="mdescLeft">&#160;</td><td class="mdescRight">le_array_of&lt;T&gt;(n) — parser: n little-endian T values (count checked against the input first).  <br /></td></tr>
+<tr class="separator:a983b0b6c65cf9da9dd875544146bef72"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a826b26f1711b39b8d99921959529de85" id="r_a826b26f1711b39b8d99921959529de85"><td class="memTemplParams" colspan="2">template&lt;class T &gt; <br />
 requires std::integral&lt;T&gt;</td></tr>
 <tr class="memitem:a826b26f1711b39b8d99921959529de85"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a826b26f1711b39b8d99921959529de85">dec</a> ()</td></tr>
@@ -551,10 +691,38 @@ requires (sizeof...(Ps) &gt;= 1)</td></tr>
 <tr class="memitem:a827fcb7c9d2207beece0a12d106190f8"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a827fcb7c9d2207beece0a12d106190f8">bytes_</a> (P p)</td></tr>
 <tr class="memdesc:a827fcb7c9d2207beece0a12d106190f8"><td class="mdescLeft">&#160;</td><td class="mdescRight">bytes_(p) — inside a bit parser, drop back to byte mode for p (nom::bits::bytes).  <br /></td></tr>
 <tr class="separator:a827fcb7c9d2207beece0a12d106190f8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae10e619843580c0a1bc4ec1d95ff4678" id="r_ae10e619843580c0a1bc4ec1d95ff4678"><td class="memTemplParams" colspan="2">template&lt;class F &gt; </td></tr>
+<tr class="memitem:ae10e619843580c0a1bc4ec1d95ff4678"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#ae10e619843580c0a1bc4ec1d95ff4678">for_each_unknown</a> (const <a class="el" href="structnanom_1_1unknown__fields.html">unknown_fields</a> &amp;u, F &amp;&amp;f)</td></tr>
+<tr class="memdesc:ae10e619843580c0a1bc4ec1d95ff4678"><td class="mdescLeft">&#160;</td><td class="mdescRight">Visit the records a pb_unknown member holds: f(field_number, wire_type) for each, in order.  <br /></td></tr>
+<tr class="separator:ae10e619843580c0a1bc4ec1d95ff4678"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af6c601209cc2e285f8dcc2acfe46fa7b" id="r_af6c601209cc2e285f8dcc2acfe46fa7b"><td class="memTemplParams" colspan="2">template&lt;Message M&gt; </td></tr>
+<tr class="memitem:af6c601209cc2e285f8dcc2acfe46fa7b"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1error.html">error</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#af6c601209cc2e285f8dcc2acfe46fa7b">protobuf_decode</a> (<a class="el" href="structnanom_1_1input.html">input</a> in, M &amp;m)</td></tr>
+<tr class="memdesc:af6c601209cc2e285f8dcc2acfe46fa7b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Decode the whole input as one message M into <code>m</code>, in place (no temporary M is built or moved: the cheap way to decode large models).  <br /></td></tr>
+<tr class="separator:af6c601209cc2e285f8dcc2acfe46fa7b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af6823e5112895289d544ec642fa0a9ed" id="r_af6823e5112895289d544ec642fa0a9ed"><td class="memTemplParams" colspan="2">template&lt;Message M&gt; </td></tr>
+<tr class="memitem:af6823e5112895289d544ec642fa0a9ed"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#af6823e5112895289d544ec642fa0a9ed">protobuf</a> ()</td></tr>
+<tr class="memdesc:af6823e5112895289d544ec642fa0a9ed"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="namespacenanom.html#af6823e5112895289d544ec642fa0a9ed" title="protobuf&lt;M&gt;() — parser: the whole input is one protobuf message M (protobuf messages are not self-del...">protobuf&lt;M&gt;()</a> — parser: the whole input is one protobuf message M (protobuf messages are not self-delimiting).  <br /></td></tr>
+<tr class="separator:af6823e5112895289d544ec642fa0a9ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a92a8c90f0811b0425f1bf5a9ac661680" id="r_a92a8c90f0811b0425f1bf5a9ac661680"><td class="memTemplParams" colspan="2">template&lt;Message M, byte_sink S&gt; </td></tr>
+<tr class="memitem:a92a8c90f0811b0425f1bf5a9ac661680"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a92a8c90f0811b0425f1bf5a9ac661680">protobuf_encode</a> (const M &amp;m, S &amp;sink)</td></tr>
+<tr class="memdesc:a92a8c90f0811b0425f1bf5a9ac661680"><td class="mdescLeft">&#160;</td><td class="mdescRight">Encode m into <code>sink</code>.  <br /></td></tr>
+<tr class="separator:a92a8c90f0811b0425f1bf5a9ac661680"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a51e6eea008a37c1590ed9594cbc42933" id="r_a51e6eea008a37c1590ed9594cbc42933"><td class="memTemplParams" colspan="2">template&lt;Message M&gt; </td></tr>
+<tr class="memitem:a51e6eea008a37c1590ed9594cbc42933"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a51e6eea008a37c1590ed9594cbc42933">protobuf_encode</a> (const M &amp;m, std::vector&lt; std::byte &gt; &amp;out)</td></tr>
+<tr class="memdesc:a51e6eea008a37c1590ed9594cbc42933"><td class="mdescLeft">&#160;</td><td class="mdescRight">Append the encoding of m to <code>out</code>.  <br /></td></tr>
+<tr class="separator:a51e6eea008a37c1590ed9594cbc42933"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae09c3d20d729472ae1fe9f84fac3f369" id="r_ae09c3d20d729472ae1fe9f84fac3f369"><td class="memTemplParams" colspan="2">template&lt;Message M&gt; </td></tr>
+<tr class="memitem:ae09c3d20d729472ae1fe9f84fac3f369"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#ae09c3d20d729472ae1fe9f84fac3f369">protobuf_size</a> (const M &amp;m)</td></tr>
+<tr class="memdesc:ae09c3d20d729472ae1fe9f84fac3f369"><td class="mdescLeft">&#160;</td><td class="mdescRight">The exact number of bytes protobuf_encode(m, …) writes (nothing is written).  <br /></td></tr>
+<tr class="separator:ae09c3d20d729472ae1fe9f84fac3f369"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ace252f499d7aef868ff1ea7efe58bbef" id="r_ace252f499d7aef868ff1ea7efe58bbef"><td class="memTemplParams" colspan="2">template&lt;Described T&gt; </td></tr>
 <tr class="memitem:ace252f499d7aef868ff1ea7efe58bbef"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#ace252f499d7aef868ff1ea7efe58bbef">strct</a> (std::endian dflt=std::endian::native)</td></tr>
 <tr class="memdesc:ace252f499d7aef868ff1ea7efe58bbef"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="namespacenanom.html#ace252f499d7aef868ff1ea7efe58bbef" title="strct&lt;T&gt;() — a parser producing T.">strct&lt;T&gt;()</a> — a parser producing T.  <br /></td></tr>
 <tr class="separator:ace252f499d7aef868ff1ea7efe58bbef"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0571ff0b0292a5064e8ef22567e6f0a7" id="r_a0571ff0b0292a5064e8ef22567e6f0a7"><td class="memTemplParams" colspan="2">template&lt;Described T&gt; </td></tr>
+<tr class="memitem:a0571ff0b0292a5064e8ef22567e6f0a7"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a0571ff0b0292a5064e8ef22567e6f0a7">footer</a> (std::endian dflt=std::endian::native)</td></tr>
+<tr class="memdesc:a0571ff0b0292a5064e8ef22567e6f0a7"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="namespacenanom.html#a0571ff0b0292a5064e8ef22567e6f0a7" title="footer&lt;T&gt;() — parse a registered struct from the END of the input (file trailers: Lance&#39;s 40-byte foo...">footer&lt;T&gt;()</a> — parse a registered struct from the END of the input (file trailers: Lance's 40-byte footer, a Parquet/ORC length+magic tail, ZIP's end-of-central-directory).  <br /></td></tr>
+<tr class="separator:a0571ff0b0292a5064e8ef22567e6f0a7"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a44eb2817eaa48f8d02c36b0465d6974c" id="r_a44eb2817eaa48f8d02c36b0465d6974c"><td class="memTemplParams" colspan="2">template&lt;Described T&gt; </td></tr>
 <tr class="memitem:a44eb2817eaa48f8d02c36b0465d6974c"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a44eb2817eaa48f8d02c36b0465d6974c">overlay</a> (std::endian dflt=std::endian::native)</td></tr>
 <tr class="memdesc:a44eb2817eaa48f8d02c36b0465d6974c"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="namespacenanom.html#a44eb2817eaa48f8d02c36b0465d6974c" title="overlay&lt;T&gt;() — parser yielding a view&lt;T&gt; (bounds-checked, zero-copy).">overlay&lt;T&gt;()</a> — parser yielding a view&lt;T&gt; (bounds-checked, zero-copy).  <br /></td></tr>
@@ -623,6 +791,22 @@ requires (sizeof...(Ps) &gt;= 1)</td></tr>
 <tr class="memitem:a5dc441a22762eb2a2503037273234f38"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a5dc441a22762eb2a2503037273234f38">overlay_seg</a> (std::endian dflt=std::endian::native)</td></tr>
 <tr class="memdesc:a5dc441a22762eb2a2503037273234f38"><td class="mdescLeft">&#160;</td><td class="mdescRight">overlay&lt;T&gt;'s segmented twin: ZERO-COPY OR ERROR, never a hidden copy.  <br /></td></tr>
 <tr class="separator:a5dc441a22762eb2a2503037273234f38"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3e764bcd5cc31d3d6a5d80f5a267cf76" id="r_a3e764bcd5cc31d3d6a5d80f5a267cf76"><td class="memTemplParams" colspan="2">template&lt;Message M&gt; </td></tr>
+<tr class="memitem:a3e764bcd5cc31d3d6a5d80f5a267cf76"><td class="memTemplItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a3e764bcd5cc31d3d6a5d80f5a267cf76">thrift_compact</a> ()</td></tr>
+<tr class="memdesc:a3e764bcd5cc31d3d6a5d80f5a267cf76"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="namespacenanom.html#a3e764bcd5cc31d3d6a5d80f5a267cf76" title="thrift_compact&lt;M&gt;() — parser: one Thrift compact struct into the message M.">thrift_compact&lt;M&gt;()</a> — parser: one Thrift compact struct into the message M.  <br /></td></tr>
+<tr class="separator:a3e764bcd5cc31d3d6a5d80f5a267cf76"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aeb8b31abfe3f1582ec6025ac9827821b" id="r_aeb8b31abfe3f1582ec6025ac9827821b"><td class="memTemplParams" colspan="2">template&lt;Message M, byte_sink S&gt; </td></tr>
+<tr class="memitem:aeb8b31abfe3f1582ec6025ac9827821b"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aeb8b31abfe3f1582ec6025ac9827821b">thrift_compact_encode</a> (const M &amp;m, S &amp;sink)</td></tr>
+<tr class="memdesc:aeb8b31abfe3f1582ec6025ac9827821b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Encode m into <code>sink</code>.  <br /></td></tr>
+<tr class="separator:aeb8b31abfe3f1582ec6025ac9827821b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7a44c3acaa678a06156872483c5fa781" id="r_a7a44c3acaa678a06156872483c5fa781"><td class="memTemplParams" colspan="2">template&lt;Message M&gt; </td></tr>
+<tr class="memitem:a7a44c3acaa678a06156872483c5fa781"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a7a44c3acaa678a06156872483c5fa781">thrift_compact_encode</a> (const M &amp;m, std::vector&lt; std::byte &gt; &amp;out)</td></tr>
+<tr class="memdesc:a7a44c3acaa678a06156872483c5fa781"><td class="mdescLeft">&#160;</td><td class="mdescRight">Append the encoding of m to <code>out</code>.  <br /></td></tr>
+<tr class="separator:a7a44c3acaa678a06156872483c5fa781"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a04984211950a5a15ba7c9841e4c24059" id="r_a04984211950a5a15ba7c9841e4c24059"><td class="memTemplParams" colspan="2">template&lt;Message M&gt; </td></tr>
+<tr class="memitem:a04984211950a5a15ba7c9841e4c24059"><td class="memTemplItemLeft" align="right" valign="top"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt;&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a04984211950a5a15ba7c9841e4c24059">thrift_compact_size</a> (const M &amp;m)</td></tr>
+<tr class="memdesc:a04984211950a5a15ba7c9841e4c24059"><td class="mdescLeft">&#160;</td><td class="mdescRight">The exact number of bytes thrift_compact_encode(m, …) writes (nothing is written).  <br /></td></tr>
+<tr class="separator:a04984211950a5a15ba7c9841e4c24059"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="var-members" name="var-members"></a>
 Variables</h2></td></tr>
@@ -752,6 +936,14 @@ Variables</h2></td></tr>
 <tr class="separator:a1e806b259292d86dd1bc618166c5c13c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6921c69504dbc1f8037358407817f9b1" id="r_a6921c69504dbc1f8037358407817f9b1"><td class="memItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a6921c69504dbc1f8037358407817f9b1">ne_u64</a> = [](<a class="el" href="structnanom_1_1input.html">input</a> in) { return detail::read_uint&lt;8&gt;(in, std::endian::native); }</td></tr>
 <tr class="separator:a6921c69504dbc1f8037358407817f9b1"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5da56305612bcb2fa3329f0a7c462ade" id="r_a5da56305612bcb2fa3329f0a7c462ade"><td class="memTemplParams" colspan="2">template&lt;class T &gt; </td></tr>
+<tr class="memitem:a5da56305612bcb2fa3329f0a7c462ade"><td class="memTemplItemLeft" align="right" valign="top">constexpr std::size_t&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a5da56305612bcb2fa3329f0a7c462ade">leb128_max_bytes</a> = (8 * sizeof(T) + 6) / 7</td></tr>
+<tr class="memdesc:a5da56305612bcb2fa3329f0a7c462ade"><td class="mdescLeft">&#160;</td><td class="mdescRight">Bytes a ULEB128 encoding of a T-wide value can occupy (u32: 5, u64: 10).  <br /></td></tr>
+<tr class="separator:a5da56305612bcb2fa3329f0a7c462ade"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7480835f61526476cfba10eb707a27a6" id="r_a7480835f61526476cfba10eb707a27a6"><td class="memItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a7480835f61526476cfba10eb707a27a6">varint_u32</a> = [](<a class="el" href="structnanom_1_1input.html">input</a> in) { return detail::read_uleb128&lt;std::uint32_t&gt;(in); }</td></tr>
+<tr class="separator:a7480835f61526476cfba10eb707a27a6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8c06d6962da4b28255ef4042bc3a5df4" id="r_a8c06d6962da4b28255ef4042bc3a5df4"><td class="memItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a8c06d6962da4b28255ef4042bc3a5df4">varint_u64</a> = [](<a class="el" href="structnanom_1_1input.html">input</a> in) { return detail::read_uleb128&lt;std::uint64_t&gt;(in); }</td></tr>
+<tr class="separator:a8c06d6962da4b28255ef4042bc3a5df4"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af94ead8ae2b3f3ed9c70d76e5fed1eaf" id="r_af94ead8ae2b3f3ed9c70d76e5fed1eaf"><td class="memItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#af94ead8ae2b3f3ed9c70d76e5fed1eaf">double_</a></td></tr>
 <tr class="memdesc:af94ead8ae2b3f3ed9c70d76e5fed1eaf"><td class="mdescLeft">&#160;</td><td class="mdescRight">float_ / double_ — text floating point ("3.14", "-1e9"). (nom: float/double)  <br /></td></tr>
 <tr class="separator:af94ead8ae2b3f3ed9c70d76e5fed1eaf"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -774,6 +966,11 @@ Variables</h2></td></tr>
 <tr class="separator:a1df0707718895a1a4a16c161db8c1571"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa5622c7ac77421db4609a143bb75a0db" id="r_aa5622c7ac77421db4609a143bb75a0db"><td class="memItemLeft" align="right" valign="top">constexpr std::size_t&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#aa5622c7ac77421db4609a143bb75a0db">seg_max_parts</a> = <a class="el" href="segmented_8hpp.html#a0be8383e2f0f60f47caab64882ba293b">NANOM_SEG_MAX_PARTS</a></td></tr>
 <tr class="separator:aa5622c7ac77421db4609a143bb75a0db"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a109931fb549474bc24797a986a69bdfe" id="r_a109931fb549474bc24797a986a69bdfe"><td class="memItemLeft" align="right" valign="top">constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a109931fb549474bc24797a986a69bdfe">max_tagged_depth</a> = <a class="el" href="tagged_8hpp.html#a5895a0806e4274137bd68aa96a57b38d">NANOM_TAGGED_MAX_DEPTH</a></td></tr>
+<tr class="separator:a109931fb549474bc24797a986a69bdfe"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a11770c71447c8bf5ddb74673ddc8f1d5" id="r_a11770c71447c8bf5ddb74673ddc8f1d5"><td class="memItemLeft" align="right" valign="top">constexpr auto&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom.html#a11770c71447c8bf5ddb74673ddc8f1d5">thrift_compact_skip</a></td></tr>
+<tr class="memdesc:a11770c71447c8bf5ddb74673ddc8f1d5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Skip one Thrift compact struct without decoding it (validates structure and limits).  <br /></td></tr>
+<tr class="separator:a11770c71447c8bf5ddb74673ddc8f1d5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <h2 class="groupheader">Typedef Documentation</h2>
 <a id="a2cb1eeb47b70a1e8f6b109642a541fe2" name="a2cb1eeb47b70a1e8f6b109642a541fe2"></a>
@@ -869,6 +1066,23 @@ template&lt;Parser P&gt; </div>
 </div><div class="memdoc">
 
 <p>The value type a parser produces. </p>
+
+</div>
+</div>
+<a id="af1469e7a349bac1fc5cf4d4dee77daf6" name="af1469e7a349bac1fc5cf4d4dee77daf6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af1469e7a349bac1fc5cf4d4dee77daf6">&#9670;&#160;</a></span>pb_unknown</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">using <a class="el" href="namespacenanom.html#af1469e7a349bac1fc5cf4d4dee77daf6">nanom::pb_unknown</a> = typedef <a class="el" href="structnanom_1_1field.html">field</a>&lt;0, <a class="el" href="structnanom_1_1unknown__fields.html">unknown_fields</a>, <a class="el" href="namespacenanom.html#a161f695775975f15b7e7785d56c238a8a09ecb6438e46ddb2614bc58b9e2a8b41">presence::defaulted</a>&gt;</td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Opt-in unknown-field preservation for protobuf (<a class="el" href="protobuf_8hpp.html">nanom/protobuf.hpp</a>): declare <code>nm::pb_unknown unknown;</code> as the message's FIRST member (its id is 0, which no protobuf field can have). </p>
+<p>Reading appends every field the model does not declare (or that arrives with another wire type); writing emits them after the declared fields, unchanged. Not supported by the Thrift codec. </p>
 
 </div>
 </div>
@@ -998,6 +1212,60 @@ template&lt;class T &gt; </div>
 <tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="af731ff1d3ae530ed4c92d0c6851c6bcda56bd7107802ebe56c6918992f0608ec6" name="af731ff1d3ae530ed4c92d0c6851c6bcda56bd7107802ebe56c6918992f0608ec6"></a>err&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="af731ff1d3ae530ed4c92d0c6851c6bcdae11185b6e35c1b767174dc988aa0f179" name="af731ff1d3ae530ed4c92d0c6851c6bcdae11185b6e35c1b767174dc988aa0f179"></a>fail&#160;</td><td class="fielddoc"></td></tr>
 <tr><td class="fieldname"><a id="af731ff1d3ae530ed4c92d0c6851c6bcda5ed4e9858ad8d239145ef285b6210a00" name="af731ff1d3ae530ed4c92d0c6851c6bcda5ed4e9858ad8d239145ef285b6210a00"></a>incomplete&#160;</td><td class="fielddoc"></td></tr>
+</table>
+
+</div>
+</div>
+<a id="a161f695775975f15b7e7785d56c238a8" name="a161f695775975f15b7e7785d56c238a8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a161f695775975f15b7e7785d56c238a8">&#9670;&#160;</a></span>presence</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="namespacenanom.html#a161f695775975f15b7e7785d56c238a8">nanom::presence</a> : std::uint8_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>What happens when a field does not appear on the wire. </p>
+<p>required — the message is rejected (Thrift <code>required</code>, and the safe default) defaulted — the member keeps its value-initialized default (Thrift default-requiredness, proto3 implicit presence) A field whose type is std::optional&lt;T&gt; is always optional (absent = nullopt), whatever P says. </p>
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="a161f695775975f15b7e7785d56c238a8aac67ede5a84eb5a1add7ff4440e9a485" name="a161f695775975f15b7e7785d56c238a8aac67ede5a84eb5a1add7ff4440e9a485"></a>required&#160;</td><td class="fielddoc"></td></tr>
+<tr><td class="fieldname"><a id="a161f695775975f15b7e7785d56c238a8a09ecb6438e46ddb2614bc58b9e2a8b41" name="a161f695775975f15b7e7785d56c238a8a09ecb6438e46ddb2614bc58b9e2a8b41"></a>defaulted&#160;</td><td class="fielddoc"></td></tr>
+</table>
+
+</div>
+</div>
+<a id="aa957b4e38d048a0382000595f807b77e" name="aa957b4e38d048a0382000595f807b77e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa957b4e38d048a0382000595f807b77e">&#9670;&#160;</a></span>tagged_wire</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">enum class <a class="el" href="namespacenanom.html#aa957b4e38d048a0382000595f807b77e">nanom::tagged_wire</a> : std::uint8_t</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">strong</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<table class="fieldtable">
+<tr><th colspan="2">Enumerator</th></tr><tr><td class="fieldname"><a id="aa957b4e38d048a0382000595f807b77ea44230bd6defcafe5cf3f45ddee046356" name="aa957b4e38d048a0382000595f807b77ea44230bd6defcafe5cf3f45ddee046356"></a>thrift_compact&#160;</td><td class="fielddoc"></td></tr>
 </table>
 
 </div>
@@ -1342,6 +1610,74 @@ template&lt;Parser P&gt; </div>
 
 </div>
 </div>
+<a id="aa864269d1c1bd76229136cc32aec3d90" name="aa864269d1c1bd76229136cc32aec3d90"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa864269d1c1bd76229136cc32aec3d90">&#9670;&#160;</a></span>calc()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;<a class="el" href="structnanom_1_1fixed__string.html">fixed_string</a> Name, class Fn &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="structnanom_1_1calc__t.html">calc_t</a>&lt; Name, Fn &gt; nanom::calc </td>
+          <td>(</td>
+          <td class="paramtype">Fn&#160;</td>
+          <td class="paramname"><em>fn</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>A field computed from the value and the context before encoding: fn(const T&amp;, const emit_ctx&amp;). </p>
+
+</div>
+</div>
+<a id="a45f86c162a89c33797363684c033177e" name="a45f86c162a89c33797363684c033177e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a45f86c162a89c33797363684c033177e">&#9670;&#160;</a></span>checked_add()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;std::unsigned_integral U&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::optional&lt; U &gt; nanom::checked_add </td>
+          <td>(</td>
+          <td class="paramtype">U&#160;</td>
+          <td class="paramname"><em>a</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">U&#160;</td>
+          <td class="paramname"><em>b</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
 <a id="acd6592713b5536de2c32dd5ed0f8995e" name="acd6592713b5536de2c32dd5ed0f8995e"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#acd6592713b5536de2c32dd5ed0f8995e">&#9670;&#160;</a></span>checked_many0()</h2>
 
@@ -1379,6 +1715,76 @@ template&lt;Parser P&gt; </div>
 </div><div class="memdoc">
 
 <p>checked_many0(p, max_rep) — like many0 but stops with an error after max_rep successful matches (default 1M) so a custom inner parser cannot spin forever. </p>
+
+</div>
+</div>
+<a id="a60b4a68de64ebfdf9e71631e448f3607" name="a60b4a68de64ebfdf9e71631e448f3607"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a60b4a68de64ebfdf9e71631e448f3607">&#9670;&#160;</a></span>checked_mul()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;std::unsigned_integral U&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::optional&lt; U &gt; nanom::checked_mul </td>
+          <td>(</td>
+          <td class="paramtype">U&#160;</td>
+          <td class="paramname"><em>a</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">U&#160;</td>
+          <td class="paramname"><em>b</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>checked_mul / checked_add — overflow-checked size arithmetic for wire-derived values. </p>
+
+</div>
+</div>
+<a id="a8b1a64dcde346d59719df107c6fb902b" name="a8b1a64dcde346d59719df107c6fb902b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8b1a64dcde346d59719df107c6fb902b">&#9670;&#160;</a></span>checksum()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;<a class="el" href="structnanom_1_1fixed__string.html">fixed_string</a> Name, class Fn &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="structnanom_1_1checksum__t.html">checksum_t</a>&lt; Name, Fn &gt; nanom::checksum </td>
+          <td>(</td>
+          <td class="paramtype">Fn&#160;</td>
+          <td class="paramname"><em>fn</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>A field computed from the encoded struct (with this field zeroed) and the context: fn(std::span&lt;const std::byte&gt;, const emit_ctx&amp;). </p>
 
 </div>
 </div>
@@ -1590,6 +1996,51 @@ template&lt;Parser P&gt; </div>
 
 </div>
 </div>
+<a id="a6f05c14c43c5b5c1feea888bbf724892" name="a6f05c14c43c5b5c1feea888bbf724892"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6f05c14c43c5b5c1feea888bbf724892">&#9670;&#160;</a></span>count_fits()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr bool nanom::count_fits </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1input.html">input</a>&#160;</td>
+          <td class="paramname"><em>in</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::uint64_t&#160;</td>
+          <td class="paramname"><em>count</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>min_item_bytes</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>True when <code>count</code> items of at least <code>min_item_bytes</code> each can still fit in <code>in</code>. </p>
+<p>Every element count read from the wire passes through this before a container is reserved, so a 4-byte hostile count can never turn into a multi-gigabyte allocation (overflow-safe: divides, never multiplies). </p>
+
+</div>
+</div>
 <a id="ac33b3d611aa936e64d7b7aa76df9dc68" name="ac33b3d611aa936e64d7b7aa76df9dc68"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ac33b3d611aa936e64d7b7aa76df9dc68">&#9670;&#160;</a></span>csv_header()</h2>
 
@@ -1765,6 +2216,147 @@ template&lt;class T &gt; </div>
         </tr>
       </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="ad6b54d47f3edd506eb1a475b38765876" name="ad6b54d47f3edd506eb1a475b38765876"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad6b54d47f3edd506eb1a475b38765876">&#9670;&#160;</a></span>emit()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Described T&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt; nanom::emit </td>
+          <td>(</td>
+          <td class="paramtype">const T &amp;&#160;</td>
+          <td class="paramname"><em>v</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::span&lt; std::byte &gt;&#160;</td>
+          <td class="paramname"><em>out</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structnanom_1_1emit__ctx.html">emit_ctx</a> &amp;&#160;</td>
+          <td class="paramname"><em>ctx</em> = <code>{}</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::endian&#160;</td>
+          <td class="paramname"><em>dflt</em> = <code>std::endian::native</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Encode v into the start of <code>out</code> (which must hold wire_size_v&lt;T&gt; bytes); returns the size. </p>
+
+</div>
+</div>
+<a id="ae7c19c25d296f22cf0e46af32f33c3eb" name="ae7c19c25d296f22cf0e46af32f33c3eb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae7c19c25d296f22cf0e46af32f33c3eb">&#9670;&#160;</a></span>emit_frame()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Described T, byte_sink S&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt; nanom::emit_frame </td>
+          <td>(</td>
+          <td class="paramtype">const T &amp;&#160;</td>
+          <td class="paramname"><em>v</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::span&lt; const std::byte &gt;&#160;</td>
+          <td class="paramname"><em>payload</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">S &amp;&#160;</td>
+          <td class="paramname"><em>sink</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::endian&#160;</td>
+          <td class="paramname"><em>dflt</em> = <code>std::endian::native</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>A frame: v (with computed fields seeing <code>payload</code>), then the payload itself, passed to the sink as is (no copy). </p>
+<p>Returns the total bytes written. </p>
+
+</div>
+</div>
+<a id="ad7c58fd7c672698cb29b30c540bd00cd" name="ad7c58fd7c672698cb29b30c540bd00cd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad7c58fd7c672698cb29b30c540bd00cd">&#9670;&#160;</a></span>emit_to()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Described T, byte_sink S&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt; nanom::emit_to </td>
+          <td>(</td>
+          <td class="paramtype">const T &amp;&#160;</td>
+          <td class="paramname"><em>v</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">S &amp;&#160;</td>
+          <td class="paramname"><em>sink</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structnanom_1_1emit__ctx.html">emit_ctx</a> &amp;&#160;</td>
+          <td class="paramname"><em>ctx</em> = <code>{}</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::endian&#160;</td>
+          <td class="paramname"><em>dflt</em> = <code>std::endian::native</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Encode v into any byte sink. </p>
 
 </div>
 </div>
@@ -1978,6 +2570,70 @@ template&lt;Parser P, class Init , class F &gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a0571ff0b0292a5064e8ef22567e6f0a7" name="a0571ff0b0292a5064e8ef22567e6f0a7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0571ff0b0292a5064e8ef22567e6f0a7">&#9670;&#160;</a></span>footer()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Described T&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::footer </td>
+          <td>(</td>
+          <td class="paramtype">std::endian&#160;</td>
+          <td class="paramname"><em>dflt</em> = <code>std::endian::native</code></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p><a class="el" href="namespacenanom.html#a0571ff0b0292a5064e8ef22567e6f0a7" title="footer&lt;T&gt;() — parse a registered struct from the END of the input (file trailers: Lance&#39;s 40-byte foo...">footer&lt;T&gt;()</a> — parse a registered struct from the END of the input (file trailers: Lance's 40-byte footer, a Parquet/ORC length+magic tail, ZIP's end-of-central-directory). </p>
+<p>The value is decoded exactly as <a class="el" href="namespacenanom.html#ace252f499d7aef868ff1ea7efe58bbef" title="strct&lt;T&gt;() — a parser producing T.">strct&lt;T&gt;()</a> would; <code>rest</code> is everything BEFORE the footer (the body), so the next step can address metadata by offsets taken from the footer. </p>
+
+</div>
+</div>
+<a id="ae10e619843580c0a1bc4ec1d95ff4678" name="ae10e619843580c0a1bc4ec1d95ff4678"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae10e619843580c0a1bc4ec1d95ff4678">&#9670;&#160;</a></span>for_each_unknown()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class F &gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname">bool nanom::for_each_unknown </td>
+          <td>(</td>
+          <td class="paramtype">const <a class="el" href="structnanom_1_1unknown__fields.html">unknown_fields</a> &amp;&#160;</td>
+          <td class="paramname"><em>u</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">F &amp;&amp;&#160;</td>
+          <td class="paramname"><em>f</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Visit the records a pb_unknown member holds: f(field_number, wire_type) for each, in order. </p>
+<p>Returns false (having stopped) if the bytes are not well-formed records, which bytes the decoder stored never are. </p>
 
 </div>
 </div>
@@ -2241,6 +2897,36 @@ template&lt;class T , Parser P&gt; </div>
   </tr>
 </table>
 </div><div class="memdoc">
+
+</div>
+</div>
+<a id="a983b0b6c65cf9da9dd875544146bef72" name="a983b0b6c65cf9da9dd875544146bef72"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a983b0b6c65cf9da9dd875544146bef72">&#9670;&#160;</a></span>le_array_of()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class T &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::le_array_of </td>
+          <td>(</td>
+          <td class="paramtype">std::size_t&#160;</td>
+          <td class="paramname"><em>n</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>le_array_of&lt;T&gt;(n) — parser: n little-endian T values (count checked against the input first). </p>
 
 </div>
 </div>
@@ -3077,6 +3763,156 @@ template&lt;Parser A, Parser B&gt; </div>
 
 </div>
 </div>
+<a id="af6823e5112895289d544ec642fa0a9ed" name="af6823e5112895289d544ec642fa0a9ed"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af6823e5112895289d544ec642fa0a9ed">&#9670;&#160;</a></span>protobuf()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Message M&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::protobuf </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p><a class="el" href="namespacenanom.html#af6823e5112895289d544ec642fa0a9ed" title="protobuf&lt;M&gt;() — parser: the whole input is one protobuf message M (protobuf messages are not self-del...">protobuf&lt;M&gt;()</a> — parser: the whole input is one protobuf message M (protobuf messages are not self-delimiting). </p>
+<p>Strings and bytes are views into the input. </p>
+
+</div>
+</div>
+<a id="af6c601209cc2e285f8dcc2acfe46fa7b" name="af6c601209cc2e285f8dcc2acfe46fa7b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af6c601209cc2e285f8dcc2acfe46fa7b">&#9670;&#160;</a></span>protobuf_decode()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Message M&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1error.html">error</a> &gt; nanom::protobuf_decode </td>
+          <td>(</td>
+          <td class="paramtype"><a class="el" href="structnanom_1_1input.html">input</a>&#160;</td>
+          <td class="paramname"><em>in</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">M &amp;&#160;</td>
+          <td class="paramname"><em>m</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Decode the whole input as one message M into <code>m</code>, in place (no temporary M is built or moved: the cheap way to decode large models). </p>
+<p><code>m</code> should start value-initialized; fields present are merged into it as protobuf merges repeated occurrences. On failure <code>m</code> holds a partial decode. </p>
+
+</div>
+</div>
+<a id="a92a8c90f0811b0425f1bf5a9ac661680" name="a92a8c90f0811b0425f1bf5a9ac661680"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a92a8c90f0811b0425f1bf5a9ac661680">&#9670;&#160;</a></span>protobuf_encode() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Message M, byte_sink S&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt; nanom::protobuf_encode </td>
+          <td>(</td>
+          <td class="paramtype">const M &amp;&#160;</td>
+          <td class="paramname"><em>m</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">S &amp;&#160;</td>
+          <td class="paramname"><em>sink</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Encode m into <code>sink</code>. </p>
+<p>Returns the bytes written, or where and why it failed (on failure a growable sink may hold a partial encoding; a <a class="el" href="structnanom_1_1span__sink.html" title="Writes into a fixed buffer; refuses (writing nothing) what does not fit.">span_sink</a> is never written past its end). </p>
+
+</div>
+</div>
+<a id="a51e6eea008a37c1590ed9594cbc42933" name="a51e6eea008a37c1590ed9594cbc42933"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a51e6eea008a37c1590ed9594cbc42933">&#9670;&#160;</a></span>protobuf_encode() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Message M&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt; nanom::protobuf_encode </td>
+          <td>(</td>
+          <td class="paramtype">const M &amp;&#160;</td>
+          <td class="paramname"><em>m</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::vector&lt; std::byte &gt; &amp;&#160;</td>
+          <td class="paramname"><em>out</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Append the encoding of m to <code>out</code>. </p>
+
+</div>
+</div>
+<a id="ae09c3d20d729472ae1fe9f84fac3f369" name="ae09c3d20d729472ae1fe9f84fac3f369"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae09c3d20d729472ae1fe9f84fac3f369">&#9670;&#160;</a></span>protobuf_size()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Message M&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt; nanom::protobuf_size </td>
+          <td>(</td>
+          <td class="paramtype">const M &amp;&#160;</td>
+          <td class="paramname"><em>m</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>The exact number of bytes protobuf_encode(m, …) writes (nothing is written). </p>
+
+</div>
+</div>
 <a id="a43387026200f381307407646052f9adb" name="a43387026200f381307407646052f9adb"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a43387026200f381307407646052f9adb">&#9670;&#160;</a></span>recognize()</h2>
 
@@ -3764,6 +4600,35 @@ requires (sizeof...(Ps) &gt;= 1)</div>
 
 </div>
 </div>
+<a id="a5c777ecdb90ad0009d86e7a4884d6179" name="a5c777ecdb90ad0009d86e7a4884d6179"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5c777ecdb90ad0009d86e7a4884d6179">&#9670;&#160;</a></span>sleb128()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;std::signed_integral S = std::int64_t&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::sleb128 </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p><a class="el" href="namespacenanom.html#a5c777ecdb90ad0009d86e7a4884d6179" title="sleb128&lt;S&gt;() — signed LEB128 (sign-extended from the last byte&#39;s bit 6; DWARF / WebAssembly).">sleb128&lt;S&gt;()</a> — signed LEB128 (sign-extended from the last byte's bit 6; DWARF / WebAssembly). </p>
+
+</div>
+</div>
 <a id="ace252f499d7aef868ff1ea7efe58bbef" name="ace252f499d7aef868ff1ea7efe58bbef"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ace252f499d7aef868ff1ea7efe58bbef">&#9670;&#160;</a></span>strct()</h2>
 
@@ -4338,6 +5203,168 @@ template&lt;Parser A, Parser B&gt; </div>
 
 </div>
 </div>
+<a id="a3e764bcd5cc31d3d6a5d80f5a267cf76" name="a3e764bcd5cc31d3d6a5d80f5a267cf76"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3e764bcd5cc31d3d6a5d80f5a267cf76">&#9670;&#160;</a></span>thrift_compact()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Message M&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::thrift_compact </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p><a class="el" href="namespacenanom.html#a3e764bcd5cc31d3d6a5d80f5a267cf76" title="thrift_compact&lt;M&gt;() — parser: one Thrift compact struct into the message M.">thrift_compact&lt;M&gt;()</a> — parser: one Thrift compact struct into the message M. </p>
+
+</div>
+</div>
+<a id="aeb8b31abfe3f1582ec6025ac9827821b" name="aeb8b31abfe3f1582ec6025ac9827821b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aeb8b31abfe3f1582ec6025ac9827821b">&#9670;&#160;</a></span>thrift_compact_encode() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Message M, byte_sink S&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt; nanom::thrift_compact_encode </td>
+          <td>(</td>
+          <td class="paramtype">const M &amp;&#160;</td>
+          <td class="paramname"><em>m</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">S &amp;&#160;</td>
+          <td class="paramname"><em>sink</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Encode m into <code>sink</code>. </p>
+<p>Returns the bytes written, or where and why it failed (on failure a growable sink may hold a partial encoding; a <a class="el" href="structnanom_1_1span__sink.html" title="Writes into a fixed buffer; refuses (writing nothing) what does not fit.">span_sink</a> is never written past its end). </p>
+
+</div>
+</div>
+<a id="a7a44c3acaa678a06156872483c5fa781" name="a7a44c3acaa678a06156872483c5fa781"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7a44c3acaa678a06156872483c5fa781">&#9670;&#160;</a></span>thrift_compact_encode() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Message M&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt; nanom::thrift_compact_encode </td>
+          <td>(</td>
+          <td class="paramtype">const M &amp;&#160;</td>
+          <td class="paramname"><em>m</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::vector&lt; std::byte &gt; &amp;&#160;</td>
+          <td class="paramname"><em>out</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Append the encoding of m to <code>out</code>. </p>
+
+</div>
+</div>
+<a id="a04984211950a5a15ba7c9841e4c24059" name="a04984211950a5a15ba7c9841e4c24059"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a04984211950a5a15ba7c9841e4c24059">&#9670;&#160;</a></span>thrift_compact_size()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Message M&gt; </div>
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::size_t, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt; nanom::thrift_compact_size </td>
+          <td>(</td>
+          <td class="paramtype">const M &amp;&#160;</td>
+          <td class="paramname"><em>m</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>The exact number of bytes thrift_compact_encode(m, …) writes (nothing is written). </p>
+
+</div>
+</div>
+<a id="a6b8d0b1cbea5c937e7b407a5c8940f58" name="a6b8d0b1cbea5c937e7b407a5c8940f58"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6b8d0b1cbea5c937e7b407a5c8940f58">&#9670;&#160;</a></span>to_bytes()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Described T&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr <a class="el" href="classnanom_1_1expected.html">expected</a>&lt; std::array&lt; std::byte, <a class="el" href="namespacenanom.html#ad47fb5a1b8437c490c3a9b56faa24e8d">wire_size_v</a>&lt; T &gt; &gt;, <a class="el" href="structnanom_1_1encode__error.html">encode_error</a> &gt; nanom::to_bytes </td>
+          <td>(</td>
+          <td class="paramtype">const T &amp;&#160;</td>
+          <td class="paramname"><em>v</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structnanom_1_1emit__ctx.html">emit_ctx</a> &amp;&#160;</td>
+          <td class="paramname"><em>ctx</em> = <code>{}</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::endian&#160;</td>
+          <td class="paramname"><em>dflt</em> = <code>std::endian::native</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>The wire bytes of v (computed fields applied). Usable in constant expressions. </p>
+
+</div>
+</div>
 <a id="ad8080093c14f04e71d8f486428451de0" name="ad8080093c14f04e71d8f486428451de0"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ad8080093c14f04e71d8f486428451de0">&#9670;&#160;</a></span>to_json()</h2>
 
@@ -4388,6 +5415,75 @@ requires std::integral&lt;T&gt;</div>
 </div><div class="memdoc">
 
 <p>uint&lt;T&gt;(order) — integer of T's width with an endianness chosen at runtime. </p>
+
+</div>
+</div>
+<a id="a09da28f299d4fb3c5b9425fd54627167" name="a09da28f299d4fb3c5b9425fd54627167"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a09da28f299d4fb3c5b9425fd54627167">&#9670;&#160;</a></span>uleb128()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;std::unsigned_integral U = std::uint64_t&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::uleb128 </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p><a class="el" href="namespacenanom.html#a09da28f299d4fb3c5b9425fd54627167" title="uleb128&lt;U&gt;() — unsigned LEB128 / protobuf &quot;varint&quot; into U (std::uint32_t or std::uint64_t).">uleb128&lt;U&gt;()</a> — unsigned LEB128 / protobuf "varint" into U (std::uint32_t or std::uint64_t). </p>
+
+</div>
+</div>
+<a id="a11cbb41eabedf2995ff9eb44486e3446" name="a11cbb41eabedf2995ff9eb44486e3446"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a11cbb41eabedf2995ff9eb44486e3446">&#9670;&#160;</a></span>uleb128_encode()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;std::unsigned_integral U&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::size_t nanom::uleb128_encode </td>
+          <td>(</td>
+          <td class="paramtype">U&#160;</td>
+          <td class="paramname"><em>v</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::byte *&#160;</td>
+          <td class="paramname"><em>out</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Encode v as ULEB128 into out (which must hold leb128_max_bytes<u> bytes); returns bytes written. </u></p>
 
 </div>
 </div>
@@ -4496,6 +5592,140 @@ template&lt;Parser P, class Pred &gt; </div>
 </div><div class="memdoc">
 
 <p>verify(p, pred) — succeed only if pred(value) holds. </p>
+
+</div>
+</div>
+<a id="a8c3427c8a0598015c37646a7d4c88734" name="a8c3427c8a0598015c37646a7d4c88734"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8c3427c8a0598015c37646a7d4c88734">&#9670;&#160;</a></span>verify_computed()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;Described T&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr bool nanom::verify_computed </td>
+          <td>(</td>
+          <td class="paramtype">std::span&lt; const std::byte &gt;&#160;</td>
+          <td class="paramname"><em>wire</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const <a class="el" href="structnanom_1_1emit__ctx.html">emit_ctx</a> &amp;&#160;</td>
+          <td class="paramname"><em>ctx</em> = <code>{}</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">std::endian&#160;</td>
+          <td class="paramname"><em>dflt</em> = <code>std::endian::native</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Read side: do the computed fields stored in <code>wire</code> (wire_size_v&lt;T&gt; bytes) match what writing the decoded value would compute? (A received IPv4 header's checksum and total length, say.) </p>
+
+</div>
+</div>
+<a id="ad1df5426a88bbe6fbea6e58876b7ce04" name="ad1df5426a88bbe6fbea6e58876b7ce04"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ad1df5426a88bbe6fbea6e58876b7ce04">&#9670;&#160;</a></span>zigzag_decode()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;std::unsigned_integral U&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::make_signed_t&lt; U &gt; nanom::zigzag_decode </td>
+          <td>(</td>
+          <td class="paramtype">U&#160;</td>
+          <td class="paramname"><em>u</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>zigzag: maps signed to unsigned so small magnitudes stay small (0,-1,1,-2 -&gt; 0,1,2,3). </p>
+
+</div>
+</div>
+<a id="a7bd4164d1fdc637b5bdcd49a984948e0" name="a7bd4164d1fdc637b5bdcd49a984948e0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7bd4164d1fdc637b5bdcd49a984948e0">&#9670;&#160;</a></span>zigzag_encode()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;std::signed_integral S&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::make_unsigned_t&lt; S &gt; nanom::zigzag_encode </td>
+          <td>(</td>
+          <td class="paramtype">S&#160;</td>
+          <td class="paramname"><em>s</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="af003fe0b0c2af548acb45983a5a21a78" name="af003fe0b0c2af548acb45983a5a21a78"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af003fe0b0c2af548acb45983a5a21a78">&#9670;&#160;</a></span>zigzag_varint()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;std::signed_integral S&gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::zigzag_varint </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>zigzag varint (protobuf sint32/sint64, Thrift compact i16/i32/i64) decoded into S. </p>
+<p>The varint is read at S's width, so an out-of-range value is an error rather than a truncation. </p>
 
 </div>
 </div>
@@ -5053,7 +6283,7 @@ template&lt;Parser P, class Pred &gt; </div>
 <div class="line">  <span class="keywordflow">if</span> (!r) <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">unexp</a>(r.error());</div>
 <div class="line">  <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a91c7985d0464f531b30c781da779abe9">done</a>{float(r-&gt;value), r-&gt;rest};</div>
 <div class="line">}</div>
-<div class="ttc" id="anamespacenanom_html_af94ead8ae2b3f3ed9c70d76e5fed1eaf"><div class="ttname"><a href="namespacenanom.html#af94ead8ae2b3f3ed9c70d76e5fed1eaf">nanom::double_</a></div><div class="ttdeci">constexpr auto double_</div><div class="ttdoc">float_ / double_ — text floating point (&quot;3.14&quot;, &quot;-1e9&quot;). (nom: float/double)</div><div class="ttdef"><b>Definition</b> nom.hpp:1481</div></div>
+<div class="ttc" id="anamespacenanom_html_af94ead8ae2b3f3ed9c70d76e5fed1eaf"><div class="ttname"><a href="namespacenanom.html#af94ead8ae2b3f3ed9c70d76e5fed1eaf">nanom::double_</a></div><div class="ttdeci">constexpr auto double_</div><div class="ttdoc">float_ / double_ — text floating point (&quot;3.14&quot;, &quot;-1e9&quot;). (nom: float/double)</div><div class="ttdef"><b>Definition</b> nom.hpp:1692</div></div>
 </div><!-- fragment -->
 </div>
 </div>
@@ -5445,6 +6675,32 @@ template&lt;Parser P, class Pred &gt; </div>
 
 </div>
 </div>
+<a id="a5da56305612bcb2fa3329f0a7c462ade" name="a5da56305612bcb2fa3329f0a7c462ade"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5da56305612bcb2fa3329f0a7c462ade">&#9670;&#160;</a></span>leb128_max_bytes</h2>
+
+<div class="memitem">
+<div class="memproto">
+<div class="memtemplate">
+template&lt;class T &gt; </div>
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr std::size_t nanom::leb128_max_bytes = (8 * sizeof(T) + 6) / 7</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Bytes a ULEB128 encoding of a T-wide value can occupy (u32: 5, u64: 10). </p>
+
+</div>
+</div>
 <a id="adb5bdd721cdb59c2708f1bb33f2b1edd" name="adb5bdd721cdb59c2708f1bb33f2b1edd"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#adb5bdd721cdb59c2708f1bb33f2b1edd">&#9670;&#160;</a></span>length_prefix_spans_are_unowned</h2>
 
@@ -5576,6 +6832,28 @@ template&lt;Parser P, class Pred &gt; </div>
 
 <p>Upper bound on <a class="el" href="structnanom_1_1error.html#acbd46803df80a8a2100dccd0aa1a2c61" title="for incomplete: bytes missing (0 = unknown)">error::needed</a> in streaming incomplete errors — avoids OOM when callers pre-allocate from hostile length prefixes. </p>
 <p>0 still means unknown. </p>
+
+</div>
+</div>
+<a id="a109931fb549474bc24797a986a69bdfe" name="a109931fb549474bc24797a986a69bdfe"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a109931fb549474bc24797a986a69bdfe">&#9670;&#160;</a></span>max_tagged_depth</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr int nanom::max_tagged_depth = <a class="el" href="tagged_8hpp.html#a5895a0806e4274137bd68aa96a57b38d">NANOM_TAGGED_MAX_DEPTH</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
 
 </div>
 </div>
@@ -5994,6 +7272,37 @@ template&lt;Parser P, class Pred &gt; </div>
 
 </div>
 </div>
+<a id="a11770c71447c8bf5ddb74673ddc8f1d5" name="a11770c71447c8bf5ddb74673ddc8f1d5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a11770c71447c8bf5ddb74673ddc8f1d5">&#9670;&#160;</a></span>thrift_compact_skip</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::thrift_compact_skip</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+<b>Initial value:</b><div class="fragment"><div class="line">= [](input in) -&gt; result&lt;unit&gt; {</div>
+<div class="line">  detail::tc::ctx c{in};</div>
+<div class="line">  detail::tc::ptr p = in.first;</div>
+<div class="line">  <span class="keywordflow">if</span> (!detail::tc::skip_struct(c, p, in.last, 0)) <span class="keywordflow">return</span> <a class="code hl_function" href="namespacenanom.html#a240215857a8180d01e7a8461dc51da46">unexp</a>(c.to_error());</div>
+<div class="line">  <span class="keywordflow">return</span> <a class="code hl_struct" href="structnanom_1_1done.html">done</a>{<a class="code hl_struct" href="structnanom_1_1unit.html">unit</a>{}, in.advance(std::size_t(p - in.first))};</div>
+<div class="line">}</div>
+<div class="ttc" id="astructnanom_1_1unit_html"><div class="ttname"><a href="structnanom_1_1unit.html">nanom::unit</a></div><div class="ttdoc">value of parsers that produce nothing (eof, not_, tag ok…)</div><div class="ttdef"><b>Definition</b> nom.hpp:307</div></div>
+</div><!-- fragment -->
+<p>Skip one Thrift compact struct without decoding it (validates structure and limits). </p>
+
+</div>
+</div>
 <a id="afa7974bd70ebc29798de9e3e04c8f06c" name="afa7974bd70ebc29798de9e3e04c8f06c"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#afa7974bd70ebc29798de9e3e04c8f06c">&#9670;&#160;</a></span>u8</h2>
 
@@ -6005,6 +7314,50 @@ template&lt;Parser P, class Pred &gt; </div>
       <table class="memname">
         <tr>
           <td class="memname">constexpr auto nanom::u8 = <a class="el" href="namespacenanom.html#a11f2b789519ef485e1420f69af721644">be_u8</a></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a7480835f61526476cfba10eb707a27a6" name="a7480835f61526476cfba10eb707a27a6"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7480835f61526476cfba10eb707a27a6">&#9670;&#160;</a></span>varint_u32</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::varint_u32 = [](<a class="el" href="structnanom_1_1input.html">input</a> in) { return detail::read_uleb128&lt;std::uint32_t&gt;(in); }</td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">inline</span><span class="mlabel">constexpr</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+</div>
+</div>
+<a id="a8c06d6962da4b28255ef4042bc3a5df4" name="a8c06d6962da4b28255ef4042bc3a5df4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8c06d6962da4b28255ef4042bc3a5df4">&#9670;&#160;</a></span>varint_u64</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">constexpr auto nanom::varint_u64 = [](<a class="el" href="structnanom_1_1input.html">input</a> in) { return detail::read_uleb128&lt;std::uint64_t&gt;(in); }</td>
         </tr>
       </table>
   </td>

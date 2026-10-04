@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['list_0',['list',['../namespacenanom.html#ade5643fd7a4b85b5990807724eecdbd1a10ae9fc7d453b0dd525d0edf2ede7961',1,'nanom']]],
-  ['lsb0_1',['lsb0',['../namespacenanom.html#aa6d0e66bd0d3ab9431dc56579fc7d9f1a25a72328b656e43fd71e9b6da13bfeab',1,'nanom']]]
+  ['enum_0',['ENUM',['../namespacenanom__formats_1_1parquet.html#a752074b3d694b8a57e908e85ee91e52aa85a1979d26d0ef93dcc13a72fee80705',1,'nanom_formats::parquet']]],
+  ['err_1',['err',['../namespacenanom.html#af731ff1d3ae530ed4c92d0c6851c6bcda56bd7107802ebe56c6918992f0608ec6',1,'nanom']]]
 ];

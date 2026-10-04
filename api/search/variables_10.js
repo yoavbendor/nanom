@@ -1,5 +1,20 @@
 var searchData=
 [
-  ['tab_0',['tab',['../namespacenanom.html#a794950db65b51eec8f1e8f825607fb36',1,'nanom']]],
-  ['threads_1',['threads',['../structnanom_1_1par__exec.html#a5af0b437b5ef68f8884205cbc9a73813',1,'nanom::par_exec']]]
+  ['r_5fenc_0',['r_enc',['../structnanom_1_1columnar_1_1dremel__node.html#a3b842e6a7ef1dfa39040d71009f2de79',1,'nanom::columnar::dremel_node']]],
+  ['raw_1',['raw',['../structnanom_1_1endian__scalar.html#aa3d04767928aad4025c73277c2798f18',1,'nanom::endian_scalar']]],
+  ['read_5fversion_2',['read_version',['../structnanom__formats_1_1lance_1_1DeletionFile.html#a7bbd6f86c5cd0c8c9eaeb65a1c778429',1,'nanom_formats::lance::DeletionFile']]],
+  ['reader_5ffeature_5fflags_3',['reader_feature_flags',['../structnanom__formats_1_1lance_1_1Manifest.html#af73989c9e038f6d39af00e263b7f9ed9',1,'nanom_formats::lance::Manifest']]],
+  ['rep_5fcompression_4',['rep_compression',['../structnanom__formats_1_1lance_1_1MiniBlockLayout.html#a4e36561928bb2cb95d476dee533d4a30',1,'nanom_formats::lance::MiniBlockLayout::rep_compression'],['../structnanom__formats_1_1lance_1_1ConstantLayout.html#a298a73662eedfdb00ced2b2484f509ce',1,'nanom_formats::lance::ConstantLayout::rep_compression']]],
+  ['rep_5felem_5',['rep_elem',['../structnanom_1_1columnar_1_1dremel__node.html#a921df176dd63c02a81a36c6e6542a5cf',1,'nanom::columnar::dremel_node']]],
+  ['repetition_5findex_5fdepth_6',['repetition_index_depth',['../structnanom__formats_1_1lance_1_1MiniBlockLayout.html#ae11742e5027cbe188150980402b25bf1',1,'nanom_formats::lance::MiniBlockLayout']]],
+  ['repetition_5flevel_5fencoding_7',['repetition_level_encoding',['../structnanom__formats_1_1parquet_1_1DataPageHeader.html#ab8d13cffba3e2e8a67100fa2a2066709',1,'nanom_formats::parquet::DataPageHeader']]],
+  ['repetition_5flevels_5fbyte_5flength_8',['repetition_levels_byte_length',['../structnanom__formats_1_1parquet_1_1DataPageHeaderV2.html#a51ba63c050e9f247578b0f51f40e97a4',1,'nanom_formats::parquet::DataPageHeaderV2']]],
+  ['repetition_5ftype_9',['repetition_type',['../structnanom__formats_1_1parquet_1_1SchemaElement.html#af6fe15b204a6c4e60a61920ca782b73c',1,'nanom_formats::parquet::SchemaElement']]],
+  ['rest_10',['rest',['../structnanom_1_1done.html#abfd7aaeeeaf2dd446d3e56e6092a2f16',1,'nanom::done::rest'],['../structnanom_1_1bdone.html#a5988000565080382cea161e165c41257',1,'nanom::bdone::rest'],['../structnanom_1_1seg__done.html#a7efc16df56962fa14541757a5700d3e7',1,'nanom::seg_done::rest'],['../namespacenanom.html#a6a8e53de84eb53899c2311a223bcee14',1,'nanom::rest']]],
+  ['rest_5flen_11',['rest_len',['../namespacenanom.html#afbcc370a9c788ba0127dcf891ac4cfa9',1,'nanom']]],
+  ['rle_12',['rle',['../structnanom__formats_1_1lance_1_1CompressiveEncoding.html#ad27d65442d0c28b536496052c04777e9',1,'nanom_formats::lance::CompressiveEncoding']]],
+  ['row_5fgroups_13',['row_groups',['../structnanom__formats_1_1parquet_1_1FileMetaData.html#a42e18ac1a5bfbebbc0ead658b0939aef',1,'nanom_formats::parquet::FileMetaData']]],
+  ['rows_14',['rows',['../structnanom_1_1soa_1_1chunk.html#a52d183d074e70061f5639d1e150a5086',1,'nanom::soa::chunk']]],
+  ['run_5flengths_15',['run_lengths',['../structnanom__formats_1_1lance_1_1Rle.html#ac74491400bb5c5787be9115687ec9b40',1,'nanom_formats::lance::Rle']]],
+  ['runtime_5fspan_5flifetime_5fis_5fenforced_16',['runtime_span_lifetime_is_enforced',['../namespacenanom.html#a99ea0d5717d64fa9ffe8ba033592a3e7',1,'nanom']]]
 ];
