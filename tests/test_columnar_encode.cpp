@@ -11,6 +11,7 @@
 //   dictionaries         indices map back to the values; -0.0 / +0.0 and NaN payloads stay apart
 //   statistics           against a naive scan; Parquet's float rules
 #include <algorithm>
+#include <array>
 #include <nanom/columnar_encode.hpp>
 
 #include <cmath>
@@ -190,6 +191,90 @@ static void test_bss(std::mt19937_64& rng) {
   }
 }
 
+// FastLanes, from its definition rather than from the kernels: lane `l` of a block is its own
+// stream of T words (word k at out[k * lanes + l]); the value of row r in that lane is
+// in[fl_index(r, l)] and takes bits [r * width, (r + 1) * width) of the stream, LSB first.
+template <class T>
+static std::vector<T> fastlanes_reference(unsigned width, const T* in) {
+  namespace fl = col::fastlanes;
+  constexpr unsigned bits = sizeof(T) * 8;
+  constexpr std::size_t lanes = 1024 / bits;
+  std::vector<T> out(fl::packed_words_1024<T>(width), T(0));
+  for (std::size_t lane = 0; lane < lanes; ++lane)
+    for (unsigned row = 0; row < bits; ++row) {
+      const T v = in[fl::detail::fl_index(row, lane)];
+      for (unsigned b = 0; b < width; ++b) {
+        if (!((v >> b) & 1)) continue;
+        const std::size_t at = std::size_t(row) * width + b;
+        out[(at / bits) * lanes + lane] = T(out[(at / bits) * lanes + lane] | T(T(1) << (at % bits)));
+      }
+    }
+  return out;
+}
+
+template <class T>
+static void test_fastlanes_word(std::mt19937_64& rng) {
+  namespace fl = col::fastlanes;
+  constexpr unsigned bits = sizeof(T) * 8;
+  for (unsigned width = 0; width <= bits; ++width) {
+    for (int t = 0; t < 3; ++t) {
+      std::array<T, 1024> in{};
+      for (auto& x : in) x = T(rng());  // t == 0 keeps the high bits: pack must drop them
+      if (t == 2) for (auto& x : in) x = T(x & fl::detail::fl_mask<T>(width));
+      const auto ref = fastlanes_reference<T>(width, in.data());
+      std::vector<T> packed(fl::packed_words_1024<T>(width) + 2, T(0x5a));
+      CHECK(fl::pack_1024<T>(width, in, packed));
+      CHECK(std::equal(ref.begin(), ref.end(), packed.begin()));
+      CHECK(packed[ref.size()] == T(0x5a) && packed[ref.size() + 1] == T(0x5a));  // nothing past the block
+      std::array<T, 1024> back{};
+      CHECK(fl::unpack_1024<T>(width, std::span<const T>(ref), back));
+      bool same = true;
+      for (std::size_t i = 0; i < 1024; ++i) same = same && back[i] == T(in[i] & fl::detail::fl_mask<T>(width));
+      CHECK(same);
+    }
+    // Checked at the boundary: a short packed span or output is refused, untouched.
+    if (width > 0) {
+      std::array<T, 1024> in{}, back{};
+      back.fill(T(7));
+      std::vector<T> short_packed(fl::packed_words_1024<T>(width) - 1, T(0));
+      CHECK(!fl::unpack_1024<T>(width, std::span<const T>(short_packed), back));
+      CHECK(back[0] == T(7) && back[1023] == T(7));
+      CHECK(!fl::pack_1024<T>(width, in, std::span<T>(short_packed)));
+    }
+  }
+  std::array<T, 1024> in{}, back{};
+  std::vector<T> big(fl::packed_words_1024<T>(bits) * 2);
+  CHECK(!fl::unpack_1024<T>(bits + 1, std::span<const T>(big), back));
+  CHECK(!fl::pack_1024<T>(bits + 1, in, std::span<T>(big)));
+}
+
+// Bytes nanolance's FastLanes kernel produced before it moved here; that kernel's files are read by
+// stock Lance (pylance) in nanolance's interop tests, so these pin Lance's layout.
+template <class T>
+static unsigned long long fastlanes_golden(unsigned width) {
+  namespace fl = col::fastlanes;
+  std::array<T, 1024> in{};
+  for (unsigned i = 0; i < 1024; ++i) in[i] = static_cast<T>((i * 2654435761ull + 12345ull) >> 3);
+  std::vector<T> out(fl::packed_words_1024<T>(width));
+  CHECK(fl::pack_1024<T>(width, in, out));
+  unsigned long long h = 1469598103934665603ull;
+  const auto* p = reinterpret_cast<const unsigned char*>(out.data());
+  for (std::size_t i = 0; i < out.size() * sizeof(T); ++i) h = (h ^ p[i]) * 1099511628211ull;
+  return h;
+}
+
+static void test_fastlanes(std::mt19937_64& rng) {
+  test_fastlanes_word<std::uint8_t>(rng);
+  test_fastlanes_word<std::uint16_t>(rng);
+  test_fastlanes_word<std::uint32_t>(rng);
+  test_fastlanes_word<std::uint64_t>(rng);
+  CHECK(fastlanes_golden<std::uint8_t>(3) == 0x80a41b9580b38f03ull);
+  CHECK(fastlanes_golden<std::uint16_t>(11) == 0x8592d23526b0f0b3ull);
+  CHECK(fastlanes_golden<std::uint32_t>(17) == 0xdae75cd49217768aull);
+  CHECK(fastlanes_golden<std::uint64_t>(47) == 0xdea5752a3e35454full);
+  CHECK(fastlanes_golden<std::uint32_t>(32) == 0x9b9d49c814f8dbd0ull);
+}
+
 static void test_byte_arrays(std::mt19937_64& rng) {
   for (int t = 0; t < 200; ++t) {
     const std::size_t n = rng() % 300;
@@ -294,6 +379,7 @@ int main() {
   test_dbp<std::int32_t>(rng);
   test_dbp<std::int64_t>(rng);
   test_bss(rng);
+  test_fastlanes(rng);
   test_byte_arrays(rng);
   test_dictionaries(rng);
   test_stats(rng);

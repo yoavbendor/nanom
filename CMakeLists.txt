@@ -160,6 +160,11 @@ nanom_exe(nanom_columnar_encode_tests tests/test_columnar_encode.cpp)
 add_test(NAME nanom_columnar_encode_tests COMMAND nanom_columnar_encode_tests)
 nanom_exe_strict(nanom_columnar_encode_tests_strict tests/test_columnar_encode.cpp)
 add_test(NAME nanom_columnar_encode_tests_strict COMMAND nanom_columnar_encode_tests_strict)
+# FSST (fsst.hpp / fsst_encode.hpp): round trips, refusals, bytes pinned to what Lance reads.
+nanom_exe(nanom_fsst_tests tests/test_fsst.cpp)
+add_test(NAME nanom_fsst_tests COMMAND nanom_fsst_tests)
+nanom_exe_strict(nanom_fsst_tests_strict tests/test_fsst.cpp)
+add_test(NAME nanom_fsst_tests_strict COMMAND nanom_fsst_tests_strict)
 
 # Writing fixed-layout structs (emit.hpp): byte round trips of every field kind and of the
 # examples' layouts, computed fields (IPv4 length + checksum), range errors, constexpr encoding.

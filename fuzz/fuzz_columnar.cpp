@@ -6,9 +6,14 @@
 // standalone: -DNANOM_FUZZ_STANDALONE, then ./nm_columnar_fuzz [iterations] [seed]
 #include <nanom/codec.hpp>
 #include <nanom/columnar.hpp>
+#include <nanom/fastlanes.hpp>
+#include <nanom/fsst.hpp>
 #include <nanom/formats/parquet_values.hpp>
 #include <nanom/values.hpp>
 
+#include <array>
+#include <cstring>
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -40,6 +45,24 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   std::vector<std::byte> raw(n * 8);
   (void)col::byte_stream_split(in, 1 + data[0] % 16, n / 2, raw);
   (void)col::copy_bits(in, n, raw, data[0] % 13);
+  // FastLanes blocks from arbitrary bytes, at every width up to one past the word (refused). The
+  // packed words are copied into exactly-sized buffers, so ASan sees any read past them.
+  {
+    const auto block = [&]<class T>(T) {
+      constexpr unsigned bits = sizeof(T) * 8;
+      const unsigned w = data[1] % (bits + 2);
+      std::vector<T> packed(std::min<std::size_t>(in.size() / sizeof(T),
+                                                  col::fastlanes::packed_words_1024<T>(bits)));
+      if (!packed.empty()) std::memcpy(packed.data(), in.data(), packed.size() * sizeof(T));
+      std::array<T, 1024> vals{};
+      const bool ok = col::fastlanes::unpack_1024<T>(w, std::span<const T>(packed), vals);
+      if (ok != (w <= bits && packed.size() >= col::fastlanes::packed_words_1024<T>(w))) __builtin_trap();
+    };
+    block(std::uint8_t{});
+    block(std::uint16_t{});
+    block(std::uint32_t{});
+    block(std::uint64_t{});
+  }
   std::vector<std::byte> dec(std::size_t(data[1]) * 256 + data[2]);
   (void)cdc::snappy_decompress(in, dec);
   // size the output from the preamble too (exactly: ASan sees any write past it), so random
@@ -87,6 +110,24 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     std::int64_t cur = 0;
     (void)col::append_length_prefixed(in, n, nullptr, out.data(), cur, ends.data(), INT32_MAX);
     (void)col::valid_utf8(std::string_view(reinterpret_cast<const char*>(in.data()), in.size()));
+  }
+  // FSST: a symbol table from the first 2312 bytes (with the magic forced half the time, so the
+  // lengths and codes are reached), the rest as codes, decoded into an exact max_decoded_size buffer.
+  {
+    namespace fs = nanom::codec::fsst;
+    std::vector<std::byte> table_bytes(fs::kSymbolTableBytes);
+    std::memcpy(table_bytes.data(), in.data(), std::min(in.size(), table_bytes.size()));
+    if (data[0] & 1) {
+      const std::uint64_t header = fs::kMagic | (std::uint64_t(data[1] & 1) << 24) | data[2];
+      std::memcpy(table_bytes.data(), &header, 8);
+      for (std::size_t i = 0; i < data[2]; ++i) table_bytes[8 + 8 * std::size_t(data[2]) + i] = std::byte(1 + (i + data[1]) % 8);
+    }
+    fs::symbol_table table;
+    if (fs::parse_symbol_table(table_bytes, table)) {
+      const auto codes = in.size() > fs::kSymbolTableBytes ? in.subspan(fs::kSymbolTableBytes) : in;
+      std::vector<std::byte> out(fs::max_decoded_size(codes.size()));
+      if (const auto got = fs::decode(table, codes, out); got && *got > codes.size() * fs::kMaxSymbolLength) __builtin_trap();
+    }
   }
   return 0;
 }
