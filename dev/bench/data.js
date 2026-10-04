@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791097716162,
+  "lastUpdate": 1791105888435,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -1143,6 +1143,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 18.3,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "50d8e38ad3370b573cbe8058b95d3f1959812cf0",
+          "message": "Merge pull request #33 from yoavbendor/claude/nanom-lance-parquet-enhancements-2erjot",
+          "timestamp": "2026-10-04T12:22:02+03:00",
+          "tree_id": "eb32b15d6b406ea2f42867cfb148619a984dd695",
+          "url": "https://github.com/yoavbendor/nanom/commit/50d8e38ad3370b573cbe8058b95d3f1959812cf0"
+        },
+        "date": 1791105887549,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 28.4,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 100.3,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 37.9,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 20.2,
             "unit": "ns/pkt"
           }
         ]
