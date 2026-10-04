@@ -27,6 +27,7 @@ count or a `codec_error`); it never guesses.
 | `copy_bits(in, n, out, dst_bit)` | PLAIN booleans | already Arrow's bitmap layout: a memcpy when byte-aligned |
 | `codec::snappy_decompress(in, out)` | Snappy raw block (Parquet SNAPPY) | output sized from the page header; back-references outside the output are rejected |
 | `codec::lz4_block_decompress(in, out)` | LZ4 block (Parquet LZ4_RAW) | same guarantees |
+| `codec::fsst::decode(table, codes, out)` (`fsst.hpp`) | FSST strings (Lance's Fsst encoding); `parse_symbol_table` reads Lance's 2312-byte table | the table's size, magic and every symbol length (1..8) are checked, every code against the symbol count, and an escape needs its byte; `out` must hold `max_decoded_size(n)` (symbols are copied as 8-byte words); `decode_unchecked` advances a pointer for decoding many values into one buffer |
 | `fastlanes::unpack_1024<T>(width, packed, out)` (`fastlanes.hpp`) | FastLanes 1024-value blocks (Lance InlineBitpacking, format 2.0 Bitpacked) | `u8`..`u64` words; the width is a template parameter inside the loop, picked from a table; the width and the packed span are checked once (`unpack_1024_unchecked` for callers that already did) |
 
 ### Value kernels (`values.hpp`)
@@ -63,6 +64,7 @@ every one through its decoder, and `fuzz/fuzz_columnar_encode.cpp` fuzzes the pa
 | `encode_levels(levels, max, out)` | `decode_levels` | rep / def levels at bit_width(max) |
 | `delta_binary_packed_encode<T>` | `delta_binary_packed<T>` | 128-value blocks, 4 miniblocks; wrapping arithmetic; the decoder ends exactly at the stream's end |
 | `byte_stream_split_encode` | `byte_stream_split` | any width; appended to a vector, or into a caller's span |
+| `codec::fsst::train` / `compress` / `serialize` (`fsst_encode.hpp`) | `codec::fsst::decode` / `parse_symbol_table` | the paper's six-round training on a ~16 KiB sample (fixed seed: the same input gives the same table); longest match or escape, at most 2x the input; the table as Lance stores it. Pinned to bytes pylance reads |
 | `fastlanes::pack_1024<T>(width, in, out)` | `fastlanes::unpack_1024<T>` | 1024 values into 128 * width bytes, FastLanes' transposed order, bits above `width` dropped (as Lance does); checked against a bit-by-bit reference of the layout for every word type and width, and against bytes stock Lance reads |
 | `delta_length_encode` / `delta_prefix_encode` | `delta_length_views` / `delta_prefix_views` | DELTA_LENGTH_BYTE_ARRAY / DELTA_BYTE_ARRAY (front coding) |
 | `fixed_dictionary<T>` / `string_dictionary` | — | open addressing, exact by bytes (-0.0 / +0.0 and NaN payloads are distinct entries) |

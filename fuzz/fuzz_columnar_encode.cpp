@@ -9,6 +9,7 @@
 // libFuzzer:  clang++ -fsanitize=fuzzer,address,undefined -std=c++23 -I include fuzz/fuzz_columnar_encode.cpp
 // standalone: -DNANOM_FUZZ_STANDALONE, then ./nm_columnar_encode_fuzz [iterations] [seed]
 #include <nanom/columnar_encode.hpp>
+#include <nanom/fsst_encode.hpp>
 
 #include <cstdint>
 #include <cstdio>
@@ -119,6 +120,24 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
     for (auto x : v64) {
       const auto i = fd.index_of(x);
       if (fd.values()[i] != x) die("fixed_dictionary");
+    }
+    // FSST: a table trained on these values must round-trip every one of them, through its serialized
+    // form, with the compressed size within the 2x bound.
+    namespace fs = nanom::codec::fsst;
+    std::vector<std::span<const std::byte>> fv;
+    for (auto v : vals) fv.emplace_back(reinterpret_cast<const std::byte*>(v.data()), v.size());
+    fs::encoder enc;
+    if (fs::train(fv, enc)) {
+      fs::symbol_table table;
+      if (!fs::parse_symbol_table(fs::serialize(enc), table)) die("fsst serialize");
+      for (const auto& v : fv) {
+        std::vector<std::byte> codes;
+        fs::compress(enc, v, codes);
+        if (codes.size() > fs::max_compressed_size(v.size())) die("fsst 2x bound");
+        std::vector<std::byte> back(fs::max_decoded_size(codes.size()));
+        const auto got = fs::decode(table, codes, back);
+        if (!got || *got != v.size() || (v.size() && std::memcmp(back.data(), v.data(), v.size()) != 0)) die("fsst round trip");
+      }
     }
   }
   return 0;
