@@ -6,9 +6,13 @@
 // standalone: -DNANOM_FUZZ_STANDALONE, then ./nm_columnar_fuzz [iterations] [seed]
 #include <nanom/codec.hpp>
 #include <nanom/columnar.hpp>
+#include <nanom/fastlanes.hpp>
 #include <nanom/formats/parquet_values.hpp>
 #include <nanom/values.hpp>
 
+#include <array>
+#include <cstring>
+#include <algorithm>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
@@ -40,6 +44,24 @@ extern "C" int LLVMFuzzerTestOneInput(const std::uint8_t* data, std::size_t size
   std::vector<std::byte> raw(n * 8);
   (void)col::byte_stream_split(in, 1 + data[0] % 16, n / 2, raw);
   (void)col::copy_bits(in, n, raw, data[0] % 13);
+  // FastLanes blocks from arbitrary bytes, at every width up to one past the word (refused). The
+  // packed words are copied into exactly-sized buffers, so ASan sees any read past them.
+  {
+    const auto block = [&]<class T>(T) {
+      constexpr unsigned bits = sizeof(T) * 8;
+      const unsigned w = data[1] % (bits + 2);
+      std::vector<T> packed(std::min<std::size_t>(in.size() / sizeof(T),
+                                                  col::fastlanes::packed_words_1024<T>(bits)));
+      if (!packed.empty()) std::memcpy(packed.data(), in.data(), packed.size() * sizeof(T));
+      std::array<T, 1024> vals{};
+      const bool ok = col::fastlanes::unpack_1024<T>(w, std::span<const T>(packed), vals);
+      if (ok != (w <= bits && packed.size() >= col::fastlanes::packed_words_1024<T>(w))) __builtin_trap();
+    };
+    block(std::uint8_t{});
+    block(std::uint16_t{});
+    block(std::uint32_t{});
+    block(std::uint64_t{});
+  }
   std::vector<std::byte> dec(std::size_t(data[1]) * 256 + data[2]);
   (void)cdc::snappy_decompress(in, dec);
   // size the output from the preamble too (exactly: ASan sees any write past it), so random

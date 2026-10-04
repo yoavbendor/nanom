@@ -17,12 +17,14 @@
 //   fixed_dictionary<T>, string_dictionary   dictionary builders (open addressing, exact: values
 //                         are compared by their bytes, so -0.0 / +0.0 and NaN payloads stay apart)
 //   value_stats / binary_stats               min / max / null count in Parquet's orders
+//   fastlanes::pack_1024<T>        FastLanes 1024-value block (Lance)  <-> fastlanes::unpack_1024<T>
 //
 // Encoders append to a std::vector<std::byte> (the page body before compression). Inputs are the
 // caller's values; nothing is read past the spans given. Reading code never includes this header.
 #ifndef NANOM_COLUMNAR_ENCODE_HPP_INCLUDED
 #define NANOM_COLUMNAR_ENCODE_HPP_INCLUDED
 
+#include "fastlanes.hpp"
 #include "values.hpp"
 
 #include <string_view>
@@ -513,5 +515,73 @@ inline binary_stats compute_binary_stats(std::span<const std::string_view> views
 }
 
 }  // namespace nanom::columnar
+
+// ---------------------------------------------------------------------------
+// 51. FastLanes blocks (Lance's InlineBitpacking, format 2.0 Bitpacked)
+// ---------------------------------------------------------------------------
+
+namespace nanom::columnar::fastlanes {
+
+namespace detail {
+
+template <word T, unsigned Width>
+void pack_w(const T* in, T* out) {
+  constexpr unsigned bits = kBits<T>;
+  constexpr std::size_t lanes = kBlock / bits;
+  constexpr T mask = fl_mask<T>(Width);
+  T tmp[128];  // lanes <= 128 (the u8 case)
+  for (unsigned row = 0; row < bits; ++row) {
+    const T* in_row = in + fl_index(row, 0);
+    const unsigned shift = (row * Width) % bits;
+    const unsigned curr_word = (row * Width) / bits;
+    const unsigned next_word = ((row + 1U) * Width) / bits;
+    if (row == 0U) {
+      for (std::size_t lane = 0; lane < lanes; ++lane) tmp[lane] = static_cast<T>(in_row[lane] & mask);
+    } else {
+      for (std::size_t lane = 0; lane < lanes; ++lane)
+        tmp[lane] = static_cast<T>(tmp[lane] | static_cast<T>(static_cast<T>(in_row[lane] & mask) << shift));
+    }
+    if (next_word > curr_word) {
+      T* out_word = out + lanes * curr_word;
+      for (std::size_t lane = 0; lane < lanes; ++lane) out_word[lane] = tmp[lane];
+      const unsigned rshift = Width - ((row + 1U) * Width) % bits;
+      for (std::size_t lane = 0; lane < lanes; ++lane)
+        tmp[lane] = static_cast<T>(static_cast<T>(in_row[lane] & mask) >> rshift);
+    }
+  }
+}
+
+}  // namespace detail
+
+/// Pack one block without checks: `in` holds 1024 values, `out` packed_words_1024<T>(width) words,
+/// and width <= kBits<T>. Bits of a value above `width` are dropped, as Lance does.
+template <word T>
+void pack_1024_unchecked(unsigned width, const T* in, T* out) {
+  constexpr unsigned bits = kBits<T>;
+  constexpr std::size_t lanes = kBlock / bits;
+  if (width == 0U) return;
+  if (width == bits) {
+    for (unsigned row = 0; row < bits; ++row)
+      std::memcpy(out + lanes * row, in + detail::fl_index(row, 0), lanes * sizeof(T));
+    return;
+  }
+  using fn = void (*)(const T*, T*);
+  static constexpr auto table = []<unsigned... Ws>(std::integer_sequence<unsigned, Ws...>) {
+    return std::array<fn, sizeof...(Ws)>{&detail::pack_w<T, Ws + 1U>...};
+  }(std::make_integer_sequence<unsigned, bits - 1U>{});
+  table[width - 1U](in, out);
+}
+
+/// Pack one block of 1024 values at `width` bits into the first packed_words_1024<T>(width) words of
+/// `out`, the exact inverse of unpack_1024 for values that fit in `width` bits. False, writing
+/// nothing, when the width is over kBits<T> or `out` is too short.
+template <word T>
+bool pack_1024(unsigned width, std::span<const T, kBlock> in, std::span<T> out) {
+  if (width > kBits<T> || out.size() < packed_words_1024<T>(width)) return false;
+  pack_1024_unchecked<T>(width, in.data(), out.data());
+  return true;
+}
+
+}  // namespace nanom::columnar::fastlanes
 
 #endif  // NANOM_COLUMNAR_ENCODE_HPP_INCLUDED
