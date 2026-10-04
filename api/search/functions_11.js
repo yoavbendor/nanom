@@ -19,5 +19,6 @@ var searchData=
   ['to_5fbytes_16',['to_bytes',['../namespacenanom.html#a6b8d0b1cbea5c937e7b407a5c8940f58',1,'nanom']]],
   ['to_5fjson_17',['to_json',['../namespacenanom.html#ad8080093c14f04e71d8f486428451de0',1,'nanom']]],
   ['to_5fstruct_18',['to_struct',['../structnanom_1_1view.html#a4396f00a9c3b752f93c2aeb1125d0487',1,'nanom::view']]],
-  ['to_5fvector_19',['to_vector',['../classnanom_1_1list.html#a99d22f01db08c3716b851696f7c7b9f1',1,'nanom::list']]]
+  ['to_5fvector_19',['to_vector',['../classnanom_1_1list.html#a99d22f01db08c3716b851696f7c7b9f1',1,'nanom::list']]],
+  ['train_20',['train',['../namespacenanom_1_1codec_1_1fsst.html#a10372f7aa1d2fb11fa2bafa13fe97874',1,'nanom::codec::fsst::train(std::size_t n, ValueAt &amp;&amp;value_at, encoder &amp;out)'],['../namespacenanom_1_1codec_1_1fsst.html#a3d09fe0364598592a23a638377a79c77',1,'nanom::codec::fsst::train(std::span&lt; const std::span&lt; const std::byte &gt; &gt; values, encoder &amp;out)']]]
 ];

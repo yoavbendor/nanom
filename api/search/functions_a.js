@@ -10,9 +10,10 @@ var searchData=
   ['level_5fslots_7',['level_slots',['../namespacenanom_1_1columnar.html#a077b419347c91bd055f712043dc71677',1,'nanom::columnar']]],
   ['list_8',['list',['../classnanom_1_1list.html#a602647a0a5435c4978ca8492cc9c802f',1,'nanom::list::list(input region, std::uint32_t count, std::uint8_t elem_wire, std::uint8_t depth, tagged_wire w=tagged_wire::thrift_compact)'],['../classnanom_1_1list.html#a62bce2e657b43992c70699ee1590565a',1,'nanom::list::list()=default']]],
   ['list_5fslots_9',['list_slots',['../namespacenanom_1_1columnar.html#a172497e1236bafcb1cbe61daf0229e28',1,'nanom::columnar']]],
-  ['load64_10',['load64',['../namespacenanom_1_1columnar_1_1enc__detail.html#a989c6997c60a3cb2aba8109d78584f81',1,'nanom::columnar::enc_detail']]],
-  ['load_5fle32_11',['load_le32',['../namespacenanom_1_1codec_1_1detail.html#a0dcaac5a7c3be8d9499fb09bb8abc94c',1,'nanom::codec::detail']]],
-  ['load_5fle64_12',['load_le64',['../namespacenanom_1_1columnar_1_1detail.html#a5d7d98eec4c01a8abe83bd855a8de974',1,'nanom::columnar::detail']]],
-  ['locate_5ffooter_13',['locate_footer',['../namespacenanom__formats_1_1parquet.html#ab2cf69cba920e45bbd49d7d157644a11',1,'nanom_formats::parquet']]],
-  ['lz4_5fblock_5fdecompress_14',['lz4_block_decompress',['../namespacenanom_1_1codec.html#ac7349af3e926649e9fb89a0754acc578',1,'nanom::codec']]]
+  ['load_10',['load',['../namespacenanom_1_1codec_1_1fsst_1_1enc__detail.html#a55e8ce64dc07e476106c3cf53cabbd37',1,'nanom::codec::fsst::enc_detail']]],
+  ['load64_11',['load64',['../namespacenanom_1_1columnar_1_1enc__detail.html#a989c6997c60a3cb2aba8109d78584f81',1,'nanom::columnar::enc_detail']]],
+  ['load_5fle32_12',['load_le32',['../namespacenanom_1_1codec_1_1detail.html#a0dcaac5a7c3be8d9499fb09bb8abc94c',1,'nanom::codec::detail']]],
+  ['load_5fle64_13',['load_le64',['../namespacenanom_1_1columnar_1_1detail.html#a5d7d98eec4c01a8abe83bd855a8de974',1,'nanom::columnar::detail::load_le64()'],['../namespacenanom_1_1codec_1_1fsst_1_1detail.html#aab2d690bd3a554403a084225d8115d98',1,'nanom::codec::fsst::detail::load_le64()']]],
+  ['locate_5ffooter_14',['locate_footer',['../namespacenanom__formats_1_1parquet.html#ab2cf69cba920e45bbd49d7d157644a11',1,'nanom_formats::parquet']]],
+  ['lz4_5fblock_5fdecompress_15',['lz4_block_decompress',['../namespacenanom_1_1codec.html#ac7349af3e926649e9fb89a0754acc578',1,'nanom::codec']]]
 ];

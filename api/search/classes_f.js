@@ -11,12 +11,15 @@ var searchData=
   ['segments_8',['segments',['../classnanom_1_1segments.html',1,'nanom']]],
   ['seq_5fexec_9',['seq_exec',['../structnanom_1_1seq__exec.html',1,'nanom']]],
   ['single_5fsegment_10',['single_segment',['../classnanom_1_1single__segment.html',1,'nanom']]],
-  ['slot_5fcounts_11',['slot_counts',['../structnanom_1_1columnar_1_1slot__counts.html',1,'nanom::columnar']]],
-  ['soa_12',['soa',['../classnanom_1_1soa.html',1,'nanom']]],
-  ['somenull_13',['SomeNull',['../structnanom__formats_1_1lance_1_1SomeNull.html',1,'nanom_formats::lance']]],
-  ['sortingcolumn_14',['SortingColumn',['../structnanom__formats_1_1parquet_1_1SortingColumn.html',1,'nanom_formats::parquet']]],
-  ['span_5fsink_15',['span_sink',['../structnanom_1_1span__sink.html',1,'nanom']]],
-  ['statistics_16',['Statistics',['../structnanom__formats_1_1parquet_1_1Statistics.html',1,'nanom_formats::parquet']]],
-  ['string_5fdictionary_17',['string_dictionary',['../classnanom_1_1columnar_1_1string__dictionary.html',1,'nanom::columnar']]],
-  ['stringentry_18',['StringEntry',['../structnanom__formats_1_1lance_1_1StringEntry.html',1,'nanom_formats::lance']]]
+  ['slot_11',['slot',['../structnanom_1_1codec_1_1fsst_1_1encoder_1_1slot.html',1,'nanom::codec::fsst::encoder']]],
+  ['slot_5fcounts_12',['slot_counts',['../structnanom_1_1columnar_1_1slot__counts.html',1,'nanom::columnar']]],
+  ['soa_13',['soa',['../classnanom_1_1soa.html',1,'nanom']]],
+  ['somenull_14',['SomeNull',['../structnanom__formats_1_1lance_1_1SomeNull.html',1,'nanom_formats::lance']]],
+  ['sortingcolumn_15',['SortingColumn',['../structnanom__formats_1_1parquet_1_1SortingColumn.html',1,'nanom_formats::parquet']]],
+  ['span_5fsink_16',['span_sink',['../structnanom_1_1span__sink.html',1,'nanom']]],
+  ['statistics_17',['Statistics',['../structnanom__formats_1_1parquet_1_1Statistics.html',1,'nanom_formats::parquet']]],
+  ['string_5fdictionary_18',['string_dictionary',['../classnanom_1_1columnar_1_1string__dictionary.html',1,'nanom::columnar']]],
+  ['stringentry_19',['StringEntry',['../structnanom__formats_1_1lance_1_1StringEntry.html',1,'nanom_formats::lance']]],
+  ['symbol_20',['symbol',['../structnanom_1_1codec_1_1fsst_1_1enc__detail_1_1symbol.html',1,'nanom::codec::fsst::enc_detail']]],
+  ['symbol_5ftable_21',['symbol_table',['../structnanom_1_1codec_1_1fsst_1_1symbol__table.html',1,'nanom::codec::fsst']]]
 ];

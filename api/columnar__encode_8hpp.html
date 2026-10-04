@@ -98,7 +98,8 @@ $(document).ready(function(){initNavTree('columnar__encode_8hpp.html',''); initR
   <div class="headertitle"><div class="title">columnar_encode.hpp File Reference</div></div>
 </div><!--header-->
 <div class="contents">
-<div class="textblock"><code>#include &quot;<a class="el" href="values_8hpp_source.html">values.hpp</a>&quot;</code><br />
+<div class="textblock"><code>#include &quot;<a class="el" href="fastlanes_8hpp_source.html">fastlanes.hpp</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="values_8hpp_source.html">values.hpp</a>&quot;</code><br />
 <code>#include &lt;string_view&gt;</code><br />
 <code>#include &lt;vector&gt;</code><br />
 </div>
@@ -129,6 +130,10 @@ Namespaces</h2></td></tr>
 <tr class="memitem:namespacenanom_1_1columnar" id="r_namespacenanom_1_1columnar"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1columnar.html">nanom::columnar</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:namespacenanom_1_1columnar_1_1enc__detail" id="r_namespacenanom_1_1columnar_1_1enc__detail"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1columnar_1_1enc__detail.html">nanom::columnar::enc_detail</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:namespacenanom_1_1columnar_1_1fastlanes" id="r_namespacenanom_1_1columnar_1_1fastlanes"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1columnar_1_1fastlanes.html">nanom::columnar::fastlanes</a></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:namespacenanom_1_1columnar_1_1fastlanes_1_1detail" id="r_namespacenanom_1_1columnar_1_1fastlanes_1_1detail"><td class="memItemLeft" align="right" valign="top">namespace &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1columnar_1_1fastlanes_1_1detail.html">nanom::columnar::fastlanes::detail</a></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a id="func-members" name="func-members"></a>
@@ -183,6 +188,17 @@ requires (std::is_arithmetic_v&lt;T&gt;)</td></tr>
 <tr class="separator:aee1a4cac0124e105f15a35e2f8b49d3c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a07adc533927f6dd70220d089b00046b2" id="r_a07adc533927f6dd70220d089b00046b2"><td class="memItemLeft" align="right" valign="top"><a class="el" href="structnanom_1_1columnar_1_1binary__stats.html">binary_stats</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1columnar.html#a07adc533927f6dd70220d089b00046b2">nanom::columnar::compute_binary_stats</a> (std::span&lt; const std::string_view &gt; views)</td></tr>
 <tr class="separator:a07adc533927f6dd70220d089b00046b2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a23f709c709fef15fafeb7c14ff724617" id="r_a23f709c709fef15fafeb7c14ff724617"><td class="memTemplParams" colspan="2">template&lt;word T, unsigned Width&gt; </td></tr>
+<tr class="memitem:a23f709c709fef15fafeb7c14ff724617"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1columnar_1_1fastlanes_1_1detail.html#a23f709c709fef15fafeb7c14ff724617">nanom::columnar::fastlanes::detail::pack_w</a> (const T *in, T *out)</td></tr>
+<tr class="separator:a23f709c709fef15fafeb7c14ff724617"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afe1283b85f98df23643b3126d62eeff3" id="r_afe1283b85f98df23643b3126d62eeff3"><td class="memTemplParams" colspan="2">template&lt;word T&gt; </td></tr>
+<tr class="memitem:afe1283b85f98df23643b3126d62eeff3"><td class="memTemplItemLeft" align="right" valign="top">void&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1columnar_1_1fastlanes.html#afe1283b85f98df23643b3126d62eeff3">nanom::columnar::fastlanes::pack_1024_unchecked</a> (unsigned width, const T *in, T *out)</td></tr>
+<tr class="memdesc:afe1283b85f98df23643b3126d62eeff3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pack one block without checks: <code>in</code> holds 1024 values, <code>out</code> packed_words_1024&lt;T&gt;(width) words, and width &lt;= kBits&lt;T&gt;.  <br /></td></tr>
+<tr class="separator:afe1283b85f98df23643b3126d62eeff3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6e268b77afed7cc3b5946605aeb4baef" id="r_a6e268b77afed7cc3b5946605aeb4baef"><td class="memTemplParams" colspan="2">template&lt;word T&gt; </td></tr>
+<tr class="memitem:a6e268b77afed7cc3b5946605aeb4baef"><td class="memTemplItemLeft" align="right" valign="top">bool&#160;</td><td class="memTemplItemRight" valign="bottom"><a class="el" href="namespacenanom_1_1columnar_1_1fastlanes.html#a6e268b77afed7cc3b5946605aeb4baef">nanom::columnar::fastlanes::pack_1024</a> (unsigned width, std::span&lt; const T, <a class="el" href="namespacenanom_1_1columnar_1_1fastlanes.html#a1fedced04395631cdfa59bb9a73af53e">kBlock</a> &gt; in, std::span&lt; T &gt; out)</td></tr>
+<tr class="memdesc:a6e268b77afed7cc3b5946605aeb4baef"><td class="mdescLeft">&#160;</td><td class="mdescRight">Pack one block of 1024 values at <code>width</code> bits into the first packed_words_1024&lt;T&gt;(width) words of <code>out</code>, the exact inverse of unpack_1024 for values that fit in <code>width</code> bits.  <br /></td></tr>
+<tr class="separator:a6e268b77afed7cc3b5946605aeb4baef"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 </div><!-- contents -->
 </div><!-- doc-content -->

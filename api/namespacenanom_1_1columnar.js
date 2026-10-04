@@ -12,6 +12,7 @@ var namespacenanom_1_1columnar =
       [ "unpack_table", "namespacenanom_1_1columnar_1_1detail.html#a7bd3ca0642c0580464e7f7a92f4d1531", null ]
     ] ],
     [ "enc_detail", "namespacenanom_1_1columnar_1_1enc__detail.html", "namespacenanom_1_1columnar_1_1enc__detail" ],
+    [ "fastlanes", "namespacenanom_1_1columnar_1_1fastlanes.html", "namespacenanom_1_1columnar_1_1fastlanes" ],
     [ "binary_stats", "structnanom_1_1columnar_1_1binary__stats.html", "structnanom_1_1columnar_1_1binary__stats" ],
     [ "dremel_node", "structnanom_1_1columnar_1_1dremel__node.html", "structnanom_1_1columnar_1_1dremel__node" ],
     [ "fixed_dictionary", "classnanom_1_1columnar_1_1fixed__dictionary.html", "classnanom_1_1columnar_1_1fixed__dictionary" ],

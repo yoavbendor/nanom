@@ -61,15 +61,15 @@ var NAVTREEINDEX =
 [
 "annotated.html",
 "classnanom_1_1segments.html#ae91d2e82e34bc2bbfacc25783a9207a4",
-"namespacemembers_func_v.html",
-"namespacenanom.html#af731ff1d3ae530ed4c92d0c6851c6bcd",
-"nom_8hpp.html#a77fa5ceb3e0eeac187f9fc96ca435f9d",
-"segmented_8hpp.html#af5d47bce601abd7ea0cae5358b5385c6",
-"structnanom_1_1input.html#a6f105effdf5c9ead96ba44d48c283d4b",
-"structnanom__formats_1_1lance_1_1Bitpacked20.html",
-"structnanom__formats_1_1lance_1_1FullZipLayout.html#af79e2ddc656fc2cfd0a475f711db3b5b",
-"structnanom__formats_1_1parquet_1_1ColumnMetaData.html",
-"structnanom__formats_1_1parquet_1_1TimeUnit.html#a7008ab38de407b529bae5cc7366e63a9"
+"lance__encodings_8hpp.html",
+"namespacenanom.html#ad0dc92981394e4dce9bd471c39c6ece9",
+"namespacenanom__formats_1_1parquet.html#a9fca980f9629ee33908fc982d19c1e09af5b8371eff39f9cd60c5f58c279e5367",
+"parquet__thrift_8hpp.html#aa277df5ed436c32c39b20a08200c5552ae738c26bf4ce1037fa81b039a915cbf6",
+"structnanom_1_1counting__sink.html#aa1f42e16292a49d93a644037b0e085eb",
+"structnanom_1_1seg__input.html#a9594e05deefcd5f7cd86ccf3d6a6e5aa",
+"structnanom__formats_1_1lance_1_1DataFragment.html",
+"structnanom__formats_1_1lance_1_1MiniBlockLayout.html#a03277a3d68591558883aca5df6830dfe",
+"structnanom__formats_1_1parquet_1_1LogicalType.html#a02d5c12a40ae17c35fd754e8674af3f2"
 ];
 
 var SYNCONMSG = 'click to disable panel synchronisation';

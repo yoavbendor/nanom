@@ -1,11 +1,25 @@
 var searchData=
 [
-  ['kernel_5ffail_0',['kernel_fail',['../namespacenanom_1_1columnar.html#a32e266c4bcf69170816d6f45f42fbae1',1,'nanom::columnar']]],
-  ['kernel_5fok_1',['kernel_ok',['../namespacenanom_1_1columnar.html#a3aeea36a6d149682615d7503d598e375',1,'nanom::columnar']]],
-  ['kernel_5fstatus_2',['kernel_status',['../structnanom_1_1columnar_1_1kernel__status.html',1,'nanom::columnar']]],
-  ['key_3',['key',['../structnanom__formats_1_1lance_1_1MetadataEntry.html#a16718250a979080c5cbcfc4cae8664e1',1,'nanom_formats::lance::MetadataEntry::key'],['../structnanom__formats_1_1lance_1_1StringEntry.html#a5274f640dcbdf69ec066512d31edc66a',1,'nanom_formats::lance::StringEntry::key'],['../structnanom__formats_1_1parquet_1_1KeyValue.html#ab069acbddb0f76422824187f0d316e74',1,'nanom_formats::parquet::KeyValue::key']]],
-  ['key_5fvalue_5fmetadata_4',['key_value_metadata',['../structnanom__formats_1_1parquet_1_1ColumnMetaData.html#a0059dbc4bb21d9115edecd5887b7f1be',1,'nanom_formats::parquet::ColumnMetaData::key_value_metadata'],['../structnanom__formats_1_1parquet_1_1FileMetaData.html#a07bd1391466c30681aed748ca0ca4702',1,'nanom_formats::parquet::FileMetaData::key_value_metadata']]],
-  ['keyvalue_5',['KeyValue',['../structnanom__formats_1_1parquet_1_1KeyValue.html',1,'nanom_formats::parquet']]],
-  ['kind_6',['kind',['../structnanom_1_1error.html#afa24bdd3f33aa619b4a81fb7be4ddd41',1,'nanom::error::kind'],['../structnanom_1_1schema__field.html#a30b9044d42ac9a190ca6516db5a1eaab',1,'nanom::schema_field::kind'],['../structnanom_1_1soa_1_1column__info.html#a61e2708f24d362ee8163ccc05aa2d2ff',1,'nanom::soa::column_info::kind']]],
-  ['kvalueslack_7',['kValueSlack',['../namespacenanom_1_1columnar.html#a8a999991bbbae7c78acccd4da48f6e9e',1,'nanom::columnar']]]
+  ['kbits_0',['kBits',['../namespacenanom_1_1columnar_1_1fastlanes.html#ae4ac9527002ad5a30ef81a5983e0610e',1,'nanom::columnar::fastlanes']]],
+  ['kblock_1',['kBlock',['../namespacenanom_1_1columnar_1_1fastlanes.html#a1fedced04395631cdfa59bb9a73af53e',1,'nanom::columnar::fastlanes']]],
+  ['kcodes_2',['kCodes',['../namespacenanom_1_1codec_1_1fsst_1_1enc__detail.html#a3fadbd92f532b51fc94bca0b1364dd1c',1,'nanom::codec::fsst::enc_detail']]],
+  ['kencoderswitchbit_3',['kEncoderSwitchBit',['../namespacenanom_1_1codec_1_1fsst.html#a5caf29e6f83427980d652a092ae2234c',1,'nanom::codec::fsst']]],
+  ['kernel_5ffail_4',['kernel_fail',['../namespacenanom_1_1columnar.html#a32e266c4bcf69170816d6f45f42fbae1',1,'nanom::columnar']]],
+  ['kernel_5fok_5',['kernel_ok',['../namespacenanom_1_1columnar.html#a3aeea36a6d149682615d7503d598e375',1,'nanom::columnar']]],
+  ['kernel_5fstatus_6',['kernel_status',['../structnanom_1_1columnar_1_1kernel__status.html',1,'nanom::columnar']]],
+  ['kescape_7',['kEscape',['../namespacenanom_1_1codec_1_1fsst.html#a0fe23302c5138e491fb0103e190a56f9',1,'nanom::codec::fsst']]],
+  ['key_8',['key',['../structnanom__formats_1_1lance_1_1MetadataEntry.html#a16718250a979080c5cbcfc4cae8664e1',1,'nanom_formats::lance::MetadataEntry::key'],['../structnanom__formats_1_1lance_1_1StringEntry.html#a5274f640dcbdf69ec066512d31edc66a',1,'nanom_formats::lance::StringEntry::key'],['../structnanom__formats_1_1parquet_1_1KeyValue.html#ab069acbddb0f76422824187f0d316e74',1,'nanom_formats::parquet::KeyValue::key']]],
+  ['key_5fvalue_5fmetadata_9',['key_value_metadata',['../structnanom__formats_1_1parquet_1_1ColumnMetaData.html#a0059dbc4bb21d9115edecd5887b7f1be',1,'nanom_formats::parquet::ColumnMetaData::key_value_metadata'],['../structnanom__formats_1_1parquet_1_1FileMetaData.html#a07bd1391466c30681aed748ca0ca4702',1,'nanom_formats::parquet::FileMetaData::key_value_metadata']]],
+  ['keyvalue_10',['KeyValue',['../structnanom__formats_1_1parquet_1_1KeyValue.html',1,'nanom_formats::parquet']]],
+  ['kflorder_11',['kFlOrder',['../namespacenanom_1_1columnar_1_1fastlanes_1_1detail.html#a8781ffc5c675ddda77069e4439756113',1,'nanom::columnar::fastlanes::detail']]],
+  ['kind_12',['kind',['../structnanom_1_1soa_1_1column__info.html#a61e2708f24d362ee8163ccc05aa2d2ff',1,'nanom::soa::column_info::kind'],['../structnanom_1_1schema__field.html#a30b9044d42ac9a190ca6516db5a1eaab',1,'nanom::schema_field::kind'],['../structnanom_1_1error.html#afa24bdd3f33aa619b4a81fb7be4ddd41',1,'nanom::error::kind']]],
+  ['klongslots_13',['kLongSlots',['../namespacenanom_1_1codec_1_1fsst_1_1enc__detail.html#a1e588fbf230fe9d748d6c59821a6e807',1,'nanom::codec::fsst::enc_detail']]],
+  ['kmagic_14',['kMagic',['../namespacenanom_1_1codec_1_1fsst.html#af5d61ce113f5c6ee8010b98ee618c6e1',1,'nanom::codec::fsst']]],
+  ['kmaxsymbollength_15',['kMaxSymbolLength',['../namespacenanom_1_1codec_1_1fsst.html#ab105ac2982bf151b5180f7c8b8b2d3e1',1,'nanom::codec::fsst']]],
+  ['kmaxsymbols_16',['kMaxSymbols',['../namespacenanom_1_1codec_1_1fsst_1_1enc__detail.html#a978dfd9cb5e487f35cef42e6521290ae',1,'nanom::codec::fsst::enc_detail']]],
+  ['knone_17',['kNone',['../structnanom_1_1codec_1_1fsst_1_1encoder.html#a44ec5c45f1591da85ea416c310a7d20b',1,'nanom::codec::fsst::encoder']]],
+  ['kpseudo_18',['kPseudo',['../namespacenanom_1_1codec_1_1fsst_1_1enc__detail.html#a3e1bfec49213ddd9752e657a127a80cc',1,'nanom::codec::fsst::enc_detail']]],
+  ['ksampletarget_19',['kSampleTarget',['../namespacenanom_1_1codec_1_1fsst_1_1enc__detail.html#aa266810b2b80d816ae79fd2caa35e03e',1,'nanom::codec::fsst::enc_detail']]],
+  ['ksymboltablebytes_20',['kSymbolTableBytes',['../namespacenanom_1_1codec_1_1fsst.html#a5d927bd78e3a9b3e59f7322c2a2d1dfd',1,'nanom::codec::fsst']]],
+  ['kvalueslack_21',['kValueSlack',['../namespacenanom_1_1columnar.html#a8a999991bbbae7c78acccd4da48f6e9e',1,'nanom::columnar']]]
 ];

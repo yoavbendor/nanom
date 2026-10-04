@@ -2,6 +2,13 @@ var annotated_dup =
 [
     [ "nanom", "namespacenanom.html", [
       [ "codec", "namespacenanom_1_1codec.html", [
+        [ "fsst", "namespacenanom_1_1codec_1_1fsst.html", [
+          [ "enc_detail", "namespacenanom_1_1codec_1_1fsst_1_1enc__detail.html", [
+            [ "symbol", "structnanom_1_1codec_1_1fsst_1_1enc__detail_1_1symbol.html", "structnanom_1_1codec_1_1fsst_1_1enc__detail_1_1symbol" ]
+          ] ],
+          [ "encoder", "structnanom_1_1codec_1_1fsst_1_1encoder.html", "structnanom_1_1codec_1_1fsst_1_1encoder" ],
+          [ "symbol_table", "structnanom_1_1codec_1_1fsst_1_1symbol__table.html", "structnanom_1_1codec_1_1fsst_1_1symbol__table" ]
+        ] ],
         [ "codec_error", "structnanom_1_1codec_1_1codec__error.html", "structnanom_1_1codec_1_1codec__error" ]
       ] ],
       [ "columnar", "namespacenanom_1_1columnar.html", [

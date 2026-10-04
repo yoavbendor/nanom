@@ -1130,6 +1130,16 @@ count or a <code>codec_error</code>); it never guesses.</p>
 <td>LZ4 block (Parquet LZ4_RAW)</td>
 <td>same guarantees</td>
 </tr>
+<tr>
+<td><code>codec::fsst::decode(table, codes, out)</code> (<code>fsst.hpp</code>)</td>
+<td>FSST strings (Lance's Fsst encoding); <code>parse_symbol_table</code> reads Lance's 2312-byte table</td>
+<td>the table's size, magic and every symbol length (1..8) are checked, every code against the symbol count, and an escape needs its byte; <code>out</code> must hold <code>max_decoded_size(n)</code> (symbols are copied as 8-byte words); <code>decode_unchecked</code> advances a pointer for decoding many values into one buffer</td>
+</tr>
+<tr>
+<td><code>fastlanes::unpack_1024&lt;T&gt;(width, packed, out)</code> (<code>fastlanes.hpp</code>)</td>
+<td>FastLanes 1024-value blocks (Lance InlineBitpacking, format 2.0 Bitpacked)</td>
+<td><code>u8</code>..<code>u64</code> words; the width is a template parameter inside the loop, picked from a table; the width and the packed span are checked once (<code>unpack_1024_unchecked</code> for callers that already did)</td>
+</tr>
 </tbody>
 </table>
 <h3 id="value-kernels-valueshpp">Value kernels (<code>values.hpp</code>)<a class="headerlink" href="#value-kernels-valueshpp" title="Permanent link">&para;</a></h3>
@@ -1251,7 +1261,17 @@ every one through its decoder, and <code>fuzz/fuzz_columnar_encode.cpp</code> fu
 <tr>
 <td><code>byte_stream_split_encode</code></td>
 <td><code>byte_stream_split</code></td>
-<td>any width</td>
+<td>any width; appended to a vector, or into a caller's span</td>
+</tr>
+<tr>
+<td><code>codec::fsst::train</code> / <code>compress</code> / <code>serialize</code> (<code>fsst_encode.hpp</code>)</td>
+<td><code>codec::fsst::decode</code> / <code>parse_symbol_table</code></td>
+<td>the paper's six-round training on a ~16 KiB sample (fixed seed: the same input gives the same table); longest match or escape, at most 2x the input; the table as Lance stores it. Pinned to bytes pylance reads</td>
+</tr>
+<tr>
+<td><code>fastlanes::pack_1024&lt;T&gt;(width, in, out)</code></td>
+<td><code>fastlanes::unpack_1024&lt;T&gt;</code></td>
+<td>1024 values into 128 * width bytes, FastLanes' transposed order, bits above <code>width</code> dropped (as Lance does); checked against a bit-by-bit reference of the layout for every word type and width, and against bytes stock Lance reads</td>
 </tr>
 <tr>
 <td><code>delta_length_encode</code> / <code>delta_prefix_encode</code></td>
