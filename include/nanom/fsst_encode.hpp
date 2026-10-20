@@ -204,10 +204,15 @@ bool train(std::size_t n, ValueAt&& value_at, encoder& out) {
   std::int64_t best_gain = std::numeric_limits<std::int64_t>::min();
   std::vector<std::uint16_t> count1(kCodes);
   std::vector<std::uint16_t> count2(kCodes * kCodes);
-  // Rows of count2 written this round, so clearing it costs what was used rather than 512 KiB.
-  std::vector<std::uint16_t> touched_rows;
-  std::vector<bool> row_touched(kCodes);
+  // The count2 cells written this round, each once: clearing them and listing the pair candidates
+  // costs what the sample used rather than a scan of all 512 x 512 cells.
+  std::vector<std::uint32_t> pairs;
   const auto bump = [](std::uint16_t& c) {
+    if (c != 0xFFFF) ++c;
+  };
+  const auto bump_pair = [&](std::uint32_t at) {
+    auto& c = count2[at];
+    if (c == 0) pairs.push_back(at);
     if (c != 0xFFFF) ++c;
   };
   const auto code_at = [&table](const std::uint8_t* p, std::size_t remaining, unsigned& length) {
@@ -218,11 +223,8 @@ bool train(std::size_t n, ValueAt&& value_at, encoder& out) {
   for (const unsigned frac : {8U, 38U, 68U, 98U, 108U, 128U}) {
     // Compress the sample with the current table, counting symbols and adjacent pairs.
     std::fill(count1.begin(), count1.end(), std::uint16_t{0});
-    for (const auto row : touched_rows) {
-      std::fill_n(count2.begin() + static_cast<std::ptrdiff_t>(row * kCodes), kCodes, std::uint16_t{0});
-      row_touched[row] = false;
-    }
-    touched_rows.clear();
+    for (const auto at : pairs) count2[at] = 0;
+    pairs.clear();
     std::int64_t gain = 0;
     for (const auto& v : sample) {
       const auto* data = reinterpret_cast<const std::uint8_t*>(v.data());
@@ -239,12 +241,8 @@ bool train(std::size_t n, ValueAt&& value_at, encoder& out) {
         const auto cur = code_at(data + pos, size - pos, length);
         gain += std::max<std::int64_t>(0, static_cast<std::int64_t>(length) - 1 - (cur >= kPseudo ? 1 : 0));
         if (frac < 128) {  // no pairs in the last round
-          if (!row_touched[prev]) {
-            row_touched[prev] = true;
-            touched_rows.push_back(prev);
-          }
-          bump(count2[prev * kCodes + cur]);
-          if (length > 1) bump(count2[prev * kCodes + kPseudo + data[pos]]);
+          bump_pair(static_cast<std::uint32_t>(prev * kCodes + cur));
+          if (length > 1) bump_pair(static_cast<std::uint32_t>(prev * kCodes + kPseudo + data[pos]));
         }
         pos += length;
         prev = cur;
@@ -275,15 +273,18 @@ bool train(std::size_t n, ValueAt&& value_at, encoder& out) {
       const auto s1 = symbol_of(table, c1);
       // Single bytes count 8x: they cut the escape rate (the paper's heuristic).
       consider(s1, static_cast<std::uint64_t>(s1.length == 1 ? 8 : 1) * n1);
-      if (frac >= 128 || s1.length == 8 || !row_touched[c1]) continue;
-      for (const auto c2 : live) {
-        const auto n2 = count2[c1 * kCodes + c2];
-        if (n2 == 0) continue;
-        const auto s2 = symbol_of(table, c2);
-        const unsigned length = std::min(8U, s1.length + s2.length);
-        const auto value = (s1.value | (s2.value << (8 * s1.length))) & mask(length);
-        consider(symbol{value, length}, n2);
-      }
+    }
+    // Every pair seen (none in the last round). The order candidates are considered in does not
+    // matter: they are sorted by symbol and merged below.
+    for (const auto at : pairs) {
+      const auto c1 = static_cast<std::uint16_t>(at / kCodes);
+      const auto c2 = static_cast<std::uint16_t>(at % kCodes);
+      const auto s1 = symbol_of(table, c1);
+      if (s1.length == 8) continue;
+      const auto s2 = symbol_of(table, c2);
+      const unsigned length = std::min(8U, s1.length + s2.length);
+      const auto value = (s1.value | (s2.value << (8 * s1.length))) & mask(length);
+      consider(symbol{value, length}, count2[at]);
     }
     std::sort(candidates.begin(), candidates.end(),
               [](const auto& a, const auto& b) { return a.first < b.first; });
