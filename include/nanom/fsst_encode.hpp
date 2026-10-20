@@ -86,6 +86,26 @@ inline void reset(encoder& e) {
   e.long_codes.fill(encoder::slot{});
 }
 
+/// reset() for a table add() built from a reset one: only the lookups its symbols set are undone (the
+/// 128 KiB two-byte table is not refilled). The result is the same as reset().
+inline void clear(encoder& e) {
+  if (e.short_codes.size() != 65536) {
+    reset(e);
+    return;
+  }
+  for (std::uint32_t i = 0; i < e.symbol_count; ++i) {
+    const auto value = e.symbols[i];
+    if (e.lengths[i] == 1) {
+      e.byte_codes[value & 0xFF] = encoder::kNone;
+    } else if (e.lengths[i] == 2) {
+      e.short_codes[value & 0xFFFF] = encoder::kNone;
+    } else {
+      e.long_codes[hash3(value)] = encoder::slot{};
+    }
+  }
+  e.symbol_count = 0;
+}
+
 /// Add a symbol as the next code. False when its three-byte hash slot is taken: that symbol is
 /// skipped, as in Lance.
 inline bool add(encoder& e, std::uint64_t value, unsigned length) {
@@ -176,7 +196,11 @@ bool train(std::size_t n, ValueAt&& value_at, encoder& out) {
   const auto sample = make_sample(n, value_at);
   encoder table;
   reset(table);
-  encoder best = table;
+  // The best round's symbols, in the order add() took them: the best table is rebuilt from them at the
+  // end (copying the table, 128 KiB of lookups, every round it improved was most of the training).
+  std::uint32_t best_count = 0;
+  std::array<std::uint64_t, 255> best_symbols{};
+  std::array<std::uint8_t, 255> best_lengths{};
   std::int64_t best_gain = std::numeric_limits<std::int64_t>::min();
   std::vector<std::uint16_t> count1(kCodes);
   std::vector<std::uint16_t> count2(kCodes * kCodes);
@@ -229,14 +253,18 @@ bool train(std::size_t n, ValueAt&& value_at, encoder& out) {
     }
     if (gain >= best_gain) {
       best_gain = gain;
-      best = table;
+      best_count = table.symbol_count;
+      best_symbols = table.symbols;
+      best_lengths = table.lengths;
     }
 
     // Candidates: every symbol seen, and every pair seen, weighted by count x length.
-    std::map<std::pair<std::uint64_t, unsigned>, std::uint64_t> candidates;
+    // Candidates as (symbol, gain) records, sorted by symbol and merged afterwards: the same list, in
+    // the same order, as a std::map keyed by symbol (without a heap node per candidate).
+    std::vector<std::pair<std::pair<std::uint64_t, unsigned>, std::uint64_t>> candidates;
     const auto consider = [&](symbol s, std::uint64_t count) {
       if (count < (5U * frac) / 128U) return;
-      candidates[{s.value, s.length}] += count * s.length;
+      candidates.push_back({{s.value, s.length}, count * s.length});
     };
     std::vector<std::uint16_t> live;
     for (std::uint16_t c = 0; c < table.symbol_count; ++c) live.push_back(c);
@@ -257,19 +285,29 @@ bool train(std::size_t n, ValueAt&& value_at, encoder& out) {
         consider(symbol{value, length}, n2);
       }
     }
+    std::sort(candidates.begin(), candidates.end(),
+              [](const auto& a, const auto& b) { return a.first < b.first; });
     std::vector<std::pair<std::uint64_t, std::pair<std::uint64_t, unsigned>>> ranked;
     ranked.reserve(candidates.size());
-    for (const auto& [sym, g] : candidates) ranked.emplace_back(g, sym);
+    for (std::size_t i = 0; i < candidates.size();) {
+      const auto sym = candidates[i].first;
+      std::uint64_t g = 0;
+      for (; i < candidates.size() && candidates[i].first == sym; ++i) g += candidates[i].second;
+      ranked.emplace_back(g, sym);
+    }
     std::sort(ranked.begin(), ranked.end(), [](const auto& a, const auto& b) {
       return a.first != b.first ? a.first > b.first : a.second.first < b.second.first;
     });
-    reset(table);
+    clear(table);
     for (const auto& [g, sym] : ranked) {
       if (table.symbol_count == kMaxSymbols) break;
       add(table, sym.first, sym.second);
     }
   }
-  if (best.symbol_count == 0) return false;
+  if (best_count == 0) return false;
+  encoder best;
+  reset(best);
+  for (std::uint32_t i = 0; i < best_count; ++i) add(best, best_symbols[i], best_lengths[i]);
   best.short_or_byte.resize(65536);
   for (std::uint32_t w = 0; w < 65536; ++w) {
     const auto two = best.short_codes[w];
