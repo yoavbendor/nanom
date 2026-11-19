@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1791105888435,
+  "lastUpdate": 1795076668281,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -1187,6 +1187,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 20.2,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "0c0f0aef36aaa01a3fc2ad409cad71a4ccaaae58",
+          "message": "Merge pull request #35 from yoavbendor/claude/nanom-lance-parquet-enhancements-2erjot\n\nRuntime-composed parsers at nom speed, JSON-described raw layouts → Arrow (with enum dictionaries)",
+          "timestamp": "2026-11-19T10:17:56+02:00",
+          "tree_id": "3a1f83b947d1be523d3ad2dc4b1273ebd3da8d64",
+          "url": "https://github.com/yoavbendor/nanom/commit/0c0f0aef36aaa01a3fc2ad409cad71a4ccaaae58"
+        },
+        "date": 1795076667792,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 20.8,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 46.4,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 24.7,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 15.4,
             "unit": "ns/pkt"
           }
         ]
