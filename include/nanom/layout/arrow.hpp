@@ -93,7 +93,7 @@ struct enum_dictionary {
   /// Dictionary index of every row. I must match `index` (int8_t for i8 ...); else empty.
   template <class I> std::span<const I> codes() const {
     if (storage_of<I>() != index) return {};
-    return {reinterpret_cast<const I*>(idx_.get()), rows};
+    return std::span<const I>(reinterpret_cast<const I*>(idx_.get()), rows);
   }
   /// Raw value of entry i as JSON number text (signed or unsigned per the column).
   std::string value_text(std::size_t i) const {

@@ -230,13 +230,13 @@ class table {
   }
   /// Raw bytes of column c (rows() * storage_size).
   std::span<const std::byte> bytes(std::size_t c) const {
-    return {buf_.get() + offs_[c], rows_ * storage_size(column_storage(c))};
+    return std::span<const std::byte>(buf_.get() + offs_[c], rows_ * storage_size(column_storage(c)));
   }
   /// Typed column: T must be exactly the column's element type (bool for booleans, int32_t for
   /// Int, uint64_t for pointers, float for Real*4 ...). Mismatch -> empty span.
   template <class T> std::span<const T> column(std::size_t c) const {
     if (c >= slots_.size() || storage_of<T>() != column_storage(c)) return {};
-    return {reinterpret_cast<const T*>(buf_.get() + offs_[c]), rows_};
+    return std::span<const T>(reinterpret_cast<const T*>(buf_.get() + offs_[c]), rows_);
   }
   template <class T> std::span<const T> column(std::string_view name) const {
     auto c = find(name);

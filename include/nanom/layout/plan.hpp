@@ -227,7 +227,7 @@ class record {
     return scalar{detail::extract(p_, h.acc), h.st, h.fam, h.acc.width, h.enums};
   }
   scalar operator[](const field_handle& h) const { return value(h); }
-  std::span<const std::byte> bytes() const { return {p_, n_}; }
+  std::span<const std::byte> bytes() const { return std::span<const std::byte>(p_, n_); }
 
  private:
   friend class record_set;
