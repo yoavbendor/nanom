@@ -2,7 +2,7 @@
 // nanom/layout/arrow.hpp — hand a decoded table to Arrow through the C Data Interface.
 //
 // export_arrow(std::move(table), &schema, &array[, options]) produces a struct array ("+s") with one
-// child per column, named by column name. Integer / float columns are exported zero-copy (the
+// child per column, named by column name with '.' replaced by arrow_options::separator ("/"). Integer / float columns are exported zero-copy (the
 // table's 64-byte aligned buffers become the Arrow data buffers); boolean columns are bit-packed
 // into Arrow's LSB-first bitmap.
 //
@@ -258,7 +258,24 @@ enum class enum_mode : std::uint8_t {
 struct arrow_options {
   enum_mode enums = enum_mode::dictionary;
   std::string raw_suffix = "#raw";  ///< enum_mode::both: name of the integer sibling = column + this
+  /// Flat Arrow column names: the '.' between name components is replaced by this (Lance and
+  /// several engines refuse '.' in top-level field names). "GFI[1].grab_index" -> "GFI[1]/grab_index".
+  /// "." keeps the canonical names. Components never contain '.', so the mapping is reversible as
+  /// long as the separator does not occur inside a component ('/' never does in C++ names).
+  std::string separator = "/";
 };
+
+/// The Arrow column name export_arrow gives a column/scalar name under `separator`.
+inline std::string arrow_column_name(std::string_view column, std::string_view separator = "/") {
+  if (separator == ".") return std::string(column);
+  std::string out;
+  out.reserve(column.size() + 8);
+  for (char ch : column) {
+    if (ch == '.') out += separator;
+    else out += ch;
+  }
+  return out;
+}
 
 namespace arrow_detail {
 struct column {
@@ -389,10 +406,10 @@ inline void export_arrow(table&& t, ArrowSchema* out_schema, ArrowArray* out_arr
     col.buffers = {nullptr, data};
     leaf(col, arrow_format(s));
   };
-  auto dictionary = [&](std::size_t c) {
+  auto dictionary = [&](std::size_t c, std::string name) {
     column& col = st->cols[k++];
     const field& f = tb.column_field(c);
-    col.name = f.column;
+    col.name = std::move(name);
     col.dict = std::make_unique<enum_dictionary>(encode_enum(tb, c));
     const enum_dictionary& d = *col.dict;
     auto md = enum_metadata(f);
@@ -414,9 +431,10 @@ inline void export_arrow(table&& t, ArrowSchema* out_schema, ArrowArray* out_arr
     col.array.dictionary = &col.dict_array;
   };
   for (std::size_t c = 0; c < tb.columns(); ++c) {
-    if (!is_dict(c)) { plain(c, tb.column_field(c).column, o.enums == enum_mode::integer); continue; }
-    dictionary(c);
-    if (o.enums == enum_mode::both) plain(c, tb.column_field(c).column + o.raw_suffix, false);
+    const std::string name = arrow_column_name(tb.column_field(c).column, o.separator);
+    if (!is_dict(c)) { plain(c, name, o.enums == enum_mode::integer); continue; }
+    dictionary(c, name);
+    if (o.enums == enum_mode::both) plain(c, name + o.raw_suffix, false);
   }
   for (auto& col : st->cols) {
     st->child_schema_ptr.push_back(&col.schema);

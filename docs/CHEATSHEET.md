@@ -161,4 +161,4 @@ auto tp   = lay::decode(plan, bytes, sel).value();          // costs only what i
 auto h    = plan.find("GFI.brain_type").value();            // handle: rec.get<int>(h), rec[h].enum_name()
 lay::export_jsonl(plan, bytes, sink, sel);  lay::export_csv(...);  lay::export_arrow(std::move(t), &schema, &array);
 ```
-Details, rules (stride, bit order, name tree) and benchmarks: [LAYOUT.md](LAYOUT.md).
+How to use it (two flavors, enums, alignment): [LAYOUT_GUIDE.md](LAYOUT_GUIDE.md). Details, rules (stride, bit order, name tree) and benchmarks: [LAYOUT.md](LAYOUT.md).

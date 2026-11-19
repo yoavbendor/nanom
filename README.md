@@ -350,6 +350,7 @@ CLI: `nanom_layout --layout desc.jsonl --enums enums.json --raw-file-name /proc/
 ## Docs
 
 - [docs/CHEATSHEET.md](docs/CHEATSHEET.md) — every nom name → nanom name, one line each
+- [docs/LAYOUT_GUIDE.md](docs/LAYOUT_GUIDE.md) — how to use it: JSON struct descriptions → Arrow tables (all fields / picked fields, enums as dictionaries, alignment)
 - [docs/LAYOUT.md](docs/LAYOUT.md) — raw records described by JSON Lines: rules, API, CLI, benchmarks
 - [docs/NOM_PARITY_AUDIT.md](docs/NOM_PARITY_AUDIT.md) — nom's own test suite ported
   against nanom (`tests/test_nom_parity.cpp`), verifying combinators like `alt`/`flat_map`

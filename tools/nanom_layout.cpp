@@ -4,6 +4,7 @@
 //   nanom-layout --layout desc.jsonl [--enums enums.json] [--raw-file-name NAME] --input file.raw
 //                [--stride N] [--stride-for NAME=N] [--select PATTERN]... [--records A:B]
 //                [--format jsonl|csv|summary|fields|arrow-schema] [--enums-as dictionary|integer|both]
+//                [--name-separator S]
 //                [--big-endian] [--lenient] [--allow-partial] [--via-columns]
 //                [--strategy auto|field|record] [-o OUT]
 //
@@ -37,6 +38,7 @@ int usage(const char* why) {
       "                    [--select PATTERN]... [--records A:B]\n"
       "                    [--format jsonl|csv|summary|fields|arrow-schema]\n"
       "                    [--enums-as dictionary|integer|both] (Arrow export of enum columns)\n"
+      "                    [--name-separator S] (Arrow column names: '.' -> S, default '/')\n"
       "                    [--big-endian] [--lenient] [--allow-partial] [--via-columns]\n"
       "                    [--strategy auto|field|record] [-o OUT]\n"
       "       nanom-layout --layout DESC.jsonl --list\n"
@@ -121,6 +123,11 @@ int main(int argc, char** argv) {
     else if (a == "-o" || a == "--output") out_path = v;
     else if (a == "--format") format = v;
     else if (a == "--select") selects.emplace_back(v);
+    else if (a == "--name-separator") {
+      if (!*v || std::string_view(v).find_first_of("[]") != std::string_view::npos)
+        return usage("--name-separator needs a non-empty string without '[' or ']'");
+      aopt.separator = v;
+    }
     else if (a == "--enums-as") {
       const std::string_view s = v;
       if (s == "dictionary") aopt.enums = lay::enum_mode::dictionary;

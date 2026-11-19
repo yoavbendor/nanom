@@ -12,7 +12,8 @@ file and export it through the Arrow C Data Interface, imports the struct into p
   * --enums-as integer / both equivalents (enum_mode 1 / 2)
   * the batch written with lance.write_dataset reads back as dictionary columns with the names
     intact and the metadata preserved, and a filter by name selects the right rows. Lance refuses
-    '.' in top-level field names, so the columns are renamed '.' -> '/' first.
+    '.' in top-level field names; export_arrow's default separator ('/') already avoids it, so the
+    exported batch goes into Lance unchanged.
 
 usage: layout_arrow_lance.py /path/to/libnanom_layout_arrow_capi.so
 Exits 0 on success, 1 on a mismatch, 77 (ctest "skipped") when pyarrow or pylance is missing.
@@ -167,7 +168,6 @@ def check_batch(batch, data, n, big, mode):
 
 def lance_roundtrip(batch, work, tag):
     t = pa.Table.from_batches([batch])
-    t = t.rename_columns([c.replace(".", "/") for c in t.column_names])
     path = os.path.join(work, tag + ".lance")
     lance.write_dataset(t, path)
     ds = lance.dataset(path)
@@ -208,16 +208,20 @@ def main():
             with open(raw, "wb") as f:
                 f.write(data)
             for mode in (0, 1, 2):
-                batch = export(lib, desc, enums, raw, mode, big)
+                native = export(lib, desc, enums, raw, mode, big)
+                # export_arrow's default separator: '.' between name components becomes '/'
+                check(all("." not in c for c in native.schema.names), f"no '.' in Arrow names: {native.schema.names}")
+                check(native.schema.names[0] == "Rec/id" and "Rec/flags/kind" in native.schema.names, "'/' names")
+                batch = native.rename_columns([c.replace("/", ".") for c in native.schema.names])
                 check(batch.num_rows == n, "rows")
                 check_batch(batch, data, n, big, mode)
                 if mode != 1:
-                    lance_roundtrip(batch, work, f"{'be' if big else 'le'}{mode}")
+                    lance_roundtrip(native, work, f"{'be' if big else 'le'}{mode}")
         # empty input: dictionary columns with the table only
         empty = os.path.join(work, "empty.raw")
         open(empty, "wb").close()
         batch = export(lib, desc, enums, empty, 0, False)
-        check(batch.num_rows == 0 and batch.column("Rec.mode").dictionary.to_pylist() ==
+        check(batch.num_rows == 0 and batch.column("Rec/mode").dictionary.to_pylist() ==
               ["UNDEF", "IMG1", "IMG2", "IMG3", "IMG4", "IMG5", "IMG6"], "empty input")
         stats = lance.dataset(os.path.join(work, "le0.lance")).schema
         print("lance schema (le, dictionary):", ", ".join(f"{f.name}: {f.type}" for f in stats))

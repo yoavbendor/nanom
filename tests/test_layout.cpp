@@ -525,7 +525,28 @@ static void test_arrow() {
   CHECK(std::string_view(s.format) == "+s" && s.n_children == 10 && a.n_children == 10 && a.length == 10);
   CHECK(std::string_view(s.children[0]->format) == "I" && std::string_view(s.children[3]->format) == "i" &&
         std::string_view(s.children[4]->format) == "b");
-  CHECK(std::string_view(s.children[5]->name) == "GFI[1].grab_index");
+  CHECK(std::string_view(s.children[5]->name) == "GFI[1]/grab_index");
+  // the separator is the caller's: "." keeps the canonical names, anything else replaces the dots
+  CHECK(lay::arrow_column_name("A::B.c[2].long>._M_i") == "A::B/c[2]/long>/_M_i");
+  CHECK(lay::arrow_column_name("A::B.c[2].long>._M_i", ".") == "A::B.c[2].long>._M_i");
+  CHECK(lay::arrow_column_name("A::B.c", "__") == "A::B__c");
+  {
+    auto t2 = lay::decode(*p, data);
+    ArrowSchema s2{};
+    ArrowArray a2{};
+    lay::arrow_options o;
+    o.separator = "__";
+    lay::export_arrow(std::move(*t2), &s2, &a2, o);
+    CHECK(std::string_view(s2.children[5]->name) == "GFI[1]__grab_index");
+    a2.release(&a2);
+    s2.release(&s2);
+    auto t3 = lay::decode(*p, data);
+    o.separator = ".";
+    lay::export_arrow(std::move(*t3), &s2, &a2, o);
+    CHECK(std::string_view(s2.children[5]->name) == "GFI[1].grab_index");
+    a2.release(&a2);
+    s2.release(&s2);
+  }
   std::uint32_t v0;
   std::memcpy(&v0, data.data(), 4);
   CHECK(static_cast<const std::uint32_t*>(a.children[0]->buffers[1])[0] == v0);
@@ -581,7 +602,7 @@ static void test_arrow_enums() {
     CHECK(s.n_children == 10 && a.n_children == 10);
     const ArrowSchema* cs = s.children[3];
     const ArrowArray* ca = a.children[3];
-    CHECK(std::string_view(cs->name) == "GFI[0].brain_type" && std::string_view(cs->format) == "c");
+    CHECK(std::string_view(cs->name) == "GFI[0]/brain_type" && std::string_view(cs->format) == "c");
     CHECK(cs->dictionary && std::string_view(cs->dictionary->format) == "u" && ca->dictionary);
     CHECK(ca->dictionary->length == 9 && ca->dictionary->n_buffers == 3 && ca->n_buffers == 2 && ca->length == 4);
     const char* want[] = {"UNDEF", "IMG1", "IMG2", "IMG3", "IMG4", "IMG5", "IMG6", "-9", "77"};
@@ -628,10 +649,10 @@ static void test_arrow_enums() {
     o.enums = lay::enum_mode::both;
     lay::export_arrow(std::move(*lay::decode(*p, data)), &s, &a, o);
     CHECK(s.n_children == 12 && a.n_children == 12);
-    CHECK(std::string_view(s.children[3]->name) == "GFI[0].brain_type" && s.children[3]->dictionary);
-    CHECK(std::string_view(s.children[4]->name) == "GFI[0].brain_type#raw" && std::string_view(s.children[4]->format) == "i");
-    CHECK(std::string_view(s.children[5]->name) == "GFI[0].BlackDummy");
-    CHECK(std::string_view(s.children[10]->name) == "GFI[1].brain_type#raw");
+    CHECK(std::string_view(s.children[3]->name) == "GFI[0]/brain_type" && s.children[3]->dictionary);
+    CHECK(std::string_view(s.children[4]->name) == "GFI[0]/brain_type#raw" && std::string_view(s.children[4]->format) == "i");
+    CHECK(std::string_view(s.children[5]->name) == "GFI[0]/BlackDummy");
+    CHECK(std::string_view(s.children[10]->name) == "GFI[1]/brain_type#raw");
     CHECK(static_cast<const std::int32_t*>(a.children[4]->buffers[1])[3] == -9);
     CHECK(md_get(s.children[4]->metadata, "nanom.enum.ref") == "1");
     // release children independently in odd order

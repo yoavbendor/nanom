@@ -283,7 +283,7 @@ nanom_exe_generation(nanom_dyn_tests_nogen 0 tests/test_dyn.cpp)
 add_test(NAME nanom_dyn_tests_nogen COMMAND nanom_dyn_tests_nogen)
 
 # ---- worked examples (must run clean) -------------------------------------
-foreach(ex ethernet elf fat16)
+foreach(ex ethernet elf fat16 layout_to_arrow)
   nanom_exe(example_${ex} examples/${ex}.cpp)
   add_test(NAME example_${ex} COMMAND example_${ex})
 endforeach()

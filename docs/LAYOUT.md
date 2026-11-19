@@ -1,7 +1,9 @@
 # Raw records from a JSON layout description
 
 `#include <nanom/layout.hpp>` decodes binary files that hold "one structure after the other", given a
-JSON Lines description of the structure's scalars:
+JSON Lines description of the structure's scalars. **New here? Start with the usage guide
+[LAYOUT_GUIDE.md](LAYOUT_GUIDE.md)** (the two flavors, enums as dictionaries, alignment); this page is
+the reference.
 
 ```json
 {"raw_file":"/dev/vdiZ/pacemaker/gfi.raw","scalar_name":"GFI.grab_index","bit_offset":0,"bit_width":32,"type":"UInt"}
@@ -142,7 +144,9 @@ travel with the data into Lance, Parquet and other formats:
   data holds values outside the table); otherwise a binary search per row. Measured below.
 * Lance (pylance 14) stores `dictionary<intN, utf8>` natively, reads it back as dictionary, keeps the
   field metadata and filters by name (`` `Rec/mode` = 'UNDEF' ``). Lance refuses `.` in top-level
-  field names, so rename the flat column names (e.g. `.` → `/`) before `lance.write_dataset`.
+  field names, which is why the Arrow names use `arrow_options::separator` (default `/`, CLI
+  `--name-separator`): `GFI[0].brain_type` is exported as `GFI[0]/brain_type`, ready for Lance.
+  `arrow_column_name(column, separator)` gives the mapping; `"."` keeps the dotted names.
 
 `nanom_layout --format arrow-schema [--enums-as ...]` decodes the input and prints the exported
 schema, one JSON line per Arrow column (name, format, dictionary values, metadata). nanom has no
@@ -324,8 +328,8 @@ columnar path instead of the record path (the oracle uses it to check the kernel
 
 ## Open items
 
-* Arrow column names are the flat column names (`GFI[0].brain_type`); Lance needs them renamed
-  (no `.` at top level). A nested struct export following the name tree would avoid that.
+* Nested Arrow structs following the name tree (instead of flat columns with a separator) —
+  postponed; flat columns are the supported form.
 * Multi-threaded decode: blocks are independent, so splitting the record range over threads is
   straightforward (not done; single-thread numbers are already near the copy bandwidth).
 * JSON export is ~18-30 ns/value (number formatting dominates); fine for inspection, not the
