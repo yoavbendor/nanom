@@ -6,6 +6,8 @@
 **verified-equal-output gate**. Builds nanom in `minimal` (opt-out) and `full` (safety-first)
 profiles; CI's `perf-budget` job enforces `full/minimal ≤ 1.20×`. See [`docs/BENCH_RUST_NOM.md`](../docs/BENCH_RUST_NOM.md).
 
+[`runtime_compose_bench.cpp`](runtime_compose_bench.cpp) / [`runtime_compose_static.cpp`](runtime_compose_static.cpp) / `rust_nom` bin `runtime_compose` — a parser built at **run time** from a spec (`nm::dyn` tree) vs the same layout composed statically vs Rust nom 8's `Rc<dyn Fn>`, with an equal-hash gate in [`runtime_compose_check.py`](runtime_compose_check.py). See [`docs/RUNTIME_COMPOSE.md`](../docs/RUNTIME_COMPOSE.md).
+
 `parse_bench.cpp` times **only the decode** — capture is read into memory once,
 the block scan is done once, and the timed loop is purely the per-packet
 L2/L3/L4 walk. No file I/O, no JSON, no output allocation in the loop. A FNV-1a

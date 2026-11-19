@@ -1,0 +1,1 @@
+tag(1:seq(u8,u16be,str8,rep(seq(u32le,u8))),2:seq(u64be,str8),7:rep(rep(u16be)),9:alt(seq(lit(170),u32le),seq(lit(187),str8),seq(lit(204),u16be)))

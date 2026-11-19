@@ -139,6 +139,7 @@ reflection add-on, then the data-tooling extras:
 | `nanom/schema.hpp` | *extra* — `schema_of<T>()`, Arrow format strings, `avro_schema`, `to_json`/`csv_row` | `reflect.hpp` |
 | `nanom/soa.hpp` | *extra* — `soa<T>` columnar (SoA) chunked storage | `schema.hpp` |
 | `nanom/bulk.hpp` | *extra, opt-in* — data-parallel (GPU-ready) SoA scatter | `soa.hpp` |
+| `nanom/dyn.hpp` | *extra* — **parsers composed at run time**: the type-erased `nm::dyn<T>` (cheap non-atomic copies, one indirect call), `alt`/`seq`/`seq_fold` over runtime lists, `length_fold`, `dispatch` on a parsed key, `recursive` ([docs](docs/RUNTIME_COMPOSE.md)) | `nom.hpp` |
 | `nanom/tagged.hpp` | *extra* — reflected **tagged messages**: `field<Id, T>` members, the Thrift compact decoder, lazy `list<>`/`lazy<>` views ([docs](docs/TAGGED.md)). Read-only. | `reflect.hpp` |
 | `nanom/protobuf.hpp` | *extra* — **protobuf** (proto3 wire format) for the same `field<Id, T>` structs: `protobuf<M>()`, `pb_sint<>` / `pb_fixed<>`, packed and unpacked repeated, open enums, maps as entry vectors ([docs](docs/PROTOBUF.md)). Read-only. | `tagged.hpp` |
 | `nanom/columnar_encode.hpp` | *extra, write side* — columnar page encoders, each the inverse of a decoder: `pack_bits`, RLE / bit-packed hybrid (values, levels, straight from a bitmap), DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT, DELTA_LENGTH / DELTA_BYTE_ARRAY, dictionary builders, Parquet-ordered statistics, FastLanes blocks ([docs](docs/COLUMNAR.md#encoders)) | `values.hpp` |

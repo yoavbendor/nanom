@@ -262,6 +262,15 @@ endif()
 nanom_exe(nanom_nom_parity_tests tests/test_nom_parity.cpp)
 add_test(NAME nanom_nom_parity_tests COMMAND nanom_nom_parity_tests)
 
+# Runtime-composed parsers (include/nanom/dyn.hpp: nm::dyn<T>, alt/seq/seq_fold over ranges,
+# length_fold, dispatch, recursive) -- in every safety profile.
+nanom_exe(nanom_dyn_tests tests/test_dyn.cpp)
+add_test(NAME nanom_dyn_tests COMMAND nanom_dyn_tests)
+nanom_exe_strict(nanom_dyn_tests_strict tests/test_dyn.cpp)
+add_test(NAME nanom_dyn_tests_strict COMMAND nanom_dyn_tests_strict)
+nanom_exe_generation(nanom_dyn_tests_nogen 0 tests/test_dyn.cpp)
+add_test(NAME nanom_dyn_tests_nogen COMMAND nanom_dyn_tests_nogen)
+
 # ---- worked examples (must run clean) -------------------------------------
 foreach(ex ethernet elf fat16)
   nanom_exe(example_${ex} examples/${ex}.cpp)
@@ -464,6 +473,17 @@ add_test(NAME bench_smoke_bulk  COMMAND nm_bulk_bench  ${td}/srv6_sample.pcap 50
 add_test(NAME bench_smoke_segmented COMMAND nm_segmented_bench 2)
 add_test(NAME bench_smoke_streaming COMMAND nm_streaming_bench 1 1)
 add_test(NAME bench_smoke_thrift COMMAND nm_thrift_bench 10 5 1)
+# Runtime-composed parsing (spec read at run time -> nm::dyn tree) vs the same layout composed
+# statically; the check script generates data and asserts both report the identical hash.
+# bench/rust_nom's `runtime_compose` binary is the Rust nom counterpart (docs/RUNTIME_COMPOSE.md).
+nanom_exe(nm_runtime_compose_bench bench/runtime_compose_bench.cpp)
+nanom_exe(nm_runtime_compose_static bench/runtime_compose_static.cpp)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME bench_smoke_runtime_compose
+           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/bench/runtime_compose_check.py
+                   --dyn $<TARGET_FILE:nm_runtime_compose_bench>
+                   --static $<TARGET_FILE:nm_runtime_compose_static> --messages 5000 --reps 1)
+endif()
 
 # ---- libFuzzer coverage-guided targets (Clang only, opt-in) ---------------
 if(NANOM_BUILD_FUZZERS)

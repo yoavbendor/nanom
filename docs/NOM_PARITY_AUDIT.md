@@ -108,6 +108,16 @@ both a flat expression and one with parens.
    human-readable message for a pathological multi-gigabyte single field. Not fixed here;
    noted as a low-priority cosmetic gap.
 
+5. **Runtime-length `alt` (closed).** nom 8's `alt` also accepts an array or slice of same-typed
+   parsers. nanom's `alt(p, ps...)` was variadic only, so a list built at run time needed a
+   hand-written loop. `include/nanom/dyn.hpp` now adds `alt(range)` with nom 8's semantics: the
+   first success wins, a recoverable error tries the next parser, Failure and Incomplete
+   propagate, and an empty range fails at the input. When all parsers fail it reports the
+   furthest error, like the variadic `alt`. The same header adds the missing erased parser
+   (`nm::dyn<T>`, the `Rc<dyn Fn>` analog), `seq`/`seq_fold` over ranges (which nom lacks),
+   `length_fold`, and `dispatch` on a parsed key. Covered by `tests/test_dyn.cpp`; benchmarked
+   against nom in `docs/RUNTIME_COMPOSE.md`.
+
 ## Confirmed non-issues (behaved exactly as nom's tests expect)
 
 - **Stateful/mutating parsers** (`tests/fnmut.rs`): nanom's `Parser` concept requires

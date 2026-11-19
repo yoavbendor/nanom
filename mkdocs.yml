@@ -80,6 +80,7 @@ nav:
   - "Plan: writing (Parquet, then Lance)": WRITERS.md
   - Benchmarks:
       - vs Rust nom (streaming pcapng): BENCH_RUST_NOM.md
+      - vs Rust nom (runtime-composed parsers): RUNTIME_COMPOSE.md
       - vs nanotins (overlay decode): NANOTINS_COMPARISON.md
       - GPU / bulk: GPU.md
   - API reference: https://yoavbendor.github.io/nanom/api/
