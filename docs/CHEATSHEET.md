@@ -148,3 +148,17 @@ Field types for described structs: plain ints/floats (endianness from
 `strct<T>(order)`), `nm::be<T>` / `nm::le<T>`, `nm::ubits<N[,order]>` /
 `nm::ibits<N[,order]>` (runs must end byte-aligned — compile-checked),
 `std::array<T,N>`, nested described structs.
+
+## raw records from a JSON layout description (`<nanom/layout.hpp>`)
+
+```cpp
+namespace lay = nanom::layout;
+auto desc = lay::load_description("desc.jsonl").value();   // {"raw_file","scalar_name","bit_offset","bit_width","type"} per line
+auto plan = lay::plan::compile(desc, "/proc/app/devices.raw", &enums, {.stride = 59032}).value();
+auto t    = lay::decode(plan, bytes).value();               // table: t.column<int32_t>("A.b[1].c")
+auto sel  = plan.select({"MEIO::IOAppDevices._uartWrite."}).value();   // exact | subtree | prefix | glob
+auto tp   = lay::decode(plan, bytes, sel).value();          // costs only what is selected
+auto h    = plan.find("GFI.brain_type").value();            // handle: rec.get<int>(h), rec[h].enum_name()
+lay::export_jsonl(plan, bytes, sink, sel);  lay::export_csv(...);  lay::export_arrow(std::move(t), &schema, &array);
+```
+Details, rules (stride, bit order, name tree) and benchmarks: [LAYOUT.md](LAYOUT.md).

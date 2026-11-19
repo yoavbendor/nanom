@@ -195,6 +195,17 @@ add_test(NAME nanom_columnar_tests COMMAND nanom_columnar_tests)
 nanom_exe_strict(nanom_columnar_tests_strict tests/test_columnar.cpp)
 add_test(NAME nanom_columnar_tests_strict COMMAND nanom_columnar_tests_strict)
 
+# Raw records described by JSON Lines (layout.hpp): description/enum loaders, name tree, bit-fields,
+# stride rule, column kernels vs a bit-by-bit reference, exporters, Arrow export. The
+# nanom-layout CLI is checked end to end by tests/layout_oracle.py (below, needs python3).
+nanom_exe(nanom_layout_tests tests/test_layout.cpp)
+add_test(NAME nanom_layout_tests COMMAND nanom_layout_tests)
+nanom_exe_strict(nanom_layout_tests_strict tests/test_layout.cpp)
+add_test(NAME nanom_layout_tests_strict COMMAND nanom_layout_tests_strict)
+nanom_exe_generation(nanom_layout_tests_nogen 0 tests/test_layout.cpp)
+add_test(NAME nanom_layout_tests_nogen COMMAND nanom_layout_tests_nogen)
+nanom_exe(nanom_layout tools/nanom_layout.cpp)
+
 # Memory-safety regression suite: enforced guards (must pass).
 nanom_exe(nanom_memory_safety_tests tests/test_memory_safety.cpp)
 add_test(NAME nanom_memory_safety_tests COMMAND nanom_memory_safety_tests)
@@ -299,6 +310,10 @@ if(Python3_Interpreter_FOUND)
            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/protobuf_differential.py
                    $<TARGET_FILE:protobuf_oracle>)
   set_tests_properties(protobuf_differential PROPERTIES SKIP_RETURN_CODE 77)
+  # nanom-layout CLI vs an independent stdlib-only Python decoder of the same description.
+  add_test(NAME layout_oracle
+           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/layout_oracle.py
+                   $<TARGET_FILE:nanom_layout>)
 endif()
 
 # ---- C++26 reflection mode only: the macro-free showcase + the provider-equivalence suite -----
@@ -467,12 +482,14 @@ nanom_exe(nm_segmented_bench bench/segmented_bench.cpp)  # stitch-vs-segments + 
 nanom_exe(nm_streaming_bench bench/streaming_bench.cpp)  # whole-file vs EPB-at-a-time: memory bound + ns/pkt
 target_link_libraries(nm_streaming_bench PRIVATE nanom::shark)
 nanom_exe(nm_thrift_bench bench/thrift_bench.cpp)  # Parquet footer decode: validate / full / one row group
+nanom_exe(nm_layout_bench bench/layout_bench.cpp)  # JSON-described raw records vs static decoder
 add_test(NAME bench_smoke_parse COMMAND nm_parse_bench ${td}/srv6_sample.pcap 2)
 add_test(NAME bench_smoke_safety COMMAND nm_safety_microbench 2)
 add_test(NAME bench_smoke_bulk  COMMAND nm_bulk_bench  ${td}/srv6_sample.pcap 50 2)
 add_test(NAME bench_smoke_segmented COMMAND nm_segmented_bench 2)
 add_test(NAME bench_smoke_streaming COMMAND nm_streaming_bench 1 1)
 add_test(NAME bench_smoke_thrift COMMAND nm_thrift_bench 10 5 1)
+add_test(NAME bench_smoke_layout COMMAND nm_layout_bench 0.002 1)
 # Runtime-composed parsing (spec read at run time -> nm::dyn tree) vs the same layout composed
 # statically; the check script generates data and asserts both report the identical hash.
 # bench/rust_nom's `runtime_compose` binary is the Rust nom counterpart (docs/RUNTIME_COMPOSE.md).
