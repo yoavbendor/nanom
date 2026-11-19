@@ -473,8 +473,9 @@ static void test_errors() {
   CHECK(other_expired && mine.frames().size == 1);
 
   // compact layout pledges (docs/HOT_PATH_LAYOUT.md)
-  static_assert(sizeof(nm::error) == 24);
-  static_assert(sizeof(nm::input) == (NANOM_GENERATION ? 40 : 24));
+  static_assert(sizeof(nm::error) <= 24 && (sizeof(void*) != 8 || sizeof(nm::error) == 24));
+  static_assert(sizeof(nm::input) == nm::input_pledge_bytes);
+  static_assert(sizeof(void*) != 8 || sizeof(nm::input) == (NANOM_GENERATION ? 40 : 24));
   static_assert(sizeof(nm::result<std::uint64_t>) <= sizeof(std::uint64_t) + sizeof(nm::input) + 8);
   static_assert(std::is_trivially_copyable_v<nm::result<std::uint64_t>> == false);  // input copies field-wise
 

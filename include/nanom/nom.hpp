@@ -2045,7 +2045,11 @@ static_assert(std::is_trivially_copyable_v<error>);
 // it is trivially destructible and nothrow-copyable.
 static_assert(std::is_trivially_destructible_v<input>);
 static_assert(std::is_nothrow_copy_constructible_v<input>);
-static_assert(sizeof(input) == (NANOM_GENERATION ? 40 : 24), "input: first, last, pos (+ arena, gen)");
+// first, last, pos (+ arena, gen): 24 / 40 bytes with 64-bit pointers, 16 / 32 with 32-bit (wasm32)
+inline constexpr std::size_t input_pledge_bytes =
+    ((NANOM_GENERATION ? 3 * sizeof(void*) + 16 : 2 * sizeof(void*) + 8) + alignof(std::uint64_t) - 1) /
+    alignof(std::uint64_t) * alignof(std::uint64_t);
+static_assert(sizeof(input) == input_pledge_bytes, "input: first, last, pos (+ arena, gen)");
 
 }  // namespace nanom
 
