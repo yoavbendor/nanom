@@ -542,6 +542,258 @@ static void test_arrow() {
 }
 
 
+// ------------------------------------------------------------------ Arrow: enums as dictionaries
+static std::string md_get(const char* md, std::string_view key) {
+  for (auto& [k, v] : lay::arrow_metadata(md))
+    if (k == key) return v;
+  return "<missing>";
+}
+static std::string dict_name(const ArrowArray* d, std::int64_t i) {
+  const auto* off = static_cast<const std::int32_t*>(d->buffers[1]);
+  const auto* ch = static_cast<const char*>(d->buffers[2]);
+  return std::string(ch + off[i], std::size_t(off[i + 1] - off[i]));
+}
+static std::int64_t code_at(const ArrowSchema* s, const ArrowArray* a, std::size_t r) {
+  const void* b = a->buffers[1];
+  switch (s->format[0]) {
+    case 'c': return static_cast<const std::int8_t*>(b)[r];
+    case 's': return static_cast<const std::int16_t*>(b)[r];
+    case 'i': return static_cast<const std::int32_t*>(b)[r];
+    default: return static_cast<const std::int64_t*>(b)[r];
+  }
+}
+
+static void test_arrow_enums() {
+  auto desc = lay::parse_description(gfi_desc());
+  auto en = lay::parse_enums(kGfiEnums);
+  auto p = lay::plan::compile(*desc, kGfi, &*en);
+  if (!p) { CHECK(false); return; }
+  std::vector<std::byte> data(4 * 40);
+  const std::int32_t brain[4] = {-1, 77, 4, -9};
+  for (int r = 0; r < 4; ++r) {
+    put<std::int32_t>(data, std::size_t(r) * 40 + 12, brain[r]);
+    put<std::int32_t>(data, std::size_t(r) * 40 + 32, 2);
+  }
+  {  // default: dictionary
+    ArrowSchema s{};
+    ArrowArray a{};
+    lay::export_arrow(std::move(*lay::decode(*p, data)), &s, &a);
+    CHECK(s.n_children == 10 && a.n_children == 10);
+    const ArrowSchema* cs = s.children[3];
+    const ArrowArray* ca = a.children[3];
+    CHECK(std::string_view(cs->name) == "GFI[0].brain_type" && std::string_view(cs->format) == "c");
+    CHECK(cs->dictionary && std::string_view(cs->dictionary->format) == "u" && ca->dictionary);
+    CHECK(ca->dictionary->length == 9 && ca->dictionary->n_buffers == 3 && ca->n_buffers == 2 && ca->length == 4);
+    const char* want[] = {"UNDEF", "IMG1", "IMG2", "IMG3", "IMG4", "IMG5", "IMG6", "-9", "77"};
+    for (int i = 0; i < 9; ++i) CHECK(dict_name(ca->dictionary, i) == want[i]);
+    CHECK(code_at(cs, ca, 0) == 0 && code_at(cs, ca, 1) == 8 && code_at(cs, ca, 2) == 5 && code_at(cs, ca, 3) == 7);
+    CHECK(md_get(cs->metadata, "nanom.enum.values") == "[-1,0,1,2,3,4,5,-9,77]");
+    CHECK(md_get(cs->metadata, "nanom.enum.named") == "7");
+    CHECK(md_get(cs->metadata, "nanom.enum.ref") == "1");
+    CHECK(md_get(cs->metadata, "nanom.layout.type") == "Enum ref = 1");
+    CHECK(md_get(cs->metadata, "nanom.layout.storage") == "i32");
+    CHECK(md_get(cs->metadata, "nanom.enum.names") == "<missing>");
+    CHECK(code_at(s.children[8], a.children[8], 2) == 3);  // GFI[1].brain_type = 2 -> IMG3, no unnamed
+    CHECK(a.children[8]->dictionary->length == 7);
+    CHECK(s.children[0]->metadata == nullptr && !s.children[0]->dictionary);  // non-enum: unchanged
+    // move a dictionary child out (with its dictionary), release the parents first (ASan)
+    ArrowSchema cs_moved = *s.children[3];
+    ArrowArray ca_moved = *a.children[3];
+    s.children[3]->release = nullptr;
+    a.children[3]->release = nullptr;
+    a.release(&a);
+    s.release(&s);
+    CHECK(dict_name(ca_moved.dictionary, 8) == "77");
+    ca_moved.release(&ca_moved);
+    cs_moved.release(&cs_moved);
+    CHECK(ca_moved.release == nullptr && cs_moved.release == nullptr);
+  }
+  {  // integer
+    ArrowSchema s{};
+    ArrowArray a{};
+    lay::arrow_options o;
+    o.enums = lay::enum_mode::integer;
+    lay::export_arrow(std::move(*lay::decode(*p, data)), &s, &a, o);
+    CHECK(s.n_children == 10 && std::string_view(s.children[3]->format) == "i" && !s.children[3]->dictionary);
+    CHECK(static_cast<const std::int32_t*>(a.children[3]->buffers[1])[1] == 77);
+    CHECK(md_get(s.children[3]->metadata, "nanom.enum.names") ==
+          R"({"-1":"UNDEF","0":"IMG1","1":"IMG2","2":"IMG3","3":"IMG4","4":"IMG5","5":"IMG6"})");
+    a.release(&a);
+    s.release(&s);
+  }
+  {  // both: dictionary under the column name, integer sibling right after it
+    ArrowSchema s{};
+    ArrowArray a{};
+    lay::arrow_options o;
+    o.enums = lay::enum_mode::both;
+    lay::export_arrow(std::move(*lay::decode(*p, data)), &s, &a, o);
+    CHECK(s.n_children == 12 && a.n_children == 12);
+    CHECK(std::string_view(s.children[3]->name) == "GFI[0].brain_type" && s.children[3]->dictionary);
+    CHECK(std::string_view(s.children[4]->name) == "GFI[0].brain_type#raw" && std::string_view(s.children[4]->format) == "i");
+    CHECK(std::string_view(s.children[5]->name) == "GFI[0].BlackDummy");
+    CHECK(std::string_view(s.children[10]->name) == "GFI[1].brain_type#raw");
+    CHECK(static_cast<const std::int32_t*>(a.children[4]->buffers[1])[3] == -9);
+    CHECK(md_get(s.children[4]->metadata, "nanom.enum.ref") == "1");
+    // release children independently in odd order
+    ArrowArray c10 = *a.children[10];
+    a.children[10]->release = nullptr;
+    s.release(&s);
+    a.release(&a);
+    c10.release(&c10);
+  }
+  {  // empty input: dictionary = the table, zero-length indices
+    ArrowSchema s{};
+    ArrowArray a{};
+    lay::export_arrow(std::move(*lay::decode(*p, std::span<const std::byte>{})), &s, &a);
+    CHECK(a.length == 0 && a.children[3]->length == 0 && a.children[3]->dictionary->length == 7);
+    CHECK(std::string_view(s.children[3]->format) == "c" && a.children[3]->buffers[1] != nullptr);
+    CHECK(md_get(s.children[3]->metadata, "nanom.enum.values") == "[-1,0,1,2,3,4,5]");
+    a.release(&a);
+    s.release(&s);
+  }
+  {  // an enum field without a table (and with an empty one) stays an integer
+    auto en2 = lay::parse_enums(R"({"/dev/vdiZ/pacemaker/gfi.raw": {"Enum ref = 1": {}}})");
+    for (const lay::enum_catalog* c : std::array<const lay::enum_catalog*, 2>{nullptr, &*en2}) {
+      auto p2 = lay::plan::compile(*desc, kGfi, c);
+      ArrowSchema s{};
+      ArrowArray a{};
+      lay::export_arrow(std::move(*lay::decode(*p2, data)), &s, &a);
+      CHECK(std::string_view(s.children[3]->format) == "i" && !s.children[3]->dictionary);
+      CHECK(md_get(s.children[3]->metadata, "nanom.layout.type") == "Enum ref = 1");
+      a.release(&a);
+      s.release(&s);
+    }
+  }
+  // enum bit-fields, both byte orders: unsigned 3-bit (no negatives) and signed 3-bit
+  for (auto order : {std::endian::little, std::endian::big}) {
+    std::string d = line("x", "e3", 3, 3, "Enum ref = 9") + line("x", "e3n", 6, 3, "Enum ref = 8") +
+                    line("x", "pad", 32, 32, "UInt");
+    auto pd = lay::parse_description(d);
+    auto pe = lay::parse_enums(R"({"x": {"9": {"7": "SEVEN", "2": "TWO"}, "8": {"-1": "MINUS", "1": "ONE"}}})");
+    lay::compile_options co;
+    co.order = order;
+    auto px = lay::plan::compile(*pd, "x", &*pe, co);
+    if (!px) { CHECK(false); continue; }
+    std::vector<std::byte> raw(8 * 64);
+    std::mt19937 rng(order == std::endian::big ? 5 : 6);
+    for (auto& b : raw) b = std::byte(rng());
+    auto t = lay::decode(*px, raw);
+    const auto t_copy = lay::decode(*px, raw);  // reference values
+    ArrowSchema s{};
+    ArrowArray a{};
+    lay::export_arrow(std::move(*t), &s, &a);
+    for (int c = 0; c < 2; ++c) {
+      const ArrowSchema* cs = s.children[c];
+      const ArrowArray* ca = a.children[c];
+      CHECK(cs->dictionary != nullptr);
+      for (std::size_t r = 0; r < 64; ++r) {
+        const auto cell = t_copy->cell(r, std::size_t(c));
+        const std::string want = cell.enum_name() ? *cell.enum_name() : std::to_string(cell.i64());
+        CHECK(dict_name(ca->dictionary, code_at(cs, ca, r)) == want);
+      }
+    }
+    CHECK(dict_name(a.children[0]->dictionary, 0) == "TWO" && dict_name(a.children[0]->dictionary, 1) == "SEVEN");
+    CHECK(dict_name(a.children[1]->dictionary, 2) == "-4");  // signed: -4 is the smallest unnamed
+    CHECK(md_get(s.children[0]->metadata, "nanom.layout.storage") == "u8");
+    a.release(&a);
+    s.release(&s);
+  }
+}
+
+/// encode_enum on synthetic columns of every integer storage: dense and sparse value ranges,
+/// index width selection, unnamed values in ascending column order, unsigned 64-bit values.
+template <class T>
+static void enum_column_case(std::mt19937_64& rng, lay::storage st, std::size_t ntab, std::uint64_t spread,
+                             std::size_t rows) {
+  lay::enum_table tab;
+  std::vector<std::int64_t> keys;
+  for (std::size_t i = 0; i < ntab; ++i) {
+    const T v = T(rng() % spread);
+    keys.push_back(std::is_signed_v<T> ? std::int64_t(v) : std::int64_t(std::uint64_t(v)));
+    tab.add(keys.back(), "N" + std::to_string(i));
+  }
+  tab.seal();
+  std::vector<T> col(rows);
+  for (auto& v : col) v = rng() % 3 ? T(keys[rng() % keys.size()]) : T(rng() % (spread * 2));
+  const auto d = lay::encode_enum(tab, st, std::as_bytes(std::span(col)), rows);
+  CHECK(d.named == tab.size() && d.size() >= d.named && d.rows == rows);
+  CHECK(d.index == (d.size() <= 128 ? lay::storage::i8 : d.size() <= 32768 ? lay::storage::i16 : lay::storage::i32));
+  for (std::size_t i = 0; i < d.named; ++i)
+    CHECK(d.values[i] == tab.entries()[i].first && d.name(i) == tab.entries()[i].second);
+  for (std::size_t i = d.named + 1; i < d.size(); ++i)  // unnamed: ascending, unique
+    CHECK(T(d.values[i - 1]) < T(d.values[i]));
+  for (std::size_t i = d.named; i < d.size(); ++i) {
+    CHECK(!tab.name(d.values[i]));
+    CHECK(d.name(i) == (std::is_signed_v<T> ? std::to_string(d.values[i]) : std::to_string(std::uint64_t(d.values[i]))));
+  }
+  bool ok = true;
+  auto check_rows = [&]<class I>(I) {
+    const auto codes = d.template codes<I>();
+    if (codes.size() != rows) { ok = false; return; }
+    for (std::size_t r = 0; r < rows; ++r) {
+      const auto c = std::size_t(codes[r]);
+      const std::int64_t raw = std::is_signed_v<T> ? std::int64_t(col[r]) : std::int64_t(std::uint64_t(col[r]));
+      if (c >= d.size() || d.values[c] != raw) ok = false;
+      const std::string* nm = tab.name(raw);
+      if (nm && d.name(c) != *nm) ok = false;
+    }
+  };
+  switch (d.index) {
+    case lay::storage::i8: check_rows(std::int8_t{}); break;
+    case lay::storage::i16: check_rows(std::int16_t{}); break;
+    default: check_rows(std::int32_t{}); break;
+  }
+  CHECK(ok);
+}
+
+static void test_encode_enum() {
+  std::mt19937_64 rng(11);
+  for (int it = 0; it < 4; ++it) {
+    enum_column_case<std::int8_t>(rng, lay::storage::i8, 5, 100, 1000);
+    enum_column_case<std::uint8_t>(rng, lay::storage::u8, 5, 120, 1000);
+    enum_column_case<std::int16_t>(rng, lay::storage::i16, 200, 10000, 3000);     // -> i16 index
+    enum_column_case<std::uint16_t>(rng, lay::storage::u16, 50, 30000, 100);
+    enum_column_case<std::int32_t>(rng, lay::storage::i32, 40000, 1u << 30, 5000); // sparse, i32
+    enum_column_case<std::uint32_t>(rng, lay::storage::u32, 10, 50, 5000);
+    enum_column_case<std::int64_t>(rng, lay::storage::i64, 20, std::uint64_t(1) << 50, 2000);  // sparse
+    enum_column_case<std::uint64_t>(rng, lay::storage::u64, 20, 64, 2000);
+  }
+  {  // signed column with negative values; dense; unnamed below and above the table
+    lay::enum_table tab;
+    tab.add(-1, "UNDEF");
+    tab.add(0, "A");
+    tab.seal();
+    const std::int16_t col[] = {0, -1, -300, 500, -300, 0};
+    const auto d = lay::encode_enum(tab, lay::storage::i16, std::as_bytes(std::span(col)), 6);
+    CHECK(d.size() == 4 && d.name(2) == "-300" && d.name(3) == "500" && d.index == lay::storage::i8);
+    const auto c = d.codes<std::int8_t>();
+    CHECK(c.size() == 6 && c[0] == 1 && c[1] == 0 && c[2] == 2 && c[3] == 3 && c[4] == 2);
+    CHECK(d.codes<std::int16_t>().empty());
+  }
+  {  // unsigned 64-bit values above INT64_MAX (sparse path), named and unnamed
+    lay::enum_table tab;
+    tab.add(-1, "ALL_ONES");  // the bits 0xffff... of a u64 column
+    tab.add(3, "THREE");
+    tab.seal();
+    const std::uint64_t col[] = {~std::uint64_t(0), 3, std::uint64_t(1) << 63, 5};
+    const auto d = lay::encode_enum(tab, lay::storage::u64, std::as_bytes(std::span(col)), 4);
+    CHECK(d.size() == 4 && d.named == 2 && d.name(2) == "5" && d.name(3) == "9223372036854775808");
+    CHECK(d.value_text(0) == "18446744073709551615" && d.unsigned_values);
+    const auto c = d.codes<std::int8_t>();
+    CHECK(c[0] == 0 && c[1] == 1 && c[2] == 3 && c[3] == 2);
+  }
+  {  // a negative table key never matches an unsigned bit-field column; 129 entries -> i16
+    lay::enum_table tab;
+    for (int v = -1; v < 128; ++v) tab.add(v, "V" + std::to_string(v));
+    tab.seal();
+    const std::uint8_t col[] = {255, 0, 127};
+    const auto d = lay::encode_enum(tab, lay::storage::u8, std::as_bytes(std::span(col)), 3);
+    CHECK(d.size() == 130 && d.index == lay::storage::i16 && d.name(129) == "255");
+    const auto c = d.codes<std::int16_t>();
+    CHECK(c[0] == 129 && c[1] == 1 && c[2] == 128);
+  }
+}
+
 // ------------------------------------------------------------------ hostile descriptions
 /// Mutated descriptions / enum files must fail cleanly or compile into plans whose decode stays in
 /// bounds (ASan/UBSan builds make any slip fatal).
@@ -599,6 +851,8 @@ int main() {
   test_bitfields_random();
   test_sign_and_floats();
   test_arrow();
+  test_arrow_enums();
+  test_encode_enum();
   test_mutations();
   if (failures) {
     std::printf("%d failure(s)\n", failures);

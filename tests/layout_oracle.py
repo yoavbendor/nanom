@@ -13,7 +13,8 @@
    rules (stride, bit order, sign extension, name tree, implicit arrays, formatting).
 4. Runs the C++ CLI (record path, column path with both schedules, big-endian, projections,
    partial-record handling, strict/lenient unknown types) and diffs every record value by value,
-   in key order. Exit 0 = identical.
+   in key order; checks the Arrow export's enum dictionaries (`--format arrow-schema`, three
+   `--enums-as` modes) against the same decode. Exit 0 = identical.
 
 usage: layout_oracle.py path/to/nanom_layout [--keep DIR] [--seed N]
 """
@@ -595,6 +596,38 @@ def main():
                         break
                 else:
                     print(f"ok   {tag}: {n} records x {len(sel)} values")
+            # Arrow export (--format arrow-schema): enum columns with a table are dictionaries of the
+            # table's names in value order + the unnamed values seen in the data, ascending
+            for mode in ("dictionary", "integer", "both"):
+                out = [json.loads(l) for l in run(base + ["--format", "arrow-schema", "--enums-as", mode]).stdout.decode().splitlines()]
+                ok, k = True, 0
+                for i, f in enumerate(fields):
+                    fam, _ = family_of(f["type"])
+                    table = None
+                    if fam == "enum":
+                        table = enums.get(raw, {}).get("Enum ref = %d" % int(squash(f["type"])[8:], 0))
+                    col = out[k] if k < len(out) else {}
+                    k += 1
+                    if fam == "enum" and table and mode != "integer":
+                        named = sorted(table.items(), key=lambda kv: int(kv[0], 0))
+                        unnamed = sorted({v[i] for v in values_per_rec if not isinstance(v[i], str)})
+                        want = [nm for _, nm in named] + [str(u) for u in unnamed]
+                        vals = [int(kk, 0) for kk, _ in named] + unnamed
+                        md = col.get("metadata", {})
+                        ok = ok and col.get("dictionary", {}).get("values") == want and \
+                            json.loads(md.get("nanom.enum.values", "null")) == vals and \
+                            md.get("nanom.layout.type") == f["type"]
+                        if mode == "both":
+                            raw_col = out[k] if k < len(out) else {}
+                            k += 1
+                            ok = ok and raw_col.get("name") == col.get("name") + "#raw" and "dictionary" not in raw_col
+                    else:
+                        ok = ok and "dictionary" not in col
+                        if fam == "enum" and table and mode == "integer":
+                            ok = ok and json.loads(col["metadata"]["nanom.enum.names"]) == {str(int(kk, 0)): v for kk, v in table.items()}
+                ok = ok and k == len(out)
+                print(("ok   " if ok else "FAIL ") + f"{os.path.basename(raw)} {'BE' if big else 'LE'} arrow-schema --enums-as {mode}")
+                failures += not ok
             # --records slice
             out = run(base + ["--records", f"{n // 3}:{n // 3 + 5}"]).stdout.decode().splitlines()
             ok = len(out) == min(5, n - n // 3) and all(

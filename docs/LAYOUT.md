@@ -36,7 +36,7 @@ above); on toolchains using nanom's minimal fallback, test it and use `*` / `->`
 | `layout/plan.hpp` | `plan::compile`: stride, per-field load (`access`), storage type, sign extension, enum table, the name tree, `find` → `field_handle`, `select`, `records` → `record_set` / `record` |
 | `layout/decode.hpp` | `decoder` (compiled op list per selection), `decode` → library-owned `table`, `decode_into` → caller buffers, `decode_options` (record range, partial-record policy, schedule) |
 | `layout/export.hpp` | `jsonl_writer`, `csv_writer`, `export_jsonl`, `export_csv` |
-| `layout/arrow.hpp` | `export_arrow(table&&, ArrowSchema*, ArrowArray*)` — Arrow C Data Interface, struct of columns, zero-copy for numeric columns |
+| `layout/arrow.hpp` | `export_arrow(table&&, ArrowSchema*, ArrowArray*, arrow_options)` — Arrow C Data Interface, struct of columns, zero-copy for numeric columns, enum columns as `dictionary<intN, utf8>`; `encode_enum` |
 
 ## The rules (assumptions to confirm are marked ⚠)
 
@@ -100,6 +100,53 @@ JSON keeps array positions: unselected elements before the last selected one are
 when unnamed); pointers `"0x1f…"`; booleans `true/false`; floats in shortest round-trip form,
 always with a `.` or exponent (`1.0`, `-0.0`); NaN/Inf → `null`. CSV: header of column names, one
 row per record, the same values unquoted (`nan`, `inf` for non-finite floats).
+
+## Arrow export and enum columns
+
+`export_arrow(std::move(table), &schema, &array, opts)` hands the table to Arrow through the C Data
+Interface: a struct array (`+s`) with one child per column. Numeric columns are zero-copy, booleans
+are bit-packed. The table lives until the struct and every child the consumer moved out are released.
+
+**Enum columns become dictionary columns** (`arrow_options::enums`, CLI `--enums-as`), so the names
+travel with the data into Lance, Parquet and other formats:
+
+| `enum_mode` | enum field with a (non-empty) table | enum field without one |
+|---|---|---|
+| `dictionary` (default) | `dictionary<intN, utf8>` under the column name | plain integer |
+| `integer` | the raw integer column; the table as metadata `nanom.enum.names` | plain integer |
+| `both` | the dictionary column under the column name, then the raw integers as a sibling `<column>#raw` | plain integer |
+
+* **Dictionary** = the table's names ordered by raw value, then — for raw values present in the data
+  but missing from the table — their decimal text (the same text the JSON export prints), in
+  ascending raw-value order. No value is lost, and the first `nanom.enum.named` entries depend only on
+  the enum table, so batches of the same layout agree on them.
+* **Index ≠ raw value** (`-1 UNDEF` is index 0). Field metadata on the dictionary column:
+
+  | key | value |
+  |---|---|
+  | `nanom.enum.values` | JSON array: raw value of each dictionary entry, e.g. `[-1,0,1,2,3,4,5,77]` |
+  | `nanom.enum.named` | how many leading entries come from the enum table (the rest are unnamed values) |
+  | `nanom.enum.ref` | the enum id, e.g. `1` |
+  | `nanom.layout.type` | the description's type string, e.g. `Enum ref = 1` |
+  | `nanom.layout.storage` | the raw column's storage (`i32`, `u8` for an unsigned bit-field, ...) |
+
+  `raw = values[index]` rebuilds the integer column exactly. Values of unsigned 64-bit columns are
+  printed unsigned. Integer enum columns carry `nanom.layout.type`, `nanom.enum.ref`,
+  `nanom.layout.storage` (and `nanom.enum.names`, a `{"raw": "NAME"}` object, in `integer` mode).
+* **Index type**: the smallest signed type that holds the dictionary: `int8` up to 128 entries,
+  `int16` up to 32 768, else `int32` (`int64` past 2^31). Not marked ordered. Duplicate names (aliases) are kept as
+  separate entries.
+* **Cost**: the table keeps the plain integer column (the decode kernels are unchanged); `encode_enum`
+  translates it at export time. When the data's value range is small (< max(65 536, rows) values) it
+  is a min/max pass, a lookup-table build and one gather pass (plus one marking pass only when the
+  data holds values outside the table); otherwise a binary search per row. Measured below.
+* Lance (pylance 14) stores `dictionary<intN, utf8>` natively, reads it back as dictionary, keeps the
+  field metadata and filters by name (`` `Rec/mode` = 'UNDEF' ``). Lance refuses `.` in top-level
+  field names, so rename the flat column names (e.g. `.` → `/`) before `lance.write_dataset`.
+
+`nanom_layout --format arrow-schema [--enums-as ...]` decodes the input and prints the exported
+schema, one JSON line per Arrow column (name, format, dictionary values, metadata). nanom has no
+Arrow IPC writer; programs take the C Data structs (pyarrow: `pa.RecordBatch._import_from_c`).
 
 ## Safety
 
@@ -172,6 +219,22 @@ GCC 13.3 `-O2`, best of 3 invocations x 7 runs:
 | | nanom JSON Lines export (100 records) | 24.6 | — | 4.1 k | 30.7 | 0.61 GB/s of JSON |
 | | memcpy of the input | 18.0 | 7.68 | 111 k | — | — |
 
+Arrow export of the GFI enum columns (`--only arrow`, same machine, 4 M records x 2 enum columns,
+best of 5):
+
+| what | ms | ns per enum value |
+|---|---:|---:|
+| `encode_enum`, every value in the table (dense lookup, dictionary 7) | 8.1 | 1.0 |
+| `encode_enum`, 1% unnamed values (extra marking pass, dictionary 57) | 12.1 | 1.5 |
+| `encode_enum`, random 32-bit values (sparse path, 4 M distinct "names") | 2502 | 313 |
+| `decode()` + `export_arrow`, `enum_mode::integer` | 78.1 | — |
+| `decode()` + `export_arrow`, `enum_mode::dictionary` | 99.7 | — |
+
+With realistic enum data the translation costs ~1 ns per enum value; the end-to-end difference
+(~21 ms) is that plus allocating and first-touching the index buffers. The sparse row is the
+pathological worst case (every row a different unnamed value: sort a copy of the column, build 4 M
+decimal names, binary-search every row); real enums never get there.
+
 Clang 18 `-O2` (one invocation x 7): gfi nanom 0.90 ns/value vs static 0.82 (1.10x); devices 2.66
 vs 2.32 (1.15x).
 
@@ -213,14 +276,16 @@ validated and compiled in ~34 ms.
 ```
 nanom_layout --layout desc.jsonl [--enums enums.json] [--raw-file-name NAME] --input file.raw
              [--stride N] [--stride-for NAME=N] [--select PATTERN]... [--records A:B]
-             [--format jsonl|csv|summary|fields] [--big-endian] [--lenient] [--allow-partial]
-             [--via-columns] [--strategy auto|field|record] [-o OUT]
+             [--format jsonl|csv|summary|fields|arrow-schema] [--enums-as dictionary|integer|both]
+             [--big-endian] [--lenient] [--allow-partial] [--via-columns]
+             [--strategy auto|field|record] [-o OUT]
 nanom_layout --layout desc.jsonl --list
 ```
 
 `--raw-file-name` may be omitted when the description has one raw_file. `summary` prints stride,
 record count, field counts per family and the first record; `fields` prints the compiled plan
-(column, offset, width, type, family, storage, byte, shift). `--via-columns` exports JSON from the
+(column, offset, width, type, family, storage, byte, shift); `arrow-schema` the Arrow export (see
+above). `--via-columns` exports JSON from the
 columnar path instead of the record path (the oracle uses it to check the kernels).
 
 ## Tests
@@ -233,7 +298,20 @@ columnar path instead of the record path (the oracle uses it to check the kernel
   end (JSON, CSV, columns, handles, stride overrides, partial records, record ranges, caller
   buffers, selections), 300 random layouts (random bit-fields, both byte orders, records < 8 bytes)
   checked bit-by-bit against a reference for the record path and both column schedules, sign
-  extension and floats, Arrow export (formats, bitmap, release with a moved-out child).
+  extension and floats, Arrow export (formats, bitmap, release with a moved-out child), enum
+  dictionaries (contents, unnamed values, metadata, `integer`/`both`, empty input, enums without a
+  table, enum bit-fields in both byte orders, moved-out dictionary children) and `encode_enum` on
+  random columns of every integer storage (dense and sparse paths, int8/int16/int32 indices,
+  unsigned 64-bit values).
+* `tests/layout_arrow_lance.py` (ctest `layout_arrow_lance`, needs pyarrow + pylance): loads
+  `tests/layout_arrow_capi.cpp` (a shared library) with ctypes, imports the exported struct into
+  pyarrow, checks every enum value against an independent decode (natural enums with -1, unsigned
+  and signed enum bit-fields, an 8-bit enum, an enum without a table; both byte orders; all three
+  modes), then writes it with pylance and reads it back: dictionary types, names, metadata and
+  filters by name intact. Not built under `NANOM_SANITIZER`.
+* The `*_differential` tests and `layout_arrow_lance` need pyarrow (etc.) in the interpreter that
+  runs them and exit 77 (ctest: skipped) otherwise. `-DNANOM_PYARROW_PYTHON=/path/to/venv/bin/python`
+  points them at one that has it; the default is the `Python3` CMake finds.
 * `tests/layout_oracle.py` (ctest `layout_oracle`, stdlib only): generates a description with C/GCC
   layout rules — ~10 600 scalars in a 58 KB devices record (nested `::` names, atomics, `_vptr`,
   arrays of structs 1-based and with gaps, scalar arrays, ~1700 bit-fields, every type family), the
@@ -241,12 +319,13 @@ columnar path instead of the record path (the oracle uses it to check the kernel
   overlapping field — writes random raw files in both byte orders, decodes them independently
   (`int.from_bytes` + `struct`), and diffs the CLI's JSON value by value and in key order: record
   path, both column schedules, projections, `--records`, partial records, strict/lenient unknown
-  types. 2.4 million values, identical (also against an ASan/UBSan build of the CLI).
+  types; `--format arrow-schema` in the three enum modes (dictionary values and metadata against
+  the Python decode). 2.4 million values, identical (also against an ASan/UBSan build of the CLI).
 
 ## Open items
 
-* Enum columns export to Arrow as integers; a dictionary-encoded export (names as the dictionary)
-  would be the natural next step.
+* Arrow column names are the flat column names (`GFI[0].brain_type`); Lance needs them renamed
+  (no `.` at top level). A nested struct export following the name tree would avoid that.
 * Multi-threaded decode: blocks are independent, so splitting the record range over threads is
   straightforward (not done; single-thread numbers are already near the copy bandwidth).
 * JSON export is ~18-30 ns/value (number formatting dominates); fine for inspection, not the

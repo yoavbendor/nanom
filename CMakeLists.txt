@@ -295,21 +295,45 @@ nanom_exe(parquet_meta examples/parquet_meta.cpp)
 nanom_exe(codec_check tests/codec_check.cpp)
 nanom_exe(protobuf_oracle tests/protobuf_oracle.cpp)
 find_package(Python3 COMPONENTS Interpreter QUIET)
-if(Python3_Interpreter_FOUND)
+# The differential tests need pyarrow (and protobuf / pylance) in the interpreter that runs them;
+# without them they exit 77 and ctest reports them as skipped. Point this at a Python that has
+# them (e.g. a venv: -DNANOM_PYARROW_PYTHON=/path/to/venv/bin/python) to actually run them.
+set(NANOM_PYARROW_PYTHON "" CACHE FILEPATH
+    "Python interpreter with pyarrow/pylance/protobuf for the *_differential and Arrow tests (default: Python3)")
+if(NANOM_PYARROW_PYTHON)
+  set(nanom_pyarrow_python ${NANOM_PYARROW_PYTHON})
+elseif(Python3_Interpreter_FOUND)
+  set(nanom_pyarrow_python ${Python3_EXECUTABLE})
+endif()
+if(nanom_pyarrow_python)
   # Snappy / LZ4-block decoders vs pyarrow's compressors on ~600 buffers.
   add_test(NAME codec_differential
-           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/codec_differential.py
+           COMMAND ${nanom_pyarrow_python} ${CMAKE_CURRENT_SOURCE_DIR}/tests/codec_differential.py
                    $<TARGET_FILE:codec_check>)
   set_tests_properties(codec_differential PROPERTIES SKIP_RETURN_CODE 77)
   add_test(NAME parquet_differential
-           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/parquet_differential.py
+           COMMAND ${nanom_pyarrow_python} ${CMAKE_CURRENT_SOURCE_DIR}/tests/parquet_differential.py
                    $<TARGET_FILE:parquet_meta>)
   set_tests_properties(parquet_differential PROPERTIES SKIP_RETURN_CODE 77)
   # nanom's protobuf codec vs Google's protobuf runtime, over the Lance model (both directions).
   add_test(NAME protobuf_differential
-           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/protobuf_differential.py
+           COMMAND ${nanom_pyarrow_python} ${CMAKE_CURRENT_SOURCE_DIR}/tests/protobuf_differential.py
                    $<TARGET_FILE:protobuf_oracle>)
   set_tests_properties(protobuf_differential PROPERTIES SKIP_RETURN_CODE 77)
+  # layout enum columns as Arrow dictionaries: export_arrow -> pyarrow (C Data import) -> pylance
+  # write + read back + filter by name. The C entry point is a shared library loaded with ctypes,
+  # so it is not built under a sanitizer (the interpreter would need the sanitizer runtime).
+  if(NOT NANOM_SANITIZER)
+    add_library(nanom_layout_arrow_capi MODULE tests/layout_arrow_capi.cpp)
+    target_link_libraries(nanom_layout_arrow_capi PRIVATE nanom nanom_flags Threads::Threads)
+    set_target_properties(nanom_layout_arrow_capi PROPERTIES CXX_VISIBILITY_PRESET hidden)
+    add_test(NAME layout_arrow_lance
+             COMMAND ${nanom_pyarrow_python} ${CMAKE_CURRENT_SOURCE_DIR}/tests/layout_arrow_lance.py
+                     $<TARGET_FILE:nanom_layout_arrow_capi>)
+    set_tests_properties(layout_arrow_lance PROPERTIES SKIP_RETURN_CODE 77)
+  endif()
+endif()
+if(Python3_Interpreter_FOUND)
   # nanom-layout CLI vs an independent stdlib-only Python decoder of the same description.
   add_test(NAME layout_oracle
            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/layout_oracle.py

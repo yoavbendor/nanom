@@ -14,9 +14,10 @@
 //   nanom field-major / record-major / auto
 //   nanom projection (~1% of the fields)
 //   nanom JSON Lines export
+//   nanom Arrow export (gfi): encode_enum (enum -> dictionary) and decode()+export_arrow
 //   memcpy of the input                    the memory-bandwidth yardstick
 //
-// usage: layout_bench [scale=1.0] [reps=7] [--only static_rm|static_fm|naive|field|record|auto|projection|jsonl]   (scale shrinks record counts; the
+// usage: layout_bench [scale=1.0] [reps=7] [--only static_rm|static_fm|naive|field|record|auto|projection|jsonl|arrow]   (scale shrinks record counts; the
 // smoke test runs scale 0.002). --only runs one contender, silently (for callgrind: run it with
 // reps 1 and reps 11, the difference / 10 is one run; see docs/LAYOUT.md).
 #include <nanom/layout.hpp>
@@ -409,6 +410,60 @@ static void run_layout(const char* tag, const std::string& desc_text, const char
       row(tag, "nanom JSON Lines export", t, nj, STRIDE, NF);
       std::printf("%-8s %-32s %9s     %7.2f GB/s of JSON text (%.0f bytes/record)\n", tag, "", "",
                   double(bytes) / t / 1e9, double(bytes) / double(nj));
+    }
+  }
+  if constexpr (!IS_DEV) if (want("arrow")) {
+    // Enum columns -> Arrow dictionary<int8, utf8>: the cost of encode_enum (raw codes -> dictionary
+    // indices) on the decoded table, for data inside the table, with 1% unnamed values, and with
+    // random 32-bit values (sparse path: every value unnamed). export_arrow integer vs dictionary
+    // on top of decode() gives the end-to-end view.
+    auto en = lay::parse_enums(R"({"/dev/vdiZ/pacemaker/gfi.raw": {"Enum ref = 5": {"-1": "UNDEF", "0": "IMG1",
+        "1": "IMG2", "2": "IMG3", "3": "IMG4", "4": "IMG5", "5": "IMG6"}}})");
+    auto ep = lay::plan::compile(*desc, raw, &*en);
+    if (!ep) { std::printf("%s\n", ep.error().str().c_str()); std::exit(1); }
+    std::vector<std::size_t> enum_cols;
+    for (std::size_t c = 0; c < NF; ++c)
+      if (L[c].k == K_ENUM) enum_cols.push_back(c);
+    for (int variant = 0; variant < 3; ++variant) {
+      std::vector<std::byte> ed = data;
+      std::uint64_t z = 7;
+      for (std::size_t r = 0; r < nrec; ++r)
+        for (std::size_t c : enum_cols) {
+          z = z * 6364136223846793005ull + 1442695040888963407ull;
+          std::int32_t v = std::int32_t((z >> 33) % 7) - 1;
+          if (variant == 1 && (z >> 20) % 100 == 0) v = 100 + std::int32_t((z >> 40) % 50);
+          if (variant == 2) v = std::int32_t(z >> 32);
+          std::memcpy(ed.data() + r * STRIDE + L[c].bit_off / 8, &v, 4);
+        }
+      auto tb = lay::decode(*ep, ed);
+      if (!tb) std::exit(1);
+      std::size_t dict_size = 0;
+      const double t = best_of(R, [&] {
+        for (std::size_t c : enum_cols) dict_size = lay::encode_enum(*tb, c).size();
+      });
+      if (only.empty()) {
+        static const char* what[] = {"encode_enum, values in table", "encode_enum, 1% unnamed",
+                                     "encode_enum, random (sparse)"};
+        std::printf("%-8s %-32s %9.3f ms  %6.3f ns/value (%zu enum columns, dictionary %zu)\n", tag, what[variant],
+                    t * 1e3, t * 1e9 / double(nrec * enum_cols.size()), enum_cols.size(), dict_size);
+      }
+      if (variant == 0) {
+        for (auto mode : {lay::enum_mode::integer, lay::enum_mode::dictionary}) {
+          lay::arrow_options o;
+          o.enums = mode;
+          const double te = best_of(R, [&] {
+            auto t2 = lay::decode(*ep, ed);
+            ArrowSchema s{};
+            ArrowArray a{};
+            lay::export_arrow(std::move(*t2), &s, &a, o);
+            a.release(&a);
+            s.release(&s);
+          });
+          if (only.empty())
+            row(tag, mode == lay::enum_mode::integer ? "decode()+export_arrow, enums int" : "decode()+export_arrow, enums dict",
+                te, nrec, STRIDE, NF, t_static);
+        }
+      }
     }
   }
   if (want("memcpy") && only.empty()) {

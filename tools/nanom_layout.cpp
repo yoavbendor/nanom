@@ -3,9 +3,13 @@
 //
 //   nanom-layout --layout desc.jsonl [--enums enums.json] [--raw-file-name NAME] --input file.raw
 //                [--stride N] [--stride-for NAME=N] [--select PATTERN]... [--records A:B]
-//                [--format jsonl|csv|summary|fields] [--big-endian] [--lenient] [--allow-partial]
-//                [--via-columns] [--strategy auto|field|record] [-o OUT]
+//                [--format jsonl|csv|summary|fields|arrow-schema] [--enums-as dictionary|integer|both]
+//                [--big-endian] [--lenient] [--allow-partial] [--via-columns]
+//                [--strategy auto|field|record] [-o OUT]
 //
+// arrow-schema decodes the records and prints the schema export_arrow produces (one JSON line per
+// Arrow column: name, format, dictionary values, field metadata); --enums-as picks how enum
+// columns with an enum table are exported (see docs/LAYOUT.md).
 // The raw_file in the description is a logical name; the bytes come from --input. --raw-file-name
 // may be omitted when the description has a single raw_file. --list prints the raw_files.
 #include <nanom/layout.hpp>
@@ -30,7 +34,9 @@ int usage(const char* why) {
   std::fputs(
       "usage: nanom-layout --layout DESC.jsonl [--enums ENUMS.json] [--raw-file-name NAME]\n"
       "                    --input FILE.raw [--stride N] [--stride-for NAME=N]\n"
-      "                    [--select PATTERN]... [--records A:B] [--format jsonl|csv|summary|fields]\n"
+      "                    [--select PATTERN]... [--records A:B]\n"
+      "                    [--format jsonl|csv|summary|fields|arrow-schema]\n"
+      "                    [--enums-as dictionary|integer|both] (Arrow export of enum columns)\n"
       "                    [--big-endian] [--lenient] [--allow-partial] [--via-columns]\n"
       "                    [--strategy auto|field|record] [-o OUT]\n"
       "       nanom-layout --layout DESC.jsonl --list\n"
@@ -93,6 +99,7 @@ int main(int argc, char** argv) {
   lay::compile_options co;
   lay::load_options lo;
   lay::decode_options dopt;
+  lay::arrow_options aopt;
   bool list = false, via_columns = false;
   std::optional<std::pair<std::uint64_t, std::optional<std::uint64_t>>> range;
 
@@ -114,6 +121,13 @@ int main(int argc, char** argv) {
     else if (a == "-o" || a == "--output") out_path = v;
     else if (a == "--format") format = v;
     else if (a == "--select") selects.emplace_back(v);
+    else if (a == "--enums-as") {
+      const std::string_view s = v;
+      if (s == "dictionary") aopt.enums = lay::enum_mode::dictionary;
+      else if (s == "integer") aopt.enums = lay::enum_mode::integer;
+      else if (s == "both") aopt.enums = lay::enum_mode::both;
+      else return usage("--enums-as is dictionary, integer or both");
+    }
     else if (a == "--strategy") {
       const std::string_view s = v;
       dopt.strat = s == "field" ? lay::strategy::field_major
@@ -232,6 +246,51 @@ int main(int argc, char** argv) {
     }
   } else if (format == "jsonl") {
     n = lay::export_jsonl(*plan, in.bytes, sink, sel, dopt);
+  } else if (format == "arrow-schema") {
+    auto t = lay::decode(*plan, in.bytes, sel, dopt);
+    if (!t) n = nanom::unexpected<lay::layout_error>(t.error());
+    else {
+      n = t->rows();
+      ArrowSchema s{};
+      ArrowArray a{};
+      lay::export_arrow(std::move(*t), &s, &a, aopt);
+      std::string buf;
+      for (std::int64_t c = 0; c < s.n_children; ++c) {
+        const ArrowSchema* cs = s.children[c];
+        const ArrowArray* ca = a.children[c];
+        buf += "{\"name\":";
+        lay::append_json_string(buf, cs->name);
+        buf += ",\"format\":";
+        lay::append_json_string(buf, cs->format);
+        if (cs->dictionary) {
+          buf += ",\"dictionary\":{\"format\":";
+          lay::append_json_string(buf, cs->dictionary->format);
+          buf += ",\"values\":[";
+          const auto* off = static_cast<const std::int32_t*>(ca->dictionary->buffers[1]);
+          const auto* ch = static_cast<const char*>(ca->dictionary->buffers[2]);
+          for (std::int64_t i = 0; i < ca->dictionary->length; ++i) {
+            if (i) buf += ',';
+            lay::append_json_string(buf, std::string_view(ch + off[i], std::size_t(off[i + 1] - off[i])));
+          }
+          buf += "]}";
+        }
+        const auto md = lay::arrow_metadata(cs->metadata);
+        if (!md.empty()) {
+          buf += ",\"metadata\":{";
+          for (std::size_t i = 0; i < md.size(); ++i) {
+            if (i) buf += ',';
+            lay::append_json_string(buf, md[i].first);
+            buf += ':';
+            lay::append_json_string(buf, md[i].second);
+          }
+          buf += '}';
+        }
+        buf += "}\n";
+      }
+      a.release(&a);
+      s.release(&s);
+      sink(buf);
+    }
   } else if (format == "csv") {
     n = lay::export_csv(*plan, in.bytes, sink, sel, dopt);
   } else if (format == "summary") {
@@ -262,7 +321,7 @@ int main(int argc, char** argv) {
     sink(s);
     n = recs.size();
   } else {
-    return usage("--format is jsonl, csv, summary or fields");
+    return usage("--format is jsonl, csv, summary, fields or arrow-schema");
   }
   if (!n) { std::fprintf(stderr, "nanom-layout: %s\n", n.error().str().c_str()); return 1; }
   if (out != stdout) std::fclose(out);
