@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795076668281,
+  "lastUpdate": 1795082848660,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -1231,6 +1231,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 15.4,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "12f9e2bf36c439802ae3e36e01dad3a70aa96539",
+          "message": "Merge pull request #36 from yoavbendor/claude/nanom-lance-parquet-enhancements-2erjot\n\nFix the input/error size pledges on 32-bit targets (wasm32)",
+          "timestamp": "2026-11-19T11:59:20+02:00",
+          "tree_id": "8045a146253d7f665b812b0da0d0294ad17f7a1a",
+          "url": "https://github.com/yoavbendor/nanom/commit/12f9e2bf36c439802ae3e36e01dad3a70aa96539"
+        },
+        "date": 1795082847551,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 25.1,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 65.8,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 30.6,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 16.3,
             "unit": "ns/pkt"
           }
         ]
