@@ -51,6 +51,8 @@ else    use(r->value, r->rest);
 
 `alt(p...)` — same value type, backtracks on error, stops on `cut` failure;
 reports the error that got **furthest** (better than nom).
+`alt(range)` — nom 8's `alt([p1, p2])`: the same rules over a list built at run time
+(a vector of `nm::dyn<T>`, or an array of same-typed parsers). An empty list fails at the input.
 `permutation(p...)` — any order, tuple in declaration order.
 
 ## multi
@@ -94,6 +96,23 @@ Orders: `bit_order::msb0` (default, network; nom's only mode) and
 - `error().render(in)` ≈ nom `convert_error`: offset, context chain, hex
   caret. Errors are POD; nothing allocates until you render.
 
+## runtime composition (nom: `Rc<dyn Fn>`) — `<nanom/dyn.hpp>`
+
+For layouts read at run time (schemas, configs, protocol descriptions). Details and benchmark:
+[RUNTIME_COMPOSE.md](RUNTIME_COMPOSE.md).
+
+```cpp
+nm::dyn<std::uint64_t> p = nm::be_u16;          // any parser converts (no narrowing); two words
+nm::dyn<std::uint64_t> q = nm::map(nm::u8, f);  // copies: non-atomic refcount; calls: one indirect call
+nm::alt(vec)                                     // first success over a runtime list
+nm::seq(vec)  nm::seq_fold(vec, init, f)         // all, in order: std::vector<T> / folded
+nm::length_fold(nm::u8, p, init, f)              // count prefix, then count p's folded; init(n) or init()
+nm::dispatch(nm::u8, arms[, otherwise])          // arms: range of {key, parser}; 256-slot table for
+nm::dispatch<T>(key, {{1, p}, {2, q}})           //   1-byte keys, dense / sorted table otherwise
+nm::recursive<T>([](nm::dyn<T> self) { ... })    // recursive grammars; self is non-owning
+```
+A grammar is kept alive by its root handle. Build it on one thread; call it from any number of threads.
+
 ## beyond nom: structs, schemas, columns
 
 Everything above (the pure nom parallel) is in `<nanom/nom.hpp>` — include just that for the parser
@@ -129,3 +148,17 @@ Field types for described structs: plain ints/floats (endianness from
 `strct<T>(order)`), `nm::be<T>` / `nm::le<T>`, `nm::ubits<N[,order]>` /
 `nm::ibits<N[,order]>` (runs must end byte-aligned — compile-checked),
 `std::array<T,N>`, nested described structs.
+
+## raw records from a JSON layout description (`<nanom/layout.hpp>`)
+
+```cpp
+namespace lay = nanom::layout;
+auto desc = lay::load_description("desc.jsonl").value();   // {"raw_file","scalar_name","bit_offset","bit_width","type"} per line
+auto plan = lay::plan::compile(desc, "/proc/app/devices.raw", &enums, {.stride = 59032}).value();
+auto t    = lay::decode(plan, bytes).value();               // table: t.column<int32_t>("A.b[1].c")
+auto sel  = plan.select({"MEIO::IOAppDevices._uartWrite."}).value();   // exact | subtree | prefix | glob
+auto tp   = lay::decode(plan, bytes, sel).value();          // costs only what is selected
+auto h    = plan.find("GFI.brain_type").value();            // handle: rec.get<int>(h), rec[h].enum_name()
+lay::export_jsonl(plan, bytes, sink, sel);  lay::export_csv(...);  lay::export_arrow(std::move(t), &schema, &array);
+```
+How to use it (two flavors, enums, alignment): [LAYOUT_GUIDE.md](LAYOUT_GUIDE.md). Details, rules (stride, bit order, name tree) and benchmarks: [LAYOUT.md](LAYOUT.md).

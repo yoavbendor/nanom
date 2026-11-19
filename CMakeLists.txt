@@ -195,6 +195,17 @@ add_test(NAME nanom_columnar_tests COMMAND nanom_columnar_tests)
 nanom_exe_strict(nanom_columnar_tests_strict tests/test_columnar.cpp)
 add_test(NAME nanom_columnar_tests_strict COMMAND nanom_columnar_tests_strict)
 
+# Raw records described by JSON Lines (layout.hpp): description/enum loaders, name tree, bit-fields,
+# stride rule, column kernels vs a bit-by-bit reference, exporters, Arrow export. The
+# nanom-layout CLI is checked end to end by tests/layout_oracle.py (below, needs python3).
+nanom_exe(nanom_layout_tests tests/test_layout.cpp)
+add_test(NAME nanom_layout_tests COMMAND nanom_layout_tests)
+nanom_exe_strict(nanom_layout_tests_strict tests/test_layout.cpp)
+add_test(NAME nanom_layout_tests_strict COMMAND nanom_layout_tests_strict)
+nanom_exe_generation(nanom_layout_tests_nogen 0 tests/test_layout.cpp)
+add_test(NAME nanom_layout_tests_nogen COMMAND nanom_layout_tests_nogen)
+nanom_exe(nanom_layout tools/nanom_layout.cpp)
+
 # Memory-safety regression suite: enforced guards (must pass).
 nanom_exe(nanom_memory_safety_tests tests/test_memory_safety.cpp)
 add_test(NAME nanom_memory_safety_tests COMMAND nanom_memory_safety_tests)
@@ -262,8 +273,17 @@ endif()
 nanom_exe(nanom_nom_parity_tests tests/test_nom_parity.cpp)
 add_test(NAME nanom_nom_parity_tests COMMAND nanom_nom_parity_tests)
 
+# Runtime-composed parsers (include/nanom/dyn.hpp: nm::dyn<T>, alt/seq/seq_fold over ranges,
+# length_fold, dispatch, recursive) -- in every safety profile.
+nanom_exe(nanom_dyn_tests tests/test_dyn.cpp)
+add_test(NAME nanom_dyn_tests COMMAND nanom_dyn_tests)
+nanom_exe_strict(nanom_dyn_tests_strict tests/test_dyn.cpp)
+add_test(NAME nanom_dyn_tests_strict COMMAND nanom_dyn_tests_strict)
+nanom_exe_generation(nanom_dyn_tests_nogen 0 tests/test_dyn.cpp)
+add_test(NAME nanom_dyn_tests_nogen COMMAND nanom_dyn_tests_nogen)
+
 # ---- worked examples (must run clean) -------------------------------------
-foreach(ex ethernet elf fat16)
+foreach(ex ethernet elf fat16 layout_to_arrow)
   nanom_exe(example_${ex} examples/${ex}.cpp)
   add_test(NAME example_${ex} COMMAND example_${ex})
 endforeach()
@@ -275,21 +295,49 @@ nanom_exe(parquet_meta examples/parquet_meta.cpp)
 nanom_exe(codec_check tests/codec_check.cpp)
 nanom_exe(protobuf_oracle tests/protobuf_oracle.cpp)
 find_package(Python3 COMPONENTS Interpreter QUIET)
-if(Python3_Interpreter_FOUND)
+# The differential tests need pyarrow (and protobuf / pylance) in the interpreter that runs them;
+# without them they exit 77 and ctest reports them as skipped. Point this at a Python that has
+# them (e.g. a venv: -DNANOM_PYARROW_PYTHON=/path/to/venv/bin/python) to actually run them.
+set(NANOM_PYARROW_PYTHON "" CACHE FILEPATH
+    "Python interpreter with pyarrow/pylance/protobuf for the *_differential and Arrow tests (default: Python3)")
+if(NANOM_PYARROW_PYTHON)
+  set(nanom_pyarrow_python ${NANOM_PYARROW_PYTHON})
+elseif(Python3_Interpreter_FOUND)
+  set(nanom_pyarrow_python ${Python3_EXECUTABLE})
+endif()
+if(nanom_pyarrow_python)
   # Snappy / LZ4-block decoders vs pyarrow's compressors on ~600 buffers.
   add_test(NAME codec_differential
-           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/codec_differential.py
+           COMMAND ${nanom_pyarrow_python} ${CMAKE_CURRENT_SOURCE_DIR}/tests/codec_differential.py
                    $<TARGET_FILE:codec_check>)
   set_tests_properties(codec_differential PROPERTIES SKIP_RETURN_CODE 77)
   add_test(NAME parquet_differential
-           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/parquet_differential.py
+           COMMAND ${nanom_pyarrow_python} ${CMAKE_CURRENT_SOURCE_DIR}/tests/parquet_differential.py
                    $<TARGET_FILE:parquet_meta>)
   set_tests_properties(parquet_differential PROPERTIES SKIP_RETURN_CODE 77)
   # nanom's protobuf codec vs Google's protobuf runtime, over the Lance model (both directions).
   add_test(NAME protobuf_differential
-           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/protobuf_differential.py
+           COMMAND ${nanom_pyarrow_python} ${CMAKE_CURRENT_SOURCE_DIR}/tests/protobuf_differential.py
                    $<TARGET_FILE:protobuf_oracle>)
   set_tests_properties(protobuf_differential PROPERTIES SKIP_RETURN_CODE 77)
+  # layout enum columns as Arrow dictionaries: export_arrow -> pyarrow (C Data import) -> pylance
+  # write + read back + filter by name. The C entry point is a shared library loaded with ctypes,
+  # so it is not built under a sanitizer (the interpreter would need the sanitizer runtime).
+  if(NOT NANOM_SANITIZER)
+    add_library(nanom_layout_arrow_capi MODULE tests/layout_arrow_capi.cpp)
+    target_link_libraries(nanom_layout_arrow_capi PRIVATE nanom nanom_flags Threads::Threads)
+    set_target_properties(nanom_layout_arrow_capi PROPERTIES CXX_VISIBILITY_PRESET hidden)
+    add_test(NAME layout_arrow_lance
+             COMMAND ${nanom_pyarrow_python} ${CMAKE_CURRENT_SOURCE_DIR}/tests/layout_arrow_lance.py
+                     $<TARGET_FILE:nanom_layout_arrow_capi>)
+    set_tests_properties(layout_arrow_lance PROPERTIES SKIP_RETURN_CODE 77)
+  endif()
+endif()
+if(Python3_Interpreter_FOUND)
+  # nanom-layout CLI vs an independent stdlib-only Python decoder of the same description.
+  add_test(NAME layout_oracle
+           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/layout_oracle.py
+                   $<TARGET_FILE:nanom_layout>)
 endif()
 
 # ---- C++26 reflection mode only: the macro-free showcase + the provider-equivalence suite -----
@@ -458,12 +506,25 @@ nanom_exe(nm_segmented_bench bench/segmented_bench.cpp)  # stitch-vs-segments + 
 nanom_exe(nm_streaming_bench bench/streaming_bench.cpp)  # whole-file vs EPB-at-a-time: memory bound + ns/pkt
 target_link_libraries(nm_streaming_bench PRIVATE nanom::shark)
 nanom_exe(nm_thrift_bench bench/thrift_bench.cpp)  # Parquet footer decode: validate / full / one row group
+nanom_exe(nm_layout_bench bench/layout_bench.cpp)  # JSON-described raw records vs static decoder
 add_test(NAME bench_smoke_parse COMMAND nm_parse_bench ${td}/srv6_sample.pcap 2)
 add_test(NAME bench_smoke_safety COMMAND nm_safety_microbench 2)
 add_test(NAME bench_smoke_bulk  COMMAND nm_bulk_bench  ${td}/srv6_sample.pcap 50 2)
 add_test(NAME bench_smoke_segmented COMMAND nm_segmented_bench 2)
 add_test(NAME bench_smoke_streaming COMMAND nm_streaming_bench 1 1)
 add_test(NAME bench_smoke_thrift COMMAND nm_thrift_bench 10 5 1)
+add_test(NAME bench_smoke_layout COMMAND nm_layout_bench 0.002 1)
+# Runtime-composed parsing (spec read at run time -> nm::dyn tree) vs the same layout composed
+# statically; the check script generates data and asserts both report the identical hash.
+# bench/rust_nom's `runtime_compose` binary is the Rust nom counterpart (docs/RUNTIME_COMPOSE.md).
+nanom_exe(nm_runtime_compose_bench bench/runtime_compose_bench.cpp)
+nanom_exe(nm_runtime_compose_static bench/runtime_compose_static.cpp)
+if(Python3_Interpreter_FOUND)
+  add_test(NAME bench_smoke_runtime_compose
+           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/bench/runtime_compose_check.py
+                   --dyn $<TARGET_FILE:nm_runtime_compose_bench>
+                   --static $<TARGET_FILE:nm_runtime_compose_static> --messages 5000 --reps 1)
+endif()
 
 # ---- libFuzzer coverage-guided targets (Clang only, opt-in) ---------------
 if(NANOM_BUILD_FUZZERS)

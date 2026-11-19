@@ -80,8 +80,8 @@ both a flat expression and one with parens.
 2. **Custom/generic error types are architecturally unsupported.** `tests/custom_errors.rs`
    defines `CustomError` implementing `ParseError<&str>` and parameterizes `IResult<&str,
    O, CustomError>` throughout. nanom's `error` (nom.hpp) is a single, fixed,
-   allocation-free struct (`kind`, `nctx`, `offset`, `expected`, `needed`, a small
-   fixed-size context array, `render()`) — not generic over an error type `E` the way
+   allocation-free 24-byte struct (`kind`, `offset`, `expected`, `needed`, and the
+   position of its `context()` frames in a fixed per-thread ring, `render()`) — not generic over an error type `E` the way
    Rust's `IResult<I, O, E>` is. This is a deliberate design trade-off (no
    allocation/vtable for error paths), not a bug, and there is no way to port
    `custom_errors.rs` without a core redesign. Out of scope for this audit; noted here as
@@ -107,6 +107,16 @@ both a flat expression and one with parens.
    decision itself (that uses untruncated `size_t` comparisons internally) — only the
    human-readable message for a pathological multi-gigabyte single field. Not fixed here;
    noted as a low-priority cosmetic gap.
+
+5. **Runtime-length `alt` (closed).** nom 8's `alt` also accepts an array or slice of same-typed
+   parsers. nanom's `alt(p, ps...)` was variadic only, so a list built at run time needed a
+   hand-written loop. `include/nanom/dyn.hpp` now adds `alt(range)` with nom 8's semantics: the
+   first success wins, a recoverable error tries the next parser, Failure and Incomplete
+   propagate, and an empty range fails at the input. When all parsers fail it reports the
+   furthest error, like the variadic `alt`. The same header adds the missing erased parser
+   (`nm::dyn<T>`, the `Rc<dyn Fn>` analog), `seq`/`seq_fold` over ranges (which nom lacks),
+   `length_fold`, and `dispatch` on a parsed key. Covered by `tests/test_dyn.cpp`; benchmarked
+   against nom in `docs/RUNTIME_COMPOSE.md`.
 
 ## Confirmed non-issues (behaved exactly as nom's tests expect)
 

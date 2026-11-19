@@ -11,6 +11,12 @@ publish = false
 name = "rust_nom_bench"
 path = "src/main.rs"
 
+# Runtime-composed parser (layout read from a spec at run time, Rc<dyn Fn> tree): the
+# counterpart of bench/runtime_compose_bench.cpp. See docs/RUNTIME_COMPOSE.md.
+[[bin]]
+name = "runtime_compose"
+path = "src/runtime_compose.rs"
+
 [dependencies]
 # `min` mode uses stable nom's own streaming combinators directly (the fair, equal-work scanner);
 # `full` mode uses the nom-based pcap-parser library. Both pin the same current stable nom (8.x).

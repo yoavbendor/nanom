@@ -15,6 +15,8 @@
 //   schema.hpp    schemas + Arrow/Avro/JSON/CSV emission  (extra)
 //   soa.hpp       columnar Struct-of-Arrays storage       (extra)
 //   tagged.hpp    reflected tagged messages: Thrift compact codec (extra)
+//   dyn.hpp       runtime-composed parsers: nm::dyn<T>, alt/seq/dispatch over
+//                 runtime-length lists                   (extra)
 //   bulk.hpp      data-parallel (GPU-ready) scatter        (separate, opt-in)
 //
 // Quick start (see README.md for more copy-paste examples):
@@ -50,5 +52,6 @@
 #include "schema.hpp"    // schema / Arrow / Avro / JSON / CSV
 #include "soa.hpp"       // columnar (SoA) storage
 #include "tagged.hpp"    // reflected tagged messages (Thrift compact; Parquet/Lance metadata)
+#include "dyn.hpp"       // runtime-composed parsers: nm::dyn<T>, alt/seq over ranges, dispatch
 
 #endif  // NANOM_HPP_INCLUDED

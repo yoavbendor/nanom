@@ -77,9 +77,13 @@ nav:
   - Tagged messages (Thrift, Parquet): TAGGED.md
   - Protobuf (Lance metadata): PROTOBUF.md
   - Columnar kernels and codecs: COLUMNAR.md
+  - Raw records from a JSON layout: LAYOUT.md
+  - 'Guide: JSON layouts to Arrow': LAYOUT_GUIDE.md
   - "Plan: writing (Parquet, then Lance)": WRITERS.md
   - Benchmarks:
       - vs Rust nom (streaming pcapng): BENCH_RUST_NOM.md
+      - Hot-path layout (input / error / result): HOT_PATH_LAYOUT.md
+      - vs Rust nom (runtime-composed parsers): RUNTIME_COMPOSE.md
       - vs nanotins (overlay decode): NANOTINS_COMPARISON.md
       - GPU / bulk: GPU.md
   - API reference: https://yoavbendor.github.io/nanom/api/

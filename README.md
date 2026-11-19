@@ -139,6 +139,7 @@ reflection add-on, then the data-tooling extras:
 | `nanom/schema.hpp` | *extra* — `schema_of<T>()`, Arrow format strings, `avro_schema`, `to_json`/`csv_row` | `reflect.hpp` |
 | `nanom/soa.hpp` | *extra* — `soa<T>` columnar (SoA) chunked storage | `schema.hpp` |
 | `nanom/bulk.hpp` | *extra, opt-in* — data-parallel (GPU-ready) SoA scatter | `soa.hpp` |
+| `nanom/dyn.hpp` | *extra* — **parsers composed at run time**: the type-erased `nm::dyn<T>` (cheap non-atomic copies, one indirect call), `alt`/`seq`/`seq_fold` over runtime lists, `length_fold`, `dispatch` on a parsed key, `recursive` ([docs](docs/RUNTIME_COMPOSE.md)) | `nom.hpp` |
 | `nanom/tagged.hpp` | *extra* — reflected **tagged messages**: `field<Id, T>` members, the Thrift compact decoder, lazy `list<>`/`lazy<>` views ([docs](docs/TAGGED.md)). Read-only. | `reflect.hpp` |
 | `nanom/protobuf.hpp` | *extra* — **protobuf** (proto3 wire format) for the same `field<Id, T>` structs: `protobuf<M>()`, `pb_sint<>` / `pb_fixed<>`, packed and unpacked repeated, open enums, maps as entry vectors ([docs](docs/PROTOBUF.md)). Read-only. | `tagged.hpp` |
 | `nanom/columnar_encode.hpp` | *extra, write side* — columnar page encoders, each the inverse of a decoder: `pack_bits`, RLE / bit-packed hybrid (values, levels, straight from a bitmap), DELTA_BINARY_PACKED, BYTE_STREAM_SPLIT, DELTA_LENGTH / DELTA_BYTE_ARRAY, dictionary builders, Parquet-ordered statistics, FastLanes blocks ([docs](docs/COLUMNAR.md#encoders)) | `values.hpp` |
@@ -323,9 +324,34 @@ The C++ side is one struct + a parse loop; the Arrow bridge (`soa<T>` → `Arrow
 Arrow PyCapsule protocol) is reusable and nanoarrow-free. Full worked example — both sides, build, and
 the benchmark — in [`bindings/python/`](bindings/python/).
 
+## Raw records from a JSON layout description
+
+Got a binary dump plus a JSON Lines description of its fields (`raw_file`, `scalar_name`,
+`bit_offset`, `bit_width`, `type` per line)? [`layout.hpp`](include/nanom/layout.hpp) compiles the
+description into a plan once (stride, one fixed load + shift per field, enum names, a nested name
+tree) and then decodes zero-copy at memory speed — within ~1.2x of a hand-written static decoder,
+see [docs/LAYOUT.md](docs/LAYOUT.md).
+
+```cpp
+namespace lay = nanom::layout;
+auto desc  = lay::load_description("desc.jsonl").value();        // JSON Lines, untrusted-safe
+auto enums = lay::load_enums("enums.json").value();               // optional
+auto plan  = lay::plan::compile(desc, "/dev/vdiZ/pacemaker/gfi.raw", &enums).value();
+auto t     = lay::decode(plan, bytes).value();                    // one typed column per scalar
+std::span<const uint32_t> grab = t.column<uint32_t>("GFI[1].grab_index");
+auto brain = plan.find("GFI.brain_type").value();                 // precomputed handle
+for (auto rec : plan.records(bytes)) use(rec.get<int>(brain));    // random access, no strings
+lay::export_jsonl(plan, bytes, sink, plan.select({"GFI[1]"}).value());  // nested JSON Lines
+```
+
+CLI: `nanom_layout --layout desc.jsonl --enums enums.json --raw-file-name /proc/app/devices.raw
+--input devices.raw [--select MEIO::IOAppDevices._uartWrite.] [--format jsonl|csv|summary]`.
+
 ## Docs
 
 - [docs/CHEATSHEET.md](docs/CHEATSHEET.md) — every nom name → nanom name, one line each
+- [docs/LAYOUT_GUIDE.md](docs/LAYOUT_GUIDE.md) — how to use it: JSON struct descriptions → Arrow tables (all fields / picked fields, enums as dictionaries, alignment)
+- [docs/LAYOUT.md](docs/LAYOUT.md) — raw records described by JSON Lines: rules, API, CLI, benchmarks
 - [docs/NOM_PARITY_AUDIT.md](docs/NOM_PARITY_AUDIT.md) — nom's own test suite ported
   against nanom (`tests/test_nom_parity.cpp`), verifying combinators like `alt`/`flat_map`
   work like Rust's and documenting the real divergences found (`fold_many0`'s

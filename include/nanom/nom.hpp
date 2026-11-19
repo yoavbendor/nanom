@@ -9,6 +9,8 @@
 
 #include "prelude.hpp"
 
+#include <atomic>
+
 #if NANOM_GENERATION
 #include "generation.hpp"
 #endif
@@ -34,30 +36,84 @@ class unexpected {
   E e_;
 };
 
-/// Just enough of std::expected for nanom's needs.
+/// Just enough of std::expected for nanom's needs. A real tagged union (value OR
+/// error, never both), with the special members trivial whenever T's and E's are,
+/// so result<T> has the same size and the same register/copy behaviour as
+/// std::expected. (An optional<T> + E pair would make every successful return
+/// also construct and copy a whole error — see docs/HOT_PATH_LAYOUT.md.)
 template <class T, class E>
 class expected {
+  static constexpr bool triv_copy =
+      std::is_trivially_copy_constructible_v<T> && std::is_trivially_copy_constructible_v<E>;
+  static constexpr bool triv_move =
+      std::is_trivially_move_constructible_v<T> && std::is_trivially_move_constructible_v<E>;
+  static constexpr bool triv_copy_assign =
+      triv_copy && std::is_trivially_copy_assignable_v<T> && std::is_trivially_copy_assignable_v<E> &&
+      std::is_trivially_destructible_v<T> && std::is_trivially_destructible_v<E>;
+  static constexpr bool triv_move_assign =
+      triv_move && std::is_trivially_move_assignable_v<T> && std::is_trivially_move_assignable_v<E> &&
+      std::is_trivially_destructible_v<T> && std::is_trivially_destructible_v<E>;
+  static constexpr bool triv_dtor =
+      std::is_trivially_destructible_v<T> && std::is_trivially_destructible_v<E>;
+
  public:
   using value_type = T;
+  using error_type = E;
   template <class U>
     requires std::constructible_from<T, U&&> &&
              (!std::same_as<std::remove_cvref_t<U>, expected>) &&
              (!std::same_as<std::remove_cvref_t<U>, unexpected<E>>)
-  constexpr expected(U&& u) : v_(std::in_place, std::forward<U>(u)) {}
-  constexpr expected(unexpected<E> u) : e_(std::move(u).error()) {}
+  constexpr expected(U&& u) : v_(std::forward<U>(u)), has_(true) {}
+  constexpr expected(unexpected<E> u) : e_(std::move(u).error()), has_(false) {}
 
-  constexpr bool has_value() const { return v_.has_value(); }
-  constexpr explicit operator bool() const { return has_value(); }
-  constexpr T&       operator*()        { return *v_; }
-  constexpr const T& operator*() const  { return *v_; }
-  constexpr T*       operator->()       { return &*v_; }
-  constexpr const T* operator->() const { return &*v_; }
+  constexpr expected(const expected&) requires triv_copy = default;
+  constexpr expected(const expected& o) requires(!triv_copy) : has_(o.has_) {
+    if (has_) std::construct_at(&v_, o.v_);
+    else      std::construct_at(&e_, o.e_);
+  }
+  constexpr expected(expected&&) requires triv_move = default;
+  constexpr expected(expected&& o) noexcept(std::is_nothrow_move_constructible_v<T> &&
+                                            std::is_nothrow_move_constructible_v<E>)
+    requires(!triv_move)
+      : has_(o.has_) {
+    if (has_) std::construct_at(&v_, std::move(o.v_));
+    else      std::construct_at(&e_, std::move(o.e_));
+  }
+  constexpr expected& operator=(const expected&) requires triv_copy_assign = default;
+  constexpr expected& operator=(const expected& o) requires(!triv_copy_assign) {
+    if (this != &o) *this = expected(o);  // copy first: a throwing copy leaves *this intact
+    return *this;
+  }
+  constexpr expected& operator=(expected&&) requires triv_move_assign = default;
+  constexpr expected& operator=(expected&& o) requires(!triv_move_assign) {
+    if (this != &o) {
+      destroy(); has_ = o.has_;
+      if (has_) std::construct_at(&v_, std::move(o.v_)); else std::construct_at(&e_, std::move(o.e_));
+    }
+    return *this;
+  }
+  constexpr ~expected() requires triv_dtor = default;
+  constexpr ~expected() requires(!triv_dtor) { destroy(); }
+
+  constexpr bool has_value() const { return has_; }
+  constexpr explicit operator bool() const { return has_; }
+  constexpr T&       operator*()        { return v_; }
+  constexpr const T& operator*() const  { return v_; }
+  constexpr T*       operator->()       { return &v_; }
+  constexpr const T* operator->() const { return &v_; }
   constexpr E&       error()            { return e_; }
   constexpr const E& error() const      { return e_; }
 
  private:
-  std::optional<T> v_;
-  E                e_{};
+  constexpr void destroy() {
+    if (has_) std::destroy_at(&v_);
+    else      std::destroy_at(&e_);
+  }
+  union {
+    T v_;
+    E e_;
+  };
+  bool has_;
 };
 #endif
 
@@ -71,17 +127,38 @@ using bytes = attested_bytes;
 using bytes = std::span<const std::byte>;
 #endif
 
-/// A cursor into the buffer under parse. Copying is free; parsers never copy
-/// or allocate the underlying data. `base` is kept so errors can report
-/// absolute offsets.
+/// A cursor into the buffer under parse. Copying is cheap; parsers never copy
+/// or allocate the underlying data.
+///
+/// Layout (see docs/HOT_PATH_LAYOUT.md): every non-inlined parser boundary
+/// copies an input in and one out (inside done<T>::rest), so it is kept to the
+/// two pointers the hot path reads plus ONE packed word:
+///   first, last       the unconsumed bytes
+///   pos               bits 0..62: offset() of `first` from the buffer start
+///                     (base() = first - offset(), for absolute error offsets);
+///                     bit 63: live() — the streaming flag
+///   arena, gen        (NANOM_GENERATION only) wire-buffer attestation
+/// 24 bytes without generation tracking (was 32), 40 with it (was 48).
+///
+/// Move the cursor with advance()/with_range() (they keep offset() in step), not
+/// by assigning `first` directly.
+///
+/// The copy constructor/assignment are user-provided and copy field by field.
+/// That is deliberate: an implicit (trivial) copy is lowered by Clang to 16-byte
+/// vector loads, and when the callee has just written `rest` with 8-byte scalar
+/// stores every such load misses store-to-load forwarding (~12 cycles each, at
+/// every parser boundary). Field-wise copies forward. It costs the
+/// trivially-copyable property; input stays trivially destructible, and
+/// inlined parsers are unaffected (SROA sees through the copies).
 struct input {
   const std::byte* first = nullptr;
   const std::byte* last  = nullptr;
-  const std::byte* base  = nullptr;
-  /// streaming mode: running out of bytes yields an `incomplete` error
-  /// (fetch more and retry) instead of a plain backtrackable error. Enable
-  /// with nm::streaming(in). Default is complete/whole-buffer mode.
-  bool live = false;
+
+ private:
+  static constexpr std::uint64_t live_bit = std::uint64_t(1) << 63;
+  std::uint64_t pos_ = 0;  ///< offset of first from the buffer start | live_bit
+
+ public:
 #if NANOM_GENERATION
   const wire_arena* arena = nullptr;
   std::uint64_t     gen   = 0;
@@ -89,14 +166,42 @@ struct input {
 
   constexpr input() = default;
   constexpr input(bytes b)
-      : first(b.data()), last(b.data() + b.size()), base(b.data()) {}
+      : first(b.data()), last(b.data() + b.size()) {}
   constexpr input(const std::byte* f, const std::byte* l, const std::byte* b,
                   bool lv = false)
-      : first(f), last(l), base(b), live(lv) {}
+      : first(f), last(l),
+        pos_(std::uint64_t(f - b) | (lv ? live_bit : std::uint64_t(0))) {}
+
+  NANOM_HD constexpr input(const input& o) noexcept
+      : first(o.first), last(o.last), pos_(o.pos_)
+#if NANOM_GENERATION
+      , arena(o.arena), gen(o.gen)
+#endif
+  {}
+  NANOM_HD constexpr input& operator=(const input& o) noexcept {
+    first = o.first;
+    last  = o.last;
+    pos_  = o.pos_;
+#if NANOM_GENERATION
+    arena = o.arena;
+    gen   = o.gen;
+#endif
+    return *this;
+  }
 
   NANOM_HD constexpr std::size_t size()   const { return std::size_t(last - first); }
   NANOM_HD constexpr bool        empty()  const { return first == last; }
-  NANOM_HD constexpr std::size_t offset() const { return std::size_t(first - base); }
+  /// Absolute offset of `first` from the start of the buffer.
+  NANOM_HD constexpr std::size_t offset() const { return std::size_t(pos_ & ~live_bit); }
+  /// Start of the whole buffer (what error offsets are relative to).
+  NANOM_HD constexpr const std::byte* base() const { return first - offset(); }
+  /// Streaming mode: running out of bytes yields an `incomplete` error (fetch
+  /// more and retry) instead of a plain backtrackable error. Enable with
+  /// nm::streaming(in). Default is complete/whole-buffer mode.
+  NANOM_HD constexpr bool live() const { return (pos_ & live_bit) != 0; }
+  NANOM_HD constexpr void set_live(bool on) {
+    pos_ = on ? (pos_ | live_bit) : (pos_ & ~live_bit);
+  }
 #if NANOM_GENERATION
   constexpr bytes span() const { return attested_span(size()); }
   NANOM_HD constexpr bytes attested_span(std::size_t n) const { return attested_span(first, n); }
@@ -115,20 +220,18 @@ struct input {
   }
   /// Cursor advanced by n bytes (precondition: n <= size()).
   NANOM_HD constexpr input advance(std::size_t n) const {
-    input o{first + n, last, base, live};
-#if NANOM_GENERATION
-    o.arena = arena;
-    o.gen   = gen;
-#endif
+    input o = *this;
+    o.first += n;
+    o.pos_  += n;
     return o;
   }
-  /// Subspan cursor sharing arena metadata (for length_value / recognize).
+  /// Subspan cursor sharing base/streaming/arena metadata (for length_value /
+  /// recognize). f must lie within the same buffer.
   NANOM_HD constexpr input with_range(const std::byte* f, const std::byte* l) const {
-    input o{f, l, base, live};
-#if NANOM_GENERATION
-    o.arena = arena;
-    o.gen   = gen;
-#endif
+    input o = *this;
+    o.pos_  += std::uint64_t(f - first);  // wraps correctly for f < first
+    o.first  = f;
+    o.last   = l;
     return o;
   }
   /// First n bytes as a zero-copy span (precondition: n <= size()).
@@ -192,7 +295,7 @@ constexpr input from(std::span<const std::byte> s NANOM_LIFETIMEBOUND) {
 /// Mark an input as a stream prefix: parsers that hit the end will report
 /// `incomplete` with the byte count still needed, so the caller can refill
 /// and retry (nom's streaming mode; default inputs behave like nom complete).
-constexpr input streaming(input in) { in.live = true; return in; }
+constexpr input streaming(input in) { in.set_live(true); return in; }
 
 /// View a span of raw bytes as text (zero-copy). NANOM_LIFETIMEBOUND ties the
 /// returned string_view to the byte buffer so binding it to a temporary is a
@@ -213,7 +316,7 @@ input from(const std::string&&) = delete;
 #endif
 
 // ---------------------------------------------------------------------------
-// 2. error — POD, allocation-free until render()
+// 2. error — POD (24 bytes), allocation-free until render()
 // ---------------------------------------------------------------------------
 
 /// nom's three-way error model:
@@ -222,29 +325,112 @@ input from(const std::string&&) = delete;
 ///   incomplete need more input (streaming) — complete() turns it into err
 enum class errk : std::uint8_t { err, fail, incomplete };
 
-/// Depth of the inline context() chain kept on the error. 4 is deeper than any
-/// realistic hand-written parser nests context() frames; keeping it small
-/// matters because std::expected sizes result<T> to max(sizeof(done<T>),
-/// sizeof(error)), so a fat error taxes every parser return on the SUCCESS
-/// path too. offsets are 32-bit for the same reason (a parse buffer over 4 GiB
-/// is out of scope; the whole point is zero-copy in-memory parsing).
+/// Depth of the context() chain an error keeps (innermost first; deeper frames
+/// are dropped). 4 is deeper than any realistic hand-written parser nests
+/// context() frames.
 inline constexpr std::size_t max_context = 4;
 /// Upper bound on error::needed in streaming incomplete errors — avoids OOM when
 /// callers pre-allocate from hostile length prefixes. 0 still means unknown.
 inline constexpr std::uint32_t max_incomplete_needed = 64 * 1024;
 
+/// One context() frame: the label and the offset where the labelled region began.
+struct context_frame {
+  const char*   label  = "";
+  std::uint32_t offset = 0;
+};
+
+/// A self-contained copy of an error's context() chain (innermost first), as
+/// returned by error::frames(). `expired` is set when the error had frames but
+/// they could no longer be recovered (see error).
+struct context_chain {
+  std::array<context_frame, max_context> frame{};
+  std::uint8_t size    = 0;
+  bool         expired = false;
+  constexpr const context_frame* begin() const { return frame.data(); }
+  constexpr const context_frame* end() const { return frame.data() + size; }
+  constexpr const context_frame& operator[](std::size_t i) const { return frame[i]; }
+};
+
+namespace detail {
+/// Per-thread ring of context() frames. error itself only records where its
+/// frames sit in this ring (24-byte error instead of 88; see error). Fixed
+/// size: the failure path never allocates.
+struct context_log {
+  static constexpr std::uint32_t cap = 256;  // power of two
+  std::array<context_frame, cap> ring{};
+  std::uint32_t head = 0;  ///< frames ever written on this thread (monotonic, wraps)
+  std::uint16_t tag  = 0;  ///< nonzero id of this thread's log
+};
+inline std::uint16_t next_context_log_tag() {
+  static std::atomic<std::uint16_t> n{0};
+  std::uint16_t t;
+  do t = std::uint16_t(n.fetch_add(1, std::memory_order_relaxed) + 1); while (t == 0);
+  return t;
+}
+inline context_log& this_thread_context_log() {
+  thread_local context_log log = [] { context_log l; l.tag = next_context_log_tag(); return l; }();
+  return log;
+}
+}  // namespace detail
+
+/// A parse error: trivially copyable, allocation-free until render(), 24 bytes.
+///
+/// Small on purpose: result<T> is sized max(done<T>, error), and every
+/// non-inlined parser boundary copies it. The context() chain therefore does
+/// not live inline; context() records each frame in a fixed per-thread ring
+/// (detail::context_log) and the error keeps only {nctx, ctx_tag, ctx_end},
+/// the position of its frames there. frames() / render() read them back.
+/// Consequences: render() the error (or copy its chain out with frames()) on
+/// the thread that produced it, before ~256 further context() frames have been
+/// recorded on that thread; otherwise the chain reports `expired` and render()
+/// says so. The kind/offset/expected/needed fields are always exact.
 struct error {
-  struct frame { const char* label; std::uint32_t offset; };
+  using frame = context_frame;
 
-  errk          kind     = errk::err;
-  std::uint8_t  nctx     = 0;
-  std::uint32_t offset   = 0;        ///< absolute byte offset of the failure
   const char*   expected = "";       ///< static string: what was expected here
+  std::uint32_t offset   = 0;        ///< absolute byte offset of the failure
   std::uint32_t needed   = 0;        ///< for incomplete: bytes missing (0 = unknown)
-  std::array<frame, max_context> ctx{};  ///< context() chain, innermost first
+  errk          kind     = errk::err;
+  std::uint8_t  nctx     = 0;        ///< context() frames recorded (<= max_context)
+  std::uint16_t ctx_tag  = 0;        ///< which thread's context_log holds them
+  std::uint32_t ctx_end  = 0;        ///< log position one past the outermost frame
 
+  /// Add an (outer) context() frame. Frames beyond max_context are dropped.
   constexpr void push_context(const char* label, std::size_t off) {
-    if (nctx < ctx.size()) ctx[nctx++] = {label, std::uint32_t(off)};
+    if consteval {
+      return;  // no thread-local ring during constant evaluation: frames are diagnostics only
+    } else {
+      if (nctx >= max_context) return;
+      auto& log = detail::this_thread_context_log();
+      if (nctx != 0 && (ctx_tag != log.tag || ctx_end != log.head)) {
+        // Another error recorded frames since ours: re-append ours so the chain
+        // stays contiguous (or drop it if it was already overwritten).
+        const context_chain mine = frames();
+        nctx = 0;
+        for (std::uint8_t i = 0; i < mine.size; ++i)
+          log.ring[log.head++ & (detail::context_log::cap - 1)] = mine.frame[i];
+        nctx = mine.size;
+      }
+      log.ring[log.head++ & (detail::context_log::cap - 1)] = {label, std::uint32_t(off)};
+      ++nctx;
+      ctx_tag = log.tag;
+      ctx_end = log.head;
+    }
+  }
+
+  /// The context() chain, innermost first, copied out of the per-thread ring.
+  context_chain frames() const {
+    context_chain c;
+    if (nctx == 0) return c;
+    const auto& log = detail::this_thread_context_log();
+    if (ctx_tag != log.tag || std::uint32_t(log.head - ctx_end) > detail::context_log::cap - nctx) {
+      c.expired = true;
+      return c;
+    }
+    for (std::uint8_t i = 0; i < nctx; ++i)
+      c.frame[i] = log.ring[(ctx_end - nctx + i) & (detail::context_log::cap - 1)];
+    c.size = nctx;
+    return c;
   }
 
   /// Pretty, localized message: offset, context chain, hex window with caret.
@@ -258,13 +444,10 @@ struct error {
       out += " (need " + std::to_string(needed) + " more byte(s))";
     out += ": expected ";
     out += expected;
-    for (std::uint8_t i = 0; i < nctx; ++i) {
-      out += "\n  in ";
-      out += ctx[i].label;
-      out += " (starting at offset " + std::to_string(ctx[i].offset) + ")";
-    }
+    append_context(out);
     // hex window: up to 8 bytes before and after the failure point
-    const std::size_t total = whole.base ? std::size_t(whole.last - whole.base) : 0;
+    const std::byte* base = whole.base();
+    const std::size_t total = base ? std::size_t(whole.last - base) : 0;
     const std::size_t off = std::min<std::size_t>(offset, total);  // clamp bogus offsets
     if (offset > total)
       out += " (offset beyond input, hex window clamped)";
@@ -274,7 +457,7 @@ struct error {
       static constexpr char hexd[] = "0123456789abcdef";
       std::string line = "  ", caret = "  ";
       for (std::size_t i = lo; i < hi; ++i) {
-        const auto b = std::uint8_t(whole.base[i]);
+        const auto b = std::uint8_t(base[i]);
         line += hexd[b >> 4]; line += hexd[b & 15]; line += ' ';
         caret += (i == off) ? "^^ " : "   ";
       }
@@ -282,6 +465,19 @@ struct error {
       out += "\n" + line + "\n" + caret;
     }
     return out;
+  }
+
+  /// The "\n  in <label> (starting at offset N)" lines of render().
+  void append_context(std::string& out) const {
+    const context_chain c = frames();
+    for (const auto& f : c) {
+      out += "\n  in ";
+      out += f.label;
+      out += " (starting at offset " + std::to_string(f.offset) + ")";
+    }
+    if (c.expired)
+      out += "\n  (context() chain no longer available: render errors on the thread that "
+             "produced them, before further parsing)";
   }
 };
 
@@ -315,7 +511,7 @@ inline unexpected<error> make_err(input at, const char* expected) {
 /// retries), a plain backtrackable error on complete ones. `needed` is kept
 /// either way for diagnostics.
 inline unexpected<error> make_incomplete(input at, std::size_t needed) {
-  error e; e.kind = at.live ? errk::incomplete : errk::err;
+  error e; e.kind = at.live() ? errk::incomplete : errk::err;
   e.offset = std::uint32_t(at.offset() + at.size());
   e.expected = "more input";
   e.needed = std::uint32_t(std::min(needed, std::size_t(max_incomplete_needed)));
@@ -1843,9 +2039,13 @@ constexpr auto bytes_(P p) {
 // ---------------------------------------------------------------------------
 // sanity pledges (see DESIGN.md §6)
 // ---------------------------------------------------------------------------
-static_assert(sizeof(error) <= 96, "error must stay POD-small (it taxes the result<T> value path)");
+static_assert(sizeof(error) <= 24, "error must stay small: it sizes result<T> and is copied at every failing boundary");
 static_assert(std::is_trivially_copyable_v<error>);
-static_assert(std::is_trivially_copyable_v<input>);
+// input is deliberately NOT trivially copyable (field-wise copy: see input) but
+// it is trivially destructible and nothrow-copyable.
+static_assert(std::is_trivially_destructible_v<input>);
+static_assert(std::is_nothrow_copy_constructible_v<input>);
+static_assert(sizeof(input) == (NANOM_GENERATION ? 40 : 24), "input: first, last, pos (+ arena, gen)");
 
 }  // namespace nanom
 

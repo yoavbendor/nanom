@@ -446,10 +446,10 @@ struct ctx {
   }
   constexpr error to_error() const {
     error e;
-    e.offset = std::uint32_t(at && origin.base ? std::size_t(at - origin.base) : origin.offset());
+    e.offset = std::uint32_t(at && origin.base() ? std::size_t(at - origin.base()) : origin.offset());
     switch (f) {
       case fault::truncated:
-        e.kind = origin.live ? errk::incomplete : errk::err;
+        e.kind = origin.live() ? errk::incomplete : errk::err;
         e.expected = "more input";
         e.needed = need;
         break;

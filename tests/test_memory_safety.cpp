@@ -246,7 +246,7 @@ void run() {
 }  // namespace length_prefix_overrun
 
 // =============================================================================
-// 11. ERROR RENDER WINDOW — error::render indexes whole.base[offset] without
+// 11. ERROR RENDER WINDOW — error::render indexes whole.base()[offset] without
 //     validating offset against (last - base).
 // =============================================================================
 namespace error_render_overrun {

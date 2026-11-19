@@ -4,6 +4,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <string>
+#include <thread>
 
 namespace nm = nanom;
 using std::uint8_t; using std::uint16_t; using std::uint32_t; using std::uint64_t;
@@ -434,6 +435,62 @@ static void test_errors() {
   auto inc = nm::be_u32(nm::from("\x01", 1));
   std::string m2 = inc.error().render(nm::from("\x01", 1));
   CHECK(m2.find("need 3 more") != std::string::npos);
+
+  // context frames live in a per-thread ring; frames() copies them out
+  const auto ch = r.error().frames();
+  CHECK(ch.size == 2 && !ch.expired);
+  CHECK(std::string(ch[0].label) == "body" && ch[0].offset == 1);
+  CHECK(std::string(ch[1].label) == "frame" && ch[1].offset == 0);
+
+  // two errors whose chains interleave in the ring each keep their own chain
+  nm::error a = nm::make_err(i, "a").error(), b = nm::make_err(i, "b").error();
+  a.push_context("a1", 1);
+  b.push_context("b1", 2);
+  a.push_context("a2", 3);  // not contiguous any more: a's chain is re-appended
+  b.push_context("b2", 4);
+  const auto ca = a.frames(), cb = b.frames();
+  CHECK(ca.size == 2 && std::string(ca[0].label) == "a1" && std::string(ca[1].label) == "a2");
+  CHECK(cb.size == 2 && std::string(cb[0].label) == "b1" && std::string(cb[1].label) == "b2");
+  CHECK(ca[1].offset == 3 && cb[1].offset == 4);
+
+  // frames beyond max_context are dropped (innermost kept)
+  nm::error deep = nm::make_err(i, "deep").error();
+  for (int k = 0; k < 10; ++k) deep.push_context("lvl", std::size_t(k));
+  CHECK(deep.frames().size == nm::max_context && deep.frames()[0].offset == 0);
+
+  // a chain overwritten by later frames reports `expired` instead of wrong labels
+  nm::error old = nm::make_err(i, "old").error();
+  old.push_context("old", 0);
+  for (int k = 0; k < 300; ++k) { nm::error t = nm::make_err(i, "t").error(); t.push_context("t", 0); }
+  CHECK(old.frames().expired && old.frames().size == 0);
+  CHECK(old.render(i).find("no longer available") != std::string::npos);
+
+  // the chain belongs to the producing thread
+  nm::error mine = nm::make_err(i, "x").error();
+  mine.push_context("here", 0);
+  bool other_expired = false;
+  std::thread([&] { other_expired = mine.frames().expired; }).join();
+  CHECK(other_expired && mine.frames().size == 1);
+
+  // compact layout pledges (docs/HOT_PATH_LAYOUT.md)
+  static_assert(sizeof(nm::error) == 24);
+  static_assert(sizeof(nm::input) == (NANOM_GENERATION ? 40 : 24));
+  static_assert(sizeof(nm::result<std::uint64_t>) <= sizeof(std::uint64_t) + sizeof(nm::input) + 8);
+  static_assert(std::is_trivially_copyable_v<nm::result<std::uint64_t>> == false);  // input copies field-wise
+
+  // input: offset/base/live are packed into one word and survive advance/with_range
+  const char buf[] = "0123456789";
+  nm::input w = nm::from(buf, 10);
+  nm::input s = nm::streaming(w.advance(3));
+  CHECK(s.offset() == 3 && s.live() && s.base() == w.first && s.size() == 7);
+  nm::input sub = s.with_range(w.first + 5, w.first + 8);
+  CHECK(sub.offset() == 5 && sub.live() && sub.base() == w.first && sub.size() == 3);
+  nm::input back = sub.with_range(w.first + 1, w.first + 2);  // moving backwards stays exact
+  CHECK(back.offset() == 1 && back.live() && back.base() == w.first);
+  back.set_live(false);
+  CHECK(!back.live() && back.offset() == 1);
+  nm::input explicit_base{w.first + 4, w.first + 6, w.first, true};
+  CHECK(explicit_base.offset() == 4 && explicit_base.live() && explicit_base.base() == w.first);
 }
 
 // Device-purity guard: the zero-copy decode path (be/le, bit fields, plain
