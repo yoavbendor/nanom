@@ -80,8 +80,8 @@ both a flat expression and one with parens.
 2. **Custom/generic error types are architecturally unsupported.** `tests/custom_errors.rs`
    defines `CustomError` implementing `ParseError<&str>` and parameterizes `IResult<&str,
    O, CustomError>` throughout. nanom's `error` (nom.hpp) is a single, fixed,
-   allocation-free struct (`kind`, `nctx`, `offset`, `expected`, `needed`, a small
-   fixed-size context array, `render()`) — not generic over an error type `E` the way
+   allocation-free 24-byte struct (`kind`, `offset`, `expected`, `needed`, and the
+   position of its `context()` frames in a fixed per-thread ring, `render()`) — not generic over an error type `E` the way
    Rust's `IResult<I, O, E>` is. This is a deliberate design trade-off (no
    allocation/vtable for error paths), not a bug, and there is no way to port
    `custom_errors.rs` without a core redesign. Out of scope for this audit; noted here as

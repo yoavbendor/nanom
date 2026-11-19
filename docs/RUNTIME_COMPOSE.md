@@ -97,6 +97,11 @@ python3 bench/runtime_compose_check.py --dyn build/nm_runtime_compose_bench \
 
 ### Results
 
+> **Update:** the table below predates the slim `input`/`error`/`result` layout
+> ([HOT_PATH_LAYOUT.md](HOT_PATH_LAYOUT.md)). With that layout the `nm::dyn` tree runs
+> 499 Ir / ~47 ns (g++) and 359 Ir / ~40 ns (clang), against Rust nom's 420 Ir / ~49 ns. The static
+> build runs 361 Ir / ~39 ns (g++) and 129 Ir / ~22 ns (clang).
+
 Ir/msg is callgrind instructions per message, measured as Ir(2 reps) − Ir(1 rep) on 50k messages.
 That makes it exact and immune to load. ns/msg is the best of 7 on 1M messages, on a shared
 4-core cloud VM, so it is noisy at about ±5%. All builds use `-O2`, g++ 13.3, clang 18.1 and rustc

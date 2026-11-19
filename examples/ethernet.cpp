@@ -133,7 +133,7 @@ int main() {
     return nm::map(nm::take(h.len), [h](nm::bytes v) { return std::pair{h, v}; });
   }));
   nm::input pin{r->value.payload.data(),
-                r->value.payload.data() + r->value.payload.size(), in.base};
+                r->value.payload.data() + r->value.payload.size(), in.base()};
   auto tl = nm::all_consuming(tlv_p)(pin);
   if (!tl) { std::puts(tl.error().render(in).c_str()); return 1; }
   for (auto& [h, v] : tl->value)

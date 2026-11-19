@@ -413,11 +413,7 @@ inline std::string render(const error& e, const segments& whole) {
   if (e.needed) out += " (need " + std::to_string(e.needed) + " more byte(s))";
   out += ": expected ";
   out += e.expected;
-  for (std::uint8_t i = 0; i < e.nctx; ++i) {
-    out += "\n  in ";
-    out += e.ctx[i].label;
-    out += " (starting at offset " + std::to_string(e.ctx[i].offset) + ")";
-  }
+  e.append_context(out);
   const std::size_t total = whole.size();
   const std::size_t off   = std::min<std::size_t>(e.offset, total);
   if (e.offset > total) out += " (offset beyond input, hex window clamped)";

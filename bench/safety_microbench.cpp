@@ -215,7 +215,7 @@ int main(int argc, char** argv) {
     e.offset = 4;
     e.expected = "tag";
     for (std::uint64_t i = 0; i < kRenderOps; ++i) {
-      const std::size_t total = std::size_t(whole.last - whole.base);
+      const std::size_t total = std::size_t(whole.last - whole.base());
       const std::size_t off = e.offset <= total ? e.offset : total;  // model clamp
       (void)off;
       std::string msg = e.render(whole);

@@ -82,7 +82,8 @@ never probe true for reflection.
 ## 2. Core model
 
 ```text
-input  = { const std::byte* first, last; const std::byte* base }   // zero-copy view + error offsets
+input  = { const std::byte* first, last; u64 pos }  // zero-copy view; pos = offset|streaming bit
+                                                    // (+ arena, gen under NANOM_GENERATION)
 result<T> = std::expected< done<T>, error >                        // done<T> = { T value; input rest; }
 Parser<T> = callable: (input) -> result<T>                         // a concept, not a base class
 ```
@@ -93,8 +94,10 @@ Parser<T> = callable: (input) -> result<T>                         // a concept,
   Multi-combinators (`many0`, …) collect *values* into a container the caller
   controls (default `std::vector`, or fold variants for none).
 * **Errors are POD.** `error` = kind (error/failure/incomplete) + absolute
-  offset + expected-code + a fixed inline stack of up to 8 `context()` frames.
-  No allocation on the failure path; `alt` backtracking is therefore free.
+  offset + expected-code (24 bytes). The up-to-4 `context()` frames are kept
+  in a fixed per-thread ring and the error records where (render on the
+  producing thread). No allocation on the failure path; `alt` backtracking is
+  therefore free. Layout rationale and measurements: docs/HOT_PATH_LAYOUT.md.
   `error::render(input)` produces the pretty localized message (offset,
   hex window, caret, context chain) — you pay for formatting only when you
   print.
@@ -183,7 +186,8 @@ Lance fragment writers want, so dumping is `memcpy`-free (hand the spans to
 1. Every public name a nom user would type either exists or has the obvious
    C++ spelling (`chr`, `not_`, `seq`) — see docs/CHEATSHEET.md.
 2. Failure path never allocates.
-3. `sizeof(error) <= 160` and `result<int>` fits in two cache lines.
+3. `sizeof(error) <= 24`, `sizeof(input)` is 24 (40 with generation tracking),
+   and `result<int>` fits in one cache line (see docs/HOT_PATH_LAYOUT.md).
 4. A wrong `get<"nmae">()` is a compile error listing valid fields.
 5. `error::render()` output contains: absolute offset, hex window with caret,
    innermost expected-token, outermost context chain — in that order.
