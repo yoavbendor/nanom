@@ -506,7 +506,11 @@ nanom_exe(nm_segmented_bench bench/segmented_bench.cpp)  # stitch-vs-segments + 
 nanom_exe(nm_streaming_bench bench/streaming_bench.cpp)  # whole-file vs EPB-at-a-time: memory bound + ns/pkt
 target_link_libraries(nm_streaming_bench PRIVATE nanom::shark)
 nanom_exe(nm_thrift_bench bench/thrift_bench.cpp)  # Parquet footer decode: validate / full / one row group
+option(NANOM_LAYOUT_BENCH_FULL "Build nm_layout_bench with full 8000-field table" OFF)
 nanom_exe(nm_layout_bench bench/layout_bench.cpp)  # JSON-described raw records vs static decoder
+if(NOT NANOM_LAYOUT_BENCH_FULL)
+  target_compile_definitions(nm_layout_bench PRIVATE LAYOUT_BENCH_NDEV=2000)
+endif()
 add_test(NAME bench_smoke_parse COMMAND nm_parse_bench ${td}/srv6_sample.pcap 2)
 add_test(NAME bench_smoke_safety COMMAND nm_safety_microbench 2)
 add_test(NAME bench_smoke_bulk  COMMAND nm_bulk_bench  ${td}/srv6_sample.pcap 50 2)

@@ -40,7 +40,7 @@ class soa {
 
   explicit soa(std::size_t chunk_rows = 65536) : chunk_rows_(chunk_rows) {
     build_columns<T>("");
-    open_.cols.resize(columns_.size());
+    init_open();
   }
 
   const std::vector<column_info>& columns() const { return columns_; }
@@ -49,6 +49,17 @@ class soa {
   void push(const T& v) {
     std::size_t c = 0;
     push_fields(v, c);
+    if (++open_.rows == chunk_rows_) seal();
+  }
+
+  /// Decode directly from a zero-copy view<T> into columns without materializing an intermediate T.
+  void push(view<T> v) {
+    detail::guard_view_pointer(v.p);
+#if NANOM_GENERATION
+    detail::check_wire_access(v.arena, v.gen, v.p, wire_size_v<T>, "soa::push(view)");
+#endif
+    std::size_t c = 0;
+    push_view_fields<T, 0>(v.p, v.dflt, c);
     if (++open_.rows == chunk_rows_) seal();
   }
 
@@ -85,11 +96,18 @@ class soa {
     if (!open_.rows) return;
     sealed_rows_ += open_.rows;
     sealed_.push_back(std::move(open_));
-    open_ = {};
-    open_.cols.resize(columns_.size());
+    init_open();
   }
 
  private:
+  void init_open() {
+    open_ = {};
+    open_.cols.resize(columns_.size());
+    const std::size_t cap_rows = std::min<std::size_t>(chunk_rows_, 65536);
+    for (std::size_t i = 0; i < columns_.size(); ++i)
+      open_.cols[i].reserve(cap_rows * columns_[i].elem_bytes);
+  }
+
   template <class F>
   void build_columns(std::string prefix, std::string_view name = "") {
     if constexpr (Described<F>) {
@@ -121,29 +139,83 @@ class soa {
     });
   }
 
+  static NANOM_ALWAYS_INLINE void append_bytes(std::vector<std::byte>& col, const void* src,
+                                               std::size_t n) {
+    const std::size_t off = col.size();
+    col.resize(off + n);
+    std::memcpy(col.data() + off, src, n);
+  }
+
   template <class F>
-  void push_one(const F& v, std::size_t& c) {
+  NANOM_ALWAYS_INLINE void push_one(const F& v, std::size_t& c) {
     if constexpr (Described<F>) {
       push_fields(v, c);
+    } else if constexpr (detail::is_byte_array_v<F>) {
+      append_bytes(open_.cols[c++], v.data(), v.size());
     } else if constexpr (detail::is_std_array_v<F>) {
+      using ED = typename detail::wire<typename F::value_type>::decoded;
       auto& col = open_.cols[c++];
-      for (const auto& e : v) {
-        using ED = typename detail::wire<typename F::value_type>::decoded;
-        ED d = ED(e);
-        const auto* b = reinterpret_cast<const std::byte*>(&d);
-        col.insert(col.end(), b, b + sizeof(ED));
+      const std::size_t off = col.size();
+      col.resize(off + v.size() * sizeof(ED));
+      std::byte* dst = col.data() + off;
+      for (std::size_t i = 0; i < v.size(); ++i) {
+        ED d = ED(v[i]);
+        std::memcpy(dst + i * sizeof(ED), &d, sizeof(ED));
       }
     } else {
       using D = typename detail::wire<F>::decoded;
       D d = D(v);
-      auto& col = open_.cols[c++];
-      const auto* b = reinterpret_cast<const std::byte*>(&d);
-      col.insert(col.end(), b, b + sizeof(D));
+      append_bytes(open_.cols[c++], &d, sizeof(D));
     }
   }
+  template <class F, std::size_t... I>
+  NANOM_ALWAYS_INLINE void push_fields_impl(const F& v, std::size_t& c, std::index_sequence<I...>) {
+    constexpr auto fs = describe<F>::fields();
+    (push_one(v.*(std::tuple_element_t<I, decltype(fs)>::mem_ptr), c), ...);
+  }
   template <class F>
-  void push_fields(const F& v, std::size_t& c) {
-    detail::for_each_field<F>([&](auto f) { push_one(v.*(decltype(f)::mem_ptr), c); });
+  NANOM_ALWAYS_INLINE void push_fields(const F& v, std::size_t& c) {
+    push_fields_impl(v, c, std::make_index_sequence<detail::field_count_v<F>>{});
+  }
+
+  template <class F, std::size_t BitOff>
+  NANOM_ALWAYS_INLINE void push_view_one(const std::byte* p, std::endian dflt, std::size_t& c) {
+    if constexpr (Described<F>) {
+      push_view_fields<F, BitOff>(p, dflt, c);
+    } else if constexpr (detail::is_byte_array_v<F>) {
+      append_bytes(open_.cols[c++], p + BitOff / 8, std::tuple_size_v<F>);
+    } else if constexpr (detail::is_std_array_v<F>) {
+      using E = typename F::value_type;
+      using ED = typename detail::wire<E>::decoded;
+      constexpr std::size_t eb = detail::wire<E>::bits;
+      constexpr std::size_t n = std::tuple_size_v<F>;
+      auto& col = open_.cols[c++];
+      const std::size_t off = col.size();
+      col.resize(off + n * sizeof(ED));
+      std::byte* dst = col.data() + off;
+      for (std::size_t i = 0; i < n; ++i) {
+        ED d = detail::decode_field<E>(p, BitOff + i * eb, dflt);
+        std::memcpy(dst + i * sizeof(ED), &d, sizeof(ED));
+      }
+    } else {
+      using D = typename detail::wire<F>::decoded;
+      D d = detail::decode_field_at<F, BitOff>(p, dflt);
+      append_bytes(open_.cols[c++], &d, sizeof(D));
+    }
+  }
+  template <class F, std::size_t BaseBitOff, std::size_t... I>
+  NANOM_ALWAYS_INLINE void push_view_fields_impl(const std::byte* p, std::endian dflt,
+                                                 std::size_t& c, std::index_sequence<I...>) {
+    constexpr auto fs = describe<F>::fields();
+    constexpr auto offs = detail::field_bit_offsets<F>();
+    (push_view_one<detail::member_t<std::tuple_element_t<I, decltype(fs)>::mem_ptr>,
+                   BaseBitOff + offs[I]>(p, dflt, c),
+     ...);
+  }
+  template <class F, std::size_t BaseBitOff>
+  NANOM_ALWAYS_INLINE void push_view_fields(const std::byte* p, std::endian dflt, std::size_t& c) {
+    push_view_fields_impl<F, BaseBitOff>(p, dflt, c,
+                                         std::make_index_sequence<detail::field_count_v<F>>{});
   }
 
   std::size_t              chunk_rows_;

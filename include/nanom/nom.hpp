@@ -538,36 +538,41 @@ template <Parser P>
 using parsed_t = typename std::invoke_result_t<const P&, input>::value_type::type;
 
 // ---------------------------------------------------------------------------
+// 4b. fixed_string — string literals as template parameters (tag<"GET">(), get<"name">())
+// ---------------------------------------------------------------------------
+
+template <std::size_t N>
+struct fixed_string {
+  char data[N]{};
+  constexpr fixed_string() = default;  // synthesized names (nanom26 reflection) fill data directly
+  constexpr fixed_string(const char (&s)[N]) { std::copy_n(s, N, data); }
+  constexpr std::string_view sv() const { return {data, N - 1}; }
+  constexpr bool operator==(std::string_view s) const { return sv() == s; }
+};
+
+// ---------------------------------------------------------------------------
 // 5. primitive byte parsers (nom::bytes)
 // ---------------------------------------------------------------------------
 
 namespace detail {
-inline constexpr std::size_t tag_sbo_cap = 15;
 constexpr char lower(char c) { return (c >= 'A' && c <= 'Z') ? char(c + 32) : c; }
 
-/// Owns a tag pattern by value (SBO ≤15 B, else heap string) so parsers outlive
-/// ephemeral std::string sources.
+/// Owns a tag/needle pattern by value (relying on std::string SSO — 15 B on
+/// libstdc++, 22 B on libc++) so parsers outlive ephemeral std::string sources
+/// while staying compact (<= 32 bytes, branchless data()/size()).
 struct owned_pattern {
-  std::array<char, 16> small{};
-  std::string          large;
-  std::size_t          len = 0;
+  std::string s;
 
-  explicit owned_pattern(std::string_view p) : len(p.size()) {
-    if (len <= tag_sbo_cap) {
-      for (std::size_t i = 0; i < len; ++i) small[static_cast<std::size_t>(i)] = p[i];
-    } else {
-      large.assign(p);
-    }
-  }
+  explicit owned_pattern(std::string_view p) : s(p) {}
 
-  const char* data() const noexcept {
-    return len <= tag_sbo_cap ? small.data() : large.data();
-  }
+  const char* data() const noexcept { return s.data(); }
+  std::size_t size() const noexcept { return s.size(); }
 };
+static_assert(sizeof(owned_pattern) <= 32, "owned_pattern should rely on std::string SSO without extra fields");
 
 inline auto make_tag_parser(owned_pattern pat) {
   return [pat = std::move(pat)](input in) -> result<bytes> {
-    const std::size_t n = pat.len;
+    const std::size_t n = pat.size();
     if (in.size() < n) {
       if (!in.empty() && std::memcmp(in.first, pat.data(), in.size()) != 0)
         return make_err(in, "tag");
@@ -580,7 +585,7 @@ inline auto make_tag_parser(owned_pattern pat) {
 
 inline auto make_tag_no_case_parser(owned_pattern pat) {
   return [pat = std::move(pat)](input in) -> result<bytes> {
-    const std::size_t n = pat.len;
+    const std::size_t n = pat.size();
     if (in.size() < n) {
       for (std::size_t i = 0; i < in.size(); ++i)
         if (lower(char(in[i])) != lower(pat.data()[i])) return make_err(in, "tag_no_case");
@@ -593,8 +598,33 @@ inline auto make_tag_no_case_parser(owned_pattern pat) {
 }
 }  // namespace detail
 
+/// tag<"GET">() — zero-overhead, stateless (sizeof == 1), constexpr compile-time tag.
+template <fixed_string Pat>
+constexpr auto tag() {
+  return [](input in) -> result<bytes> {
+    constexpr std::size_t n = Pat.sv().size();
+    if (in.size() < n) {
+      if consteval {
+        for (std::size_t i = 0; i < in.size(); ++i)
+          if (char(in[i]) != Pat.data[i]) return make_err(in, "tag");
+      } else {
+        if (!in.empty() && std::memcmp(in.first, Pat.data, in.size()) != 0)
+          return make_err(in, "tag");
+      }
+      return make_incomplete(in, n - in.size());
+    }
+    if consteval {
+      for (std::size_t i = 0; i < n; ++i)
+        if (char(in[i]) != Pat.data[i]) return make_err(in, "tag");
+    } else {
+      if (n && std::memcmp(in.first, Pat.data, n) != 0) return make_err(in, "tag");
+    }
+    return done{in.take_span(n), in.advance(n)};
+  };
+}
+
 /// tag("GET") / tag(bytes) — match an exact byte sequence, yield it zero-copy.
-/// Stores the pattern by value (small-buffer optimized up to 15 bytes).
+/// Stores the pattern by value (SSO via std::string).
 inline auto tag(std::string_view pattern) {
   return detail::make_tag_parser(detail::owned_pattern(pattern));
 }
@@ -698,12 +728,11 @@ struct byte_set {
 /// Owns the needle by value so parsers outlive ephemeral std::string sources.
 inline auto take_until(std::string_view needle) {
   return [pat = detail::owned_pattern(needle)](input in) -> result<bytes> {
-    auto hay = in.span();
-    auto ned = bytes(reinterpret_cast<const std::byte*>(pat.data()), pat.len);
-    auto it = std::search(hay.begin(), hay.end(), ned.begin(), ned.end());
-    if (it == hay.end()) return make_incomplete(in, 1);
-    const std::size_t n = std::size_t(it - hay.begin());
-    return done{in.take_span(n), in.advance(n)};
+    const std::string_view hay(reinterpret_cast<const char*>(in.first), in.size());
+    const std::string_view ned(pat.data(), pat.size());
+    const std::size_t pos = hay.find(ned);
+    if (pos == std::string_view::npos) return make_incomplete(in, 1);
+    return done{in.take_span(pos), in.advance(pos)};
   };
 }
 
@@ -1063,10 +1092,22 @@ constexpr auto many1(P p) {
   return [p](input in) -> result<std::vector<parsed_t<P>>> {
     auto first = p(in);
     if (!first) return unexp(first.error());
-    auto more = many0(p)(first->rest);
-    if (!more) return unexp(more.error());
-    more->value.insert(more->value.begin(), std::move(first->value));
-    return done{std::move(more->value), more->rest};
+    if (first->rest.first == in.first)
+      return make_err(in, "many1: inner parser must consume input");
+    std::vector<parsed_t<P>> out;
+    out.push_back(std::move(first->value));
+    input cur = first->rest;
+    for (;;) {
+      auto r = p(cur);
+      if (!r) {
+        if (r.error().kind != errk::err) return unexp(r.error());
+        return done{std::move(out), cur};
+      }
+      if (r->rest.first == cur.first)
+        return make_err(cur, "many1: inner parser must consume input");
+      out.push_back(std::move(r->value));
+      cur = r->rest;
+    }
   };
 }
 /// many_m_n(m, n, p) — between m and n repetitions.

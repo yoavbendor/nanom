@@ -91,22 +91,52 @@ struct kernel_pair {
   std::uint32_t key;  ///< bucket id: (mode, be, sign, store kind)
 };
 
+template <mode M, bool BE, bool Sign, sk K>
+inline kernel_pair make_kernel(std::uint32_t key) {
+  return kernel_pair{&fm_loop<M, BE, Sign, K>, &rm_loop<M, BE, Sign, K>, key};
+}
+
 inline kernel_pair pick_kernel(const access& a, storage st) {
   const sk k = store_kind(st);
   // Sign only matters when bits above `width` are stored: bit-fields, or narrower-than-column
-  // loads. Normalising it keeps natural copies on one kernel.
+  // loads. Byte order does not affect 1-byte loads or non-zero flag tests on natural loads.
+  // Normalising both keeps identical operations on one kernel and avoids dead instantiations.
   access n = a;
   if (k == sk::flag || (a.m <= mode::n64 && storage_size(st) * 8 <= a.width)) n.sign = false;
-  return dispatch_access(n, [&](auto M, auto B, auto S) {
+  if (n.m == mode::n8 || (n.m <= mode::n64 && k == sk::flag)) n.be = false;
+  return dispatch_access(n, [&](auto M, auto B, auto S) -> kernel_pair {
     constexpr mode m = decltype(M)::value;
     constexpr bool be = decltype(B)::value, sg = decltype(S)::value;
-    const std::uint32_t key = std::uint32_t(m) * 20 + (be ? 10 : 0) + (sg ? 5 : 0) + std::uint32_t(k);
-    switch (k) {
-      case sk::b1: return kernel_pair{&fm_loop<m, be, sg, sk::b1>, &rm_loop<m, be, sg, sk::b1>, key};
-      case sk::b2: return kernel_pair{&fm_loop<m, be, sg, sk::b2>, &rm_loop<m, be, sg, sk::b2>, key};
-      case sk::b4: return kernel_pair{&fm_loop<m, be, sg, sk::b4>, &rm_loop<m, be, sg, sk::b4>, key};
-      case sk::b8: return kernel_pair{&fm_loop<m, be, sg, sk::b8>, &rm_loop<m, be, sg, sk::b8>, key};
-      default: return kernel_pair{&fm_loop<m, be, sg, sk::flag>, &rm_loop<m, be, sg, sk::flag>, key};
+    // Prune combinations that plan.hpp + normalization above can never reach, cutting
+    // fm_loop/rm_loop instantiations from 140 pairs down to ~53.
+    if constexpr (m == mode::n8 && (be || sg)) return {};
+    else if constexpr (m == mode::n16 && sg) return {};
+    else if constexpr (m == mode::n32 && sg) return {};
+    else if constexpr (m == mode::n64 && sg) return {};
+    else {
+      const std::uint32_t key = std::uint32_t(m) * 20 + (be ? 10 : 0) + (sg ? 5 : 0) + std::uint32_t(k);
+      switch (k) {
+        case sk::b1:
+          if constexpr (m == mode::n8 || m == mode::bits64 || m == mode::small)
+            return make_kernel<m, be, sg, sk::b1>(key);
+          return {};
+        case sk::b2:
+          if constexpr (m == mode::n16 || m == mode::bits64 || m == mode::small)
+            return make_kernel<m, be, sg, sk::b2>(key);
+          return {};
+        case sk::b4:
+          if constexpr (m == mode::n32 || m == mode::bits64 || m == mode::small)
+            return make_kernel<m, be, sg, sk::b4>(key);
+          return {};
+        case sk::b8:
+          if constexpr (m == mode::n64 || m == mode::bits64 || m == mode::bits72 || m == mode::small)
+            return make_kernel<m, be, sg, sk::b8>(key);
+          return {};
+        default:
+          if constexpr (!sg && !(m <= mode::n64 && be))
+            return make_kernel<m, be, sg, sk::flag>(key);
+          return {};
+      }
     }
   });
 }

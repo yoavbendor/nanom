@@ -288,6 +288,17 @@ constexpr bool compile_time_emit() {
 }
 static_assert(compile_time_emit(), "to_bytes() is usable in constant expressions");
 
+constexpr bool compile_time_emit_exact() {
+  eth_hdr e{{1, 2, 3, 4, 5, 6}, {7, 8, 9, 10, 11, 12}, u16(0x0800)};
+  auto b = nm::to_bytes_exact(e);
+  return b.size() == 14 && b[0] == std::byte{1} && b[6] == std::byte{7} &&
+         b[12] == std::byte{0x08} && b[13] == std::byte{0x00};
+}
+static_assert(compile_time_emit_exact(), "to_bytes_exact() is infallible & constexpr");
+static_assert(!nm::detail::emit_can_fail_v<eth_hdr>);
+static_assert(nm::detail::emit_can_fail_v<vlan_hdr>);
+static_assert(nm::detail::emit_can_fail_v<ipv4_hdr>);
+
 int main() {
   std::mt19937_64 rng(2026);
   byte_roundtrip<eth_hdr>("eth_hdr", rng, 500);

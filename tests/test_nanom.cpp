@@ -551,6 +551,40 @@ static void test_phase0_fixes() {
     auto r_crlf = nm::line_ending(nm::from(std::string_view(crlf_buf)));
     CHECK(r_crlf && r_crlf->value == "\r\n" && r_crlf->value.data() == crlf_buf.data());
   }
+
+  // Phase 1: stateless constexpr tag<"LIT">(), compact owned_pattern, soa::push(view<T>)
+  {
+    constexpr auto p_get = nm::tag<"GET">();
+    static_assert(sizeof(p_get) == 1, "tag<Lit>() must be stateless");
+    static_assert(sizeof(nm::detail::owned_pattern) <= 32, "owned_pattern must stay <= 32 B");
+    auto r = p_get(in("GET /"));
+    CHECK(r && nm::as_str(r->value) == "GET" && nm::as_str(r->rest.span()) == " /");
+    auto rs = p_get(nm::streaming(in("GE")));
+    CHECK(!rs && rs.error().kind == nm::errk::incomplete && rs.error().needed == 1);
+    auto rm = p_get(nm::streaming(in("PU")));
+    CHECK(!rm && rm.error().kind == nm::errk::err);
+
+    // constexpr evaluation of tag<"GET">()
+    constexpr bool cx_tag = [] {
+      std::array<std::byte, 4> s{std::byte('G'), std::byte('E'), std::byte('T'), std::byte('/')};
+      auto res = nm::tag<"GET">()(nm::input{nm::bytes(s.data(), s.size())});
+      return res.has_value() && res->value.size() == 3 && res->rest.size() == 1;
+    }();
+    static_assert(cx_tag, "tag<Lit>() must work in constant expressions");
+
+    // soa::push(view<T>) matches soa::push(T)
+    const unsigned char raw_vlan[4] = {0x60, 0x2a, 0x08, 0x00};
+    auto ov = nm::overlay<vlan_tag>()(nm::from(raw_vlan, 4));
+    auto st = nm::strct<vlan_tag>()(nm::from(raw_vlan, 4));
+    CHECK(ov && st);
+    nm::soa<vlan_tag> t_view(8), t_val(8);
+    t_view.push(ov->value);
+    t_val.push(st->value);
+    CHECK(t_view.rows() == 1 && t_val.rows() == 1);
+    CHECK(t_view.chunk_at(0).as<uint8_t>(0)[0] == t_val.chunk_at(0).as<uint8_t>(0)[0]);
+    CHECK(t_view.chunk_at(0).as<uint16_t>(2)[0] == 42u);
+    CHECK(t_view.chunk_at(0).as<uint16_t>(3)[0] == 0x0800u);
+  }
 }
 
 int main() {

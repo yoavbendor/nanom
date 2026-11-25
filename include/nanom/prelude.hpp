@@ -135,4 +135,17 @@
 #  endif
 #endif
 
+// NANOM_ALWAYS_INLINE — force inlining on free helper function templates (e.g. compile-time
+// BitOff struct field traversal) where compiler inline budgets otherwise emit out-of-line calls
+// and stack-copied offset tables. Apply to free functions, not lambdas (Clang warns on lambdas).
+#ifndef NANOM_ALWAYS_INLINE
+#  if defined(__GNUC__) || defined(__clang__)
+#    define NANOM_ALWAYS_INLINE __attribute__((always_inline)) inline
+#  elif defined(_MSC_VER)
+#    define NANOM_ALWAYS_INLINE __forceinline
+#  else
+#    define NANOM_ALWAYS_INLINE inline
+#  endif
+#endif
+
 #endif  // NANOM_PRELUDE_HPP_INCLUDED
