@@ -70,18 +70,26 @@ def expand(path: pathlib.Path, seen: set, sys_headers: list, out: list):
 def main(argv) -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--out", default="-")
+    ap.add_argument(
+        "--with-writers",
+        action="store_true",
+        help="Also include write-side headers (sink.hpp, emit.hpp, craft.hpp); off by default to preserve Rule Zero.",
+    )
     a = ap.parse_args(argv[1:])
 
     seen: set = set()
     sys_headers: list = []
     body: list = []
     expand(INC / "nanom.hpp", seen, sys_headers, body)
+    if a.with_writers:
+        expand(INC / "craft.hpp", seen, sys_headers, body)
 
+    regen_cmd = "python3 tools/amalgamate.py" + (" --with-writers" if a.with_writers else "") + " --out nanom-single.hpp"
     banner = [
         "// ============================================================================",
         "// nanom-single.hpp — GENERATED single-file amalgamation of the nanom headers.",
         "// Do NOT edit: the source of truth is include/nanom/*.hpp; regenerate with",
-        "//   python3 tools/amalgamate.py --out nanom-single.hpp",
+        f"//   {regen_cmd}",
         "// Provided as a drop-in / Compiler-Explorer convenience. https://github.com/yoavbendor/nanom",
         "// SPDX-License-Identifier: Apache-2.0",
         "// ============================================================================",

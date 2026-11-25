@@ -449,10 +449,23 @@ constexpr auto& field_ref(T& v) {
   return v.*(FD::mem_ptr);
 }
 
+template <class Fn, class T, class Ctx>
+NANOM_ALWAYS_INLINE constexpr auto invoke_calc(const Fn& fn, const T& v, const Ctx& ctx) {
+  if constexpr (std::invocable<const Fn&, const T&, const Ctx&>) return fn(v, ctx);
+  else return fn(v);
+}
+
+template <class Fn, class Ctx>
+NANOM_ALWAYS_INLINE constexpr auto invoke_checksum(const Fn& fn, std::span<const std::byte> wire,
+                                                   const Ctx& ctx) {
+  if constexpr (std::invocable<const Fn&, std::span<const std::byte>, const Ctx&>) return fn(wire, ctx);
+  else return fn(wire);
+}
+
 /// Encode v (computed fields applied) into exactly wire_size_v<T> bytes at p.
-template <Described T>
+template <Described T, class Ctx = emit_ctx>
 NANOM_ALWAYS_INLINE constexpr expected<std::size_t, encode_error> emit_struct(
-    const T& value, std::byte* p, std::endian dflt, const emit_ctx& ctx) {
+    const T& value, std::byte* p, std::endian dflt, const Ctx& ctx) {
   static_assert(layout_ok<T>(),
                 "nanom: bit fields must pack to byte boundaries, every non-bit field must start byte-aligned, "
                 "and msb0 / lsb0 runs must not share a byte");
@@ -477,7 +490,8 @@ NANOM_ALWAYS_INLINE constexpr expected<std::size_t, encode_error> emit_struct(
               [&] {
                 using S = std::remove_cvref_t<decltype(spec)>;
                 if constexpr (is_calc<S>::value) {
-                  if (bad.empty() && !set_computed(field_ref<T, S::name>(v), spec.fn(std::as_const(v), ctx)))
+                  if (bad.empty() && !set_computed(field_ref<T, S::name>(v),
+                                                   invoke_calc(spec.fn, std::as_const(v), ctx)))
                     bad = S::name.sv();
                 }
               }(),
@@ -509,7 +523,7 @@ NANOM_ALWAYS_INLINE constexpr expected<std::size_t, encode_error> emit_struct(
                   F zero{};
                   std::string_view unused_bad;
                   (void)emit_field_at<F, offs[I], false>(zero, p, dflt, unused_bad);
-                  if (!set_computed(fld, spec.fn(std::span<const std::byte>(p, size), ctx)) ||
+                  if (!set_computed(fld, invoke_checksum(spec.fn, std::span<const std::byte>(p, size), ctx)) ||
                       emit_field_at<F, offs[I], false>(fld, p, dflt, unused_bad))
                     bad = S::name.sv();
                 }
@@ -526,13 +540,13 @@ NANOM_ALWAYS_INLINE constexpr expected<std::size_t, encode_error> emit_struct(
 }  // namespace detail
 
 // ---------------------------------------------------------------------------
-// 44. emit / to_bytes / to_bytes_exact / emit_frame / verify_computed
+// 44. emit / to_bytes / to_bytes_exact / emit_frame / verify_computed / mut_view
 // ---------------------------------------------------------------------------
 
 /// The wire bytes of v (computed fields applied). Usable in constant expressions.
-template <Described T>
+template <Described T, class Ctx = emit_ctx>
 constexpr expected<std::array<std::byte, wire_size_v<T>>, encode_error> to_bytes(
-    const T& v, const emit_ctx& ctx = {}, std::endian dflt = std::endian::native) {
+    const T& v, const Ctx& ctx = Ctx{}, std::endian dflt = std::endian::native) {
   std::array<std::byte, wire_size_v<T>> out{};
   auto r = detail::emit_struct(v, out.data(), dflt, ctx);
   if (!r) return unexpected<encode_error>(r.error());
@@ -557,8 +571,9 @@ constexpr std::array<std::byte, wire_size_v<T>> to_bytes_exact(
 }
 
 /// Encode v into the start of `out` (which must hold wire_size_v<T> bytes); returns the size.
-template <Described T>
-constexpr expected<std::size_t, encode_error> emit(const T& v, std::span<std::byte> out, const emit_ctx& ctx = {},
+template <Described T, class Ctx = emit_ctx>
+constexpr expected<std::size_t, encode_error> emit(const T& v, std::span<std::byte> out,
+                                                   const Ctx& ctx = Ctx{},
                                                    std::endian dflt = std::endian::native) {
   if (out.size() < wire_size_v<T>)
     return unexpected<encode_error>(encode_error{"an output buffer smaller than the struct", describe<T>::name(), {}});
@@ -566,8 +581,8 @@ constexpr expected<std::size_t, encode_error> emit(const T& v, std::span<std::by
 }
 
 /// Encode v into any byte sink. Encodes directly into span_sink's buffer without an intermediate copy.
-template <Described T, byte_sink S>
-expected<std::size_t, encode_error> emit_to(const T& v, S& sink, const emit_ctx& ctx = {},
+template <Described T, byte_sink S, class Ctx = emit_ctx>
+expected<std::size_t, encode_error> emit_to(const T& v, S& sink, const Ctx& ctx = Ctx{},
                                             std::endian dflt = std::endian::native) {
   constexpr std::size_t need = wire_size_v<T>;
   if constexpr (std::is_same_v<S, span_sink>) {
@@ -601,8 +616,8 @@ expected<std::size_t, encode_error> emit_frame(const T& v, std::span<const std::
 
 /// Read side: do the computed fields stored in `wire` (wire_size_v<T> bytes) match what writing the
 /// decoded value would compute? (A received IPv4 header's checksum and total length, say.)
-template <Described T>
-constexpr bool verify_computed(std::span<const std::byte> wire, const emit_ctx& ctx = {},
+template <Described T, class Ctx = emit_ctx>
+constexpr bool verify_computed(std::span<const std::byte> wire, const Ctx& ctx = Ctx{},
                                std::endian dflt = std::endian::native) {
   if (wire.size() < wire_size_v<T>) return false;
   auto v = strct<T>(dflt)(from(wire));
@@ -612,6 +627,197 @@ constexpr bool verify_computed(std::span<const std::byte> wire, const emit_ctx& 
   for (std::size_t i = 0; i < wire_size_v<T>; ++i)
     if ((*again)[i] != wire[i]) return false;
   return true;
+}
+
+/// Zero-copy mutable overlay over an existing wire buffer — the write-side twin of view<T>.
+/// Supports single-field in-place patching via set<"field">(val) at compile-time BitOff
+/// and in-place recompute(ctx) for computed<T> calc & checksum fields.
+template <Described T>
+struct mut_view {
+  std::byte*  p    = nullptr;
+  std::endian dflt = std::endian::native;
+
+  constexpr bool valid() const noexcept { return p != nullptr; }
+  constexpr std::span<std::byte> raw() const noexcept { return {p, wire_size_v<T>}; }
+  constexpr view<T> as_view() const noexcept { return view<T>{p, dflt}; }
+
+  /// Read a field by name; nested Described structs return mut_view<Inner>, byte arrays return mutable span.
+  template <fixed_string Name>
+  constexpr auto get() const {
+    constexpr std::size_t I = detail::field_index<T, Name>();
+    if constexpr (I == std::size_t(-1)) {
+      detail::diagnose_unknown_field<Name>(describe<T>::fields());
+    } else {
+      using F = detail::field_type_at<T, I>;
+      constexpr std::size_t off = detail::field_bit_offsets<T>()[I];
+      if constexpr (Described<F>) {
+        return mut_view<F>{p + off / 8, dflt};
+      } else if constexpr (detail::is_byte_array_v<F>) {
+        return std::span<typename F::value_type, std::tuple_size_v<F>>(
+            reinterpret_cast<typename F::value_type*>(p + off / 8), std::tuple_size_v<F>);
+      } else {
+        return detail::decode_field_at<F, off>(p, dflt);
+      }
+    }
+  }
+
+  /// Patch ONLY the named field in place at its compile-time BitOff (range-checked).
+  template <fixed_string Name, class V>
+  constexpr expected<unit, encode_error> set(const V& val) const {
+    constexpr std::size_t I = detail::field_index<T, Name>();
+    if constexpr (I == std::size_t(-1)) {
+      detail::diagnose_unknown_field<Name>(describe<T>::fields());
+      return unit{};
+    } else {
+      using F = detail::field_type_at<T, I>;
+      constexpr std::size_t off = detail::field_bit_offsets<T>()[I];
+      std::string_view bad_field;
+      const char* err = nullptr;
+      if constexpr (std::same_as<std::remove_cvref_t<V>, F>) {
+        err = detail::emit_field_at<F, off, false>(val, p, dflt, bad_field);
+      } else if constexpr (requires { F::order; F::bits; }) {
+        using VT = typename F::value_type;
+        constexpr unsigned N = F::bits;
+        if constexpr (std::is_signed_v<VT>) {
+          if (!std::in_range<std::int64_t>(val)) {
+            err = "a value outside its signed bit field";
+          } else {
+            const auto s = std::int64_t(val);
+            if constexpr (N < 64) {
+              constexpr std::int64_t lo = -(std::int64_t(1) << (N - 1)),
+                                     hi = (std::int64_t(1) << (N - 1)) - 1;
+              if (s < lo || s > hi) err = "a value outside its signed bit field";
+            }
+            if (!err) {
+              F tmp{VT(s)};
+              err = detail::emit_field_at<F, off, false>(tmp, p, dflt, bad_field);
+            }
+          }
+        } else {
+          if (!std::in_range<std::uint64_t>(val)) {
+            err = "a value wider than its bit field";
+          } else {
+            const auto u = std::uint64_t(val);
+            if constexpr (N < 64) {
+              if ((u >> N) != 0) err = "a value wider than its bit field";
+            }
+            if (!err) {
+              F tmp{VT(u)};
+              err = detail::emit_field_at<F, off, false>(tmp, p, dflt, bad_field);
+            }
+          }
+        }
+      } else if constexpr (requires { typename F::value_type; F::wire_bytes; F::order; }) {
+        F tmp{};
+        if (!detail::set_computed(tmp, val)) {
+          err = "a value that does not fit its wire integer field";
+        } else {
+          err = detail::emit_field_at<F, off, false>(tmp, p, dflt, bad_field);
+        }
+      } else if constexpr (requires { typename F::value_type; F::order; }) {
+        using VT = typename F::value_type;
+        if constexpr (std::integral<VT> && std::integral<V>) {
+          if (!std::in_range<VT>(val)) {
+            err = "a value that does not fit its wire integer field";
+          } else {
+            F tmp{VT(val)};
+            err = detail::emit_field_at<F, off, false>(tmp, p, dflt, bad_field);
+          }
+        } else {
+          F tmp{VT(val)};
+          err = detail::emit_field_at<F, off, false>(tmp, p, dflt, bad_field);
+        }
+      } else {
+        F tmp = static_cast<F>(val);
+        err = detail::emit_field_at<F, off, false>(tmp, p, dflt, bad_field);
+      }
+      if (err) [[unlikely]]
+        return unexpected<encode_error>(
+            encode_error{err, describe<T>::name(), bad_field.empty() ? Name.sv() : bad_field});
+      return unit{};
+    }
+  }
+
+  /// Re-run computed<T> calc and checksum fields directly on the buffer in place.
+  template <class Ctx = emit_ctx>
+  constexpr expected<unit, encode_error> recompute(const Ctx& ctx = Ctx{}) const {
+    if constexpr (!detail::has_computed_v<T>) {
+      (void)ctx;
+      return unit{};
+    } else {
+      constexpr std::size_t size = wire_size_v<T>;
+      constexpr auto offs = detail::field_bit_offsets<T>();
+      const auto& specs = computed<T>::fields;
+      constexpr bool has_calc = []<class... Ss>(std::tuple<Ss...>) {
+        return (detail::is_calc<Ss>::value || ...);
+      }(specs);
+      std::string_view bad;
+      if constexpr (has_calc) {
+        T v = detail::decode_struct_at<T, 0>(p, dflt);
+        std::apply(
+            [&](const auto&... spec) {
+              (
+                  [&] {
+                    using S = std::remove_cvref_t<decltype(spec)>;
+                    if constexpr (detail::is_calc<S>::value) {
+                      if (!bad.empty()) return;
+                      constexpr std::size_t I = detail::field_index<T, S::name>();
+                      static_assert(I != std::size_t(-1), "nanom: computed<T> names a field T does not have");
+                      using F = detail::field_type_at<T, I>;
+                      auto& fld = detail::field_ref<T, S::name>(v);
+                      std::string_view unused;
+                      if (!detail::set_computed(fld, detail::invoke_calc(spec.fn, std::as_const(v), ctx)) ||
+                          detail::emit_field_at<F, offs[I], false>(fld, p, dflt, unused))
+                        bad = S::name.sv();
+                    }
+                  }(),
+                  ...);
+            },
+            specs);
+        if (!bad.empty()) [[unlikely]]
+          return unexpected<encode_error>(
+              encode_error{"a computed value that does not fit its field", describe<T>::name(), bad});
+      }
+      std::apply(
+          [&](const auto&... spec) {
+            (
+                [&] {
+                  using S = std::remove_cvref_t<decltype(spec)>;
+                  if constexpr (detail::is_checksum<S>::value) {
+                    if (!bad.empty()) return;
+                    constexpr std::size_t I = detail::field_index<T, S::name>();
+                    static_assert(I != std::size_t(-1), "nanom: computed<T> names a field T does not have");
+                    using F = detail::field_type_at<T, I>;
+                    F fld{};
+                    std::string_view unused;
+                    (void)detail::emit_field_at<F, offs[I], false>(fld, p, dflt, unused);
+                    if (!detail::set_computed(fld, detail::invoke_checksum(spec.fn, std::span<const std::byte>(p, size), ctx)) ||
+                        detail::emit_field_at<F, offs[I], false>(fld, p, dflt, unused))
+                      bad = S::name.sv();
+                  }
+                }(),
+                ...);
+          },
+          specs);
+      if (!bad.empty()) [[unlikely]]
+        return unexpected<encode_error>(
+            encode_error{"a computed value that does not fit its field", describe<T>::name(), bad});
+      return unit{};
+    }
+  }
+};
+
+/// Bounds-checked entry into a zero-copy mutable overlay over `out`.
+template <Described T>
+constexpr expected<mut_view<T>, encode_error> overlay_mut(
+    std::span<std::byte> out, std::endian dflt = std::endian::native) {
+  static_assert(detail::layout_ok<T>(),
+                "nanom: bit fields must pack to byte boundaries, every non-bit field must start byte-aligned, "
+                "and msb0 / lsb0 runs must not share a byte");
+  if (out.size() < wire_size_v<T>)
+    return unexpected<encode_error>(
+        encode_error{"an output buffer smaller than the struct", describe<T>::name(), {}});
+  return mut_view<T>{out.data(), dflt};
 }
 
 }  // namespace nanom

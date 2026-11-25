@@ -314,6 +314,105 @@ constexpr bool compile_time_designated_vlan() {
 }
 static_assert(compile_time_designated_vlan(), "designated initializer syntax with ubits<N>");
 
+struct udp_pseudo_hdr {
+  nm::be<u16> src_port, dst_port, length, checksum;
+};
+NANOM_DESCRIBE(udp_pseudo_hdr, src_port, dst_port, length, checksum);
+
+struct udp_ipv4_ctx {
+  std::span<const std::byte> payload{};
+  std::array<u8, 4>          src{};
+  std::array<u8, 4>          dst{};
+};
+
+template <>
+struct nm::computed<udp_pseudo_hdr> {
+  static constexpr auto fields = std::tuple{
+      nm::calc<"length">([](const udp_pseudo_hdr&, const udp_ipv4_ctx& c) { return 8 + c.payload.size(); }),
+      nm::checksum<"checksum">([](std::span<const std::byte> h, const udp_ipv4_ctx& c) {
+        u32 sum = 0;
+        auto add16 = [&](std::span<const std::byte> s) {
+          for (std::size_t i = 0; i + 1 < s.size(); i += 2)
+            sum += (u32(std::uint8_t(s[i])) << 8) | std::uint8_t(s[i + 1]);
+          if (s.size() % 2) sum += u32(std::uint8_t(s.back())) << 8;
+        };
+        sum += (u32(c.src[0]) << 8) | c.src[1];
+        sum += (u32(c.src[2]) << 8) | c.src[3];
+        sum += (u32(c.dst[0]) << 8) | c.dst[1];
+        sum += (u32(c.dst[2]) << 8) | c.dst[3];
+        sum += 17u;
+        sum += u32(h.size() + c.payload.size());
+        add16(h);
+        add16(c.payload);
+        while (sum >> 16) sum = (sum & 0xffffu) + (sum >> 16);
+        const u16 cs = u16(~sum);
+        return cs == 0 ? u16(0xffff) : cs;
+      }),
+  };
+};
+
+static void test_mut_view_and_custom_ctx() {
+  // WP-3.1: mut_view<T> in-place patching & recompute
+  {
+    std::array<std::byte, 4> vbuf{};
+    vlan_hdr v{.pcp = 2, .dei = 0, .vid = 10, .eth_type = 0x0800};
+    CHECK(nm::emit(v, vbuf).has_value());
+    auto mv = nm::overlay_mut<vlan_hdr>(vbuf);
+    CHECK(mv.has_value());
+    CHECK(mv->set<"vid">(42).has_value());
+    CHECK(mv->set<"pcp">(6).has_value());
+    CHECK(mv->get<"vid">() == 42 && mv->get<"pcp">() == 6 && mv->get<"eth_type">() == 0x0800);
+    // Out-of-range bitfield patch must fail naming "vid"
+    auto bad = mv->set<"vid">(5000);
+    CHECK(!bad && bad.error().field == "vid");
+    // Too-small buffer rejected by overlay_mut
+    std::array<std::byte, 3> tiny{};
+    CHECK(!nm::overlay_mut<vlan_hdr>(tiny));
+
+    // Patch IPv4 ident + ttl in place and recompute checksum
+    ipv4_hdr ip{};
+    ip.version = 4; ip.flags = 2; ip.ttl = 64; ip.proto = 17;
+    ip.src = {192, 168, 0, 1}; ip.dst = {192, 168, 0, 199};
+    std::array<std::byte, 20> ipbuf{};
+    std::vector<std::byte> payload(40, std::byte{0x5a});
+    CHECK(nm::emit(ip, ipbuf, nm::emit_ctx{payload}).has_value());
+    auto m_ip = nm::overlay_mut<ipv4_hdr>(ipbuf);
+    CHECK(m_ip.has_value());
+    const u16 old_csum = m_ip->get<"checksum">();
+    CHECK(m_ip->set<"ident">(0x1234).has_value());
+    CHECK(m_ip->set<"ttl">(32).has_value());
+    CHECK(!nm::verify_computed<ipv4_hdr>(ipbuf, nm::emit_ctx{payload}));  // stale checksum before recompute
+    CHECK(m_ip->recompute(nm::emit_ctx{payload}).has_value());
+    CHECK(m_ip->get<"checksum">() != old_csum);
+    CHECK(nm::verify_computed<ipv4_hdr>(ipbuf, nm::emit_ctx{payload}));
+
+    // Nested mut_view patching on scalars_t
+    scalars_t sc{};
+    std::array<std::byte, nm::wire_size_v<scalars_t>> scbuf{};
+    CHECK(nm::emit(sc, scbuf).has_value());
+    auto m_sc = nm::overlay_mut<scalars_t>(scbuf);
+    CHECK(m_sc && m_sc->get<"in">().set<"x">(0x11223344u).has_value());
+    CHECK(m_sc->get<"in">().get<"x">() == 0x11223344u);
+  }
+
+  // WP-3.2: custom emit_ctx with RFC 768 UDP IPv4 pseudo-header checksum
+  {
+    udp_pseudo_hdr u{};
+    u.src_port = 12345;
+    u.dst_port = 53;
+    const auto payload = hex("deadbeefcafe");
+    const udp_ipv4_ctx ctx{payload, {192, 168, 1, 10}, {8, 8, 8, 8}};
+    auto b = nm::to_bytes(u, ctx);
+    CHECK(b.has_value());
+    if (b) {
+      CHECK(nm::verify_computed<udp_pseudo_hdr>(*b, ctx));
+      // Different destination IP invalidates the pseudo-header checksum!
+      const udp_ipv4_ctx wrong_dst{payload, {192, 168, 1, 10}, {8, 8, 4, 4}};
+      CHECK(!nm::verify_computed<udp_pseudo_hdr>(*b, wrong_dst));
+    }
+  }
+}
+
 int main() {
   std::mt19937_64 rng(2026);
   byte_roundtrip<eth_hdr>("eth_hdr", rng, 500);
@@ -327,6 +426,7 @@ int main() {
   byte_roundtrip<odd_width_hdr>("odd_width_hdr", rng, 1000);
   test_computed();
   test_errors();
+  test_mut_view_and_custom_ctx();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;
