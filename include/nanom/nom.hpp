@@ -568,8 +568,12 @@ struct owned_pattern {
 inline auto make_tag_parser(owned_pattern pat) {
   return [pat = std::move(pat)](input in) -> result<bytes> {
     const std::size_t n = pat.len;
-    if (in.size() < n) return make_incomplete(in, n - in.size());
-    if (std::memcmp(in.first, pat.data(), n) != 0) return make_err(in, "tag");
+    if (in.size() < n) {
+      if (!in.empty() && std::memcmp(in.first, pat.data(), in.size()) != 0)
+        return make_err(in, "tag");
+      return make_incomplete(in, n - in.size());
+    }
+    if (n && std::memcmp(in.first, pat.data(), n) != 0) return make_err(in, "tag");
     return done{in.take_span(n), in.advance(n)};
   };
 }
@@ -577,7 +581,11 @@ inline auto make_tag_parser(owned_pattern pat) {
 inline auto make_tag_no_case_parser(owned_pattern pat) {
   return [pat = std::move(pat)](input in) -> result<bytes> {
     const std::size_t n = pat.len;
-    if (in.size() < n) return make_incomplete(in, n - in.size());
+    if (in.size() < n) {
+      for (std::size_t i = 0; i < in.size(); ++i)
+        if (lower(char(in[i])) != lower(pat.data()[i])) return make_err(in, "tag_no_case");
+      return make_incomplete(in, n - in.size());
+    }
     for (std::size_t i = 0; i < n; ++i)
       if (lower(char(in[i])) != lower(pat.data()[i])) return make_err(in, "tag_no_case");
     return done{in.take_span(n), in.advance(n)};
@@ -592,8 +600,12 @@ inline auto tag(std::string_view pattern) {
 }
 constexpr auto tag(bytes pattern) {
   return [pattern](input in) -> result<bytes> {
-    if (in.size() < pattern.size()) return make_incomplete(in, pattern.size() - in.size());
-    if (std::memcmp(in.first, pattern.data(), pattern.size()) != 0)
+    if (in.size() < pattern.size()) {
+      if (!in.empty() && std::memcmp(in.first, pattern.data(), in.size()) != 0)
+        return make_err(in, "tag");
+      return make_incomplete(in, pattern.size() - in.size());
+    }
+    if (!pattern.empty() && std::memcmp(in.first, pattern.data(), pattern.size()) != 0)
       return make_err(in, "tag");
     return done{in.take_span(pattern.size()), in.advance(pattern.size())};
   };
@@ -664,12 +676,30 @@ constexpr auto take_till1(Pred pred) {
   };
 }
 
+namespace detail {
+/// 256-bit constexpr byte membership table — owns character sets by value
+/// (eliminating dangling string_view captures) and enables O(1) lookup.
+struct byte_set {
+  std::array<std::uint64_t, 4> bits{};
+  constexpr explicit byte_set(std::string_view s) noexcept {
+    for (char c : s) {
+      const auto b = static_cast<std::uint8_t>(c);
+      bits[b >> 6] |= std::uint64_t(1) << (b & 63);
+    }
+  }
+  constexpr bool contains(std::uint8_t b) const noexcept {
+    return ((bits[b >> 6] >> (b & 63)) & 1u) != 0;
+  }
+};
+}  // namespace detail
+
 /// take_until("\r\n") — everything before the first occurrence of the needle
 /// (needle not consumed). Incomplete if the needle never appears.
-constexpr auto take_until(std::string_view needle) {
-  return [needle](input in) -> result<bytes> {
+/// Owns the needle by value so parsers outlive ephemeral std::string sources.
+inline auto take_until(std::string_view needle) {
+  return [pat = detail::owned_pattern(needle)](input in) -> result<bytes> {
     auto hay = in.span();
-    auto ned = bytes(reinterpret_cast<const std::byte*>(needle.data()), needle.size());
+    auto ned = bytes(reinterpret_cast<const std::byte*>(pat.data()), pat.len);
     auto it = std::search(hay.begin(), hay.end(), ned.begin(), ned.end());
     if (it == hay.end()) return make_incomplete(in, 1);
     const std::size_t n = std::size_t(it - hay.begin());
@@ -679,16 +709,16 @@ constexpr auto take_until(std::string_view needle) {
 
 /// is_a("0123456789abcdef") — 1+ bytes from the set. is_not — 1+ bytes NOT in it.
 constexpr auto is_a(std::string_view set) {
-  return [set](input in) {
+  return [bs = detail::byte_set(set)](input in) {
     return detail::take_pred(
-        in, [set](std::uint8_t b) { return set.find(char(b)) != std::string_view::npos; },
+        in, [bs](std::uint8_t b) { return bs.contains(b); },
         1, detail::nmax, "is_a: byte from set");
   };
 }
 constexpr auto is_not(std::string_view set) {
-  return [set](input in) {
+  return [bs = detail::byte_set(set)](input in) {
     return detail::take_pred(
-        in, [set](std::uint8_t b) { return set.find(char(b)) == std::string_view::npos; },
+        in, [bs](std::uint8_t b) { return !bs.contains(b); },
         1, detail::nmax, "is_not: byte outside set");
   };
 }
@@ -716,16 +746,16 @@ constexpr auto satisfy(Pred pred) {
 }
 /// one_of("+-") / none_of("\r\n") — one char (not) in the set.
 constexpr auto one_of(std::string_view set) {
-  return [set](input in) -> result<char> {
+  return [bs = detail::byte_set(set)](input in) -> result<char> {
     if (in.empty()) return make_incomplete(in, 1);
-    if (set.find(char(in[0])) == std::string_view::npos) return make_err(in, "one_of");
+    if (!bs.contains(std::uint8_t(in[0]))) return make_err(in, "one_of");
     return done{char(in[0]), in.advance(1)};
   };
 }
 constexpr auto none_of(std::string_view set) {
-  return [set](input in) -> result<char> {
+  return [bs = detail::byte_set(set)](input in) -> result<char> {
     if (in.empty()) return make_incomplete(in, 1);
-    if (set.find(char(in[0])) != std::string_view::npos) return make_err(in, "none_of");
+    if (bs.contains(std::uint8_t(in[0]))) return make_err(in, "none_of");
     return done{char(in[0]), in.advance(1)};
   };
 }
@@ -778,7 +808,7 @@ inline constexpr auto crlf    = [](input in) -> result<std::string_view> {
 /// "\n" or "\r\n"
 inline constexpr auto line_ending = [](input in) -> result<std::string_view> {
   if (in.empty()) return make_incomplete(in, 1);
-  if (char(in[0]) == '\n') return done{std::string_view("\n"), in.advance(1)};
+  if (char(in[0]) == '\n') return done{as_str(in.take_span(1)), in.advance(1)};
   if (char(in[0]) == '\r') {
     if (in.size() < 2) return make_incomplete(in, 1);
     if (char(in[1]) == '\n') return done{as_str(in.take_span(2)), in.advance(2)};
@@ -1081,7 +1111,10 @@ template <Parser P>
 constexpr auto count(P p, std::size_t n) {
   return [p, n](input in) -> result<std::vector<parsed_t<P>>> {
     std::vector<parsed_t<P>> out;
-    out.reserve(n);
+    // Cap pre-reservation: a hostile wire count (e.g. length_count(be_u32, u8)
+    // with 0xFFFFFFFF) must not trigger a multi-GiB allocation before elements
+    // are proven present in the input.
+    out.reserve(std::min<std::size_t>(n, std::min<std::size_t>(in.size(), 4096)));
     input cur = in;
     for (std::size_t i = 0; i < n; ++i) {
       auto r = p(cur);
@@ -1094,13 +1127,14 @@ constexpr auto count(P p, std::size_t n) {
 }
 
 /// separated_list0(sep, p) / separated_list1 — p (sep p)*, seps discarded.
+/// Failure (from cut()) and Incomplete (in streaming mode) propagate.
 template <Parser S, Parser P>
 constexpr auto separated_list0(S sep, P p) {
   return [sep, p](input in) -> result<std::vector<parsed_t<P>>> {
     std::vector<parsed_t<P>> out;
     auto r = p(in);
     if (!r) {
-      if (r.error().kind == errk::fail) return unexp(r.error());
+      if (r.error().kind != errk::err) return unexp(r.error());
       return done{std::move(out), in};
     }
     out.push_back(std::move(r->value));
@@ -1108,12 +1142,12 @@ constexpr auto separated_list0(S sep, P p) {
     for (;;) {
       auto rs = sep(cur);
       if (!rs) {
-        if (rs.error().kind == errk::fail) return unexp(rs.error());
+        if (rs.error().kind != errk::err) return unexp(rs.error());
         return done{std::move(out), cur};
       }
       auto rp = p(rs->rest);
       if (!rp) {
-        if (rp.error().kind == errk::fail) return unexp(rp.error());
+        if (rp.error().kind != errk::err) return unexp(rp.error());
         return done{std::move(out), cur};
       }
       if (rp->rest.first == cur.first) return make_err(cur, "separated_list0: no progress");
@@ -1293,13 +1327,13 @@ constexpr auto flat_map(P p, F f) {
 }
 
 /// opt(p) — std::optional<V>: engaged on success, nullopt on recoverable
-/// error (Failure from cut() still propagates).
+/// error (Failure from cut() and Incomplete in streaming mode still propagate).
 template <Parser P>
 constexpr auto opt(P p) {
   return [p](input in) -> result<std::optional<parsed_t<P>>> {
     auto r = p(in);
     if (r) return done{std::optional<parsed_t<P>>(std::move(r->value)), r->rest};
-    if (r.error().kind == errk::fail) return unexp(r.error());
+    if (r.error().kind != errk::err) return unexp(r.error());
     return done{std::optional<parsed_t<P>>{}, in};
   };
 }
@@ -1322,13 +1356,14 @@ constexpr auto peek(P p) {
     return done{std::move(r->value), in};
   };
 }
-/// not_(p) — succeed (consuming nothing) iff p fails. (nom's `not`.)
+/// not_(p) — succeed (consuming nothing) iff p fails with recoverable err
+/// (Failure from cut() and Incomplete in streaming mode still propagate).
 template <Parser P>
 constexpr auto not_(P p) {
   return [p](input in) -> result<unit> {
     auto r = p(in);
     if (r) return make_err(in, "not: inner parser must fail");
-    if (r.error().kind == errk::fail) return unexp(r.error());
+    if (r.error().kind != errk::err) return unexp(r.error());
     return done{unit{}, in};
   };
 }

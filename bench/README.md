@@ -74,10 +74,10 @@ step would need batch/SIMD (nanotins' bulk path), not micro-tuning.
   and `soa<T>` — when you keep every column (tabulation); use `overlay<T>()` for
   a hot classification walk that reads a handful of fields.
 
-`result<T>` is 96 bytes (down from 168, after the error type was shrunk to 4
-context frames + 32-bit offsets); the profile showed it is not on the critical
-path for the overlay walk, so no further no-`expected` fast path is warranted
-for now.
+`result<u64>` is 56 bytes (40 bytes in lean/strict mode, down from 168 after the
+error type was shrunk to a 24-byte POD + thread-local context ring); the profile
+showed it is not on the critical path for the overlay walk, so no further
+no-`expected` fast path is warranted for now.
 
 ## Honest scorecard vs nanotins
 

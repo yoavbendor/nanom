@@ -516,6 +516,43 @@ static_assert(nm::strct<vlan_tag>()(nm::input{nm::bytes(vlan_bytes.data(), 4)})-
               "constexpr strct<> decode");
 }  // namespace cx_proof
 
+static void test_phase0_fixes() {
+  // Streaming incomplete propagation in opt, not_, separated_list0/1
+  {
+    auto r1 = nm::opt(nm::tag("GET"))(nm::streaming(in("GE")));
+    CHECK(!r1 && r1.error().kind == nm::errk::incomplete && r1.error().needed == 1);
+
+    auto r2 = nm::opt(nm::tag("GET"))(nm::streaming(in("PU")));
+    CHECK(r2 && !r2->value.has_value() && r2->rest.size() == 2);
+
+    auto r3 = nm::not_(nm::tag("GET"))(nm::streaming(in("GE")));
+    CHECK(!r3 && r3.error().kind == nm::errk::incomplete);
+
+    auto r4 = nm::not_(nm::tag("GET"))(nm::streaming(in("PU")));
+    CHECK(r4 && r4->rest.size() == 2);
+
+    auto r5 = nm::separated_list0(nm::tag(", "), nm::tag("ab"))(nm::streaming(in("ab, a")));
+    CHECK(!r5 && r5.error().kind == nm::errk::incomplete);
+
+    auto r6 = nm::separated_list0(nm::tag(", "), nm::tag("ab"))(nm::streaming(in("ab,")));
+    CHECK(!r6 && r6.error().kind == nm::errk::incomplete);
+
+    auto r7 = nm::separated_list1(nm::tag(", "), nm::tag("ab"))(nm::streaming(in("a")));
+    CHECK(!r7 && r7.error().kind == nm::errk::incomplete);
+  }
+
+  // line_ending provenance: returned string_view must point inside input buffer
+  {
+    const std::string lf_buf = "\nrest";
+    auto r_lf = nm::line_ending(nm::from(std::string_view(lf_buf)));
+    CHECK(r_lf && r_lf->value == "\n" && r_lf->value.data() == lf_buf.data());
+
+    const std::string crlf_buf = "\r\nrest";
+    auto r_crlf = nm::line_ending(nm::from(std::string_view(crlf_buf)));
+    CHECK(r_crlf && r_crlf->value == "\r\n" && r_crlf->value.data() == crlf_buf.data());
+  }
+}
+
 int main() {
   test_primitives();
   test_characters();
@@ -530,6 +567,7 @@ int main() {
   test_schema();
   test_soa();
   test_errors();
+  test_phase0_fixes();
   if (failures) {
     std::printf("%d FAILURE(S)\n", failures);
     return 1;

@@ -44,7 +44,7 @@ To override the GPU/bulk ban after auditing your kernel, define
 
 | type | default (full) | strict / minimal |
 |------|---------------:|-----------------:|
-| `nanom::input` | 48 B | **32 B** |
+| `nanom::input` | 40 B | **24 B** |
 | `nanom::bytes` | 32 B (`attested_bytes`) | **16 B** (`std::span`) |
 
 Smaller cursors mean less register pressure and copying on the hot path.

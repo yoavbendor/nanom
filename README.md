@@ -38,7 +38,7 @@ compile time so the runtime can drop the checks those APIs made necessary. It re
 raw `from(ptr, len)` entry, **deletes** `from(std::string&&)` (owning-temporary dangle is a
 compile error), refuses `<nanom/bulk.hpp>` (GPU/bulk raw-pointer scatter), and adds
 `[[clang::lifetimebound]]` diagnostics — then runs with generation tracking and view guards
-**off** for a leaner data model (`input` 48→32 B, `bytes` 32→16 B).
+**off** for a leaner data model (`input` 40→24 B, `bytes` 32→16 B).
 
 Proven, not asserted (verified byte-identical output, best-of-5):
 
