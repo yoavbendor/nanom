@@ -313,7 +313,7 @@ struct seq_fold_range final
     for (const P& k : *kids) {
       slot<V> v;
       if (!call_into<V>(k, in, &v.v, err)) return false;
-      f(acc, std::move(v.v));
+      detail::apply_fold(f, acc, std::move(v.v));
       v.destroy();
     }
     std::construct_at(out, std::move(acc));
@@ -354,7 +354,7 @@ struct length_fold_parser final
         std::construct_at(err, make_err(in, "length_fold: element parser must consume input").error());
         return false;
       }
-      f(acc, std::move(v.v));
+      detail::apply_fold(f, acc, std::move(v.v));
       v.destroy();
     }
     std::construct_at(out, std::move(acc));
@@ -515,12 +515,14 @@ auto alt(R&& parsers) {
 }
 
 /// seq_fold(range, init, f) — run every parser of a runtime list in order,
-/// folding the values: acc = init(); f(acc&, value) per parser (mutating, like
-/// fold_many0). Any error propagates unchanged. An empty range yields init().
+/// folding the values: acc = init(); accepts either mutating f(acc&, value) -> void
+/// or functional f(acc, value) -> acc (like fold_many0). Any error propagates unchanged.
 template <class R, class Init, class F>
   requires detail::parser_range<R> && std::invocable<const Init&> &&
-           std::invocable<const F&, std::decay_t<std::invoke_result_t<const Init&>>&,
-                          parsed_t<detail::range_parser_t<R>>&&>
+           (std::invocable<const F&, std::decay_t<std::invoke_result_t<const Init&>>&,
+                           parsed_t<detail::range_parser_t<R>>&&> ||
+            std::invocable<const F&, std::decay_t<std::invoke_result_t<const Init&>>&&,
+                           parsed_t<detail::range_parser_t<R>>&&>)
 auto seq_fold(R&& parsers, Init init, F f) {
   using P = detail::range_parser_t<R>;
   return detail::seq_fold_range<P, Init, F>{

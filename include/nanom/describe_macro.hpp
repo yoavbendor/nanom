@@ -32,14 +32,14 @@
 
 #else
 
-// --- preprocessor map machinery (bounded, 32 fields max) -------------------
+// --- preprocessor map machinery (bounded, 64 fields max) -------------------
 // MSVC's traditional preprocessor passes a __VA_ARGS__ forwarded to another macro as one argument;
 // forcing a rescan through NANOM_PP_EXPAND makes each forwarding expansion see the separate arguments.
 #define NANOM_PP_EXPAND(x) x
 #define NANOM_PP_NARG(...) NANOM_PP_EXPAND(NANOM_PP_NARG_(__VA_ARGS__, NANOM_PP_RSEQ()))
 #define NANOM_PP_NARG_(...) NANOM_PP_EXPAND(NANOM_PP_ARG_N(__VA_ARGS__))
-#define NANOM_PP_ARG_N(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,N,...) N
-#define NANOM_PP_RSEQ() 32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1
+#define NANOM_PP_ARG_N(_1,_2,_3,_4,_5,_6,_7,_8,_9,_10,_11,_12,_13,_14,_15,_16,_17,_18,_19,_20,_21,_22,_23,_24,_25,_26,_27,_28,_29,_30,_31,_32,_33,_34,_35,_36,_37,_38,_39,_40,_41,_42,_43,_44,_45,_46,_47,_48,_49,_50,_51,_52,_53,_54,_55,_56,_57,_58,_59,_60,_61,_62,_63,_64,N,...) N
+#define NANOM_PP_RSEQ() 64,63,62,61,60,59,58,57,56,55,54,53,52,51,50,49,48,47,46,45,44,43,42,41,40,39,38,37,36,35,34,33,32,31,30,29,28,27,26,25,24,23,22,21,20,19,18,17,16,15,14,13,12,11,10,9,8,7,6,5,4,3,2,1
 #define NANOM_PP_CAT(a, b) NANOM_PP_CAT_(a, b)
 #define NANOM_PP_CAT_(a, b) a##b
 #define NANOM_FLD(T, m) ::nanom::detail::fld<#m, &T::m>{}
@@ -75,6 +75,38 @@
 #define NANOM_PP_M30(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M29(M,T,__VA_ARGS__))
 #define NANOM_PP_M31(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M30(M,T,__VA_ARGS__))
 #define NANOM_PP_M32(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M31(M,T,__VA_ARGS__))
+#define NANOM_PP_M33(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M32(M,T,__VA_ARGS__))
+#define NANOM_PP_M34(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M33(M,T,__VA_ARGS__))
+#define NANOM_PP_M35(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M34(M,T,__VA_ARGS__))
+#define NANOM_PP_M36(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M35(M,T,__VA_ARGS__))
+#define NANOM_PP_M37(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M36(M,T,__VA_ARGS__))
+#define NANOM_PP_M38(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M37(M,T,__VA_ARGS__))
+#define NANOM_PP_M39(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M38(M,T,__VA_ARGS__))
+#define NANOM_PP_M40(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M39(M,T,__VA_ARGS__))
+#define NANOM_PP_M41(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M40(M,T,__VA_ARGS__))
+#define NANOM_PP_M42(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M41(M,T,__VA_ARGS__))
+#define NANOM_PP_M43(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M42(M,T,__VA_ARGS__))
+#define NANOM_PP_M44(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M43(M,T,__VA_ARGS__))
+#define NANOM_PP_M45(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M44(M,T,__VA_ARGS__))
+#define NANOM_PP_M46(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M45(M,T,__VA_ARGS__))
+#define NANOM_PP_M47(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M46(M,T,__VA_ARGS__))
+#define NANOM_PP_M48(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M47(M,T,__VA_ARGS__))
+#define NANOM_PP_M49(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M48(M,T,__VA_ARGS__))
+#define NANOM_PP_M50(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M49(M,T,__VA_ARGS__))
+#define NANOM_PP_M51(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M50(M,T,__VA_ARGS__))
+#define NANOM_PP_M52(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M51(M,T,__VA_ARGS__))
+#define NANOM_PP_M53(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M52(M,T,__VA_ARGS__))
+#define NANOM_PP_M54(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M53(M,T,__VA_ARGS__))
+#define NANOM_PP_M55(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M54(M,T,__VA_ARGS__))
+#define NANOM_PP_M56(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M55(M,T,__VA_ARGS__))
+#define NANOM_PP_M57(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M56(M,T,__VA_ARGS__))
+#define NANOM_PP_M58(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M57(M,T,__VA_ARGS__))
+#define NANOM_PP_M59(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M58(M,T,__VA_ARGS__))
+#define NANOM_PP_M60(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M59(M,T,__VA_ARGS__))
+#define NANOM_PP_M61(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M60(M,T,__VA_ARGS__))
+#define NANOM_PP_M62(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M61(M,T,__VA_ARGS__))
+#define NANOM_PP_M63(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M62(M,T,__VA_ARGS__))
+#define NANOM_PP_M64(M,T,a,...) M(T,a), NANOM_PP_EXPAND(NANOM_PP_M63(M,T,__VA_ARGS__))
 #define NANOM_PP_MAP(M, T, ...) \
   NANOM_PP_EXPAND(NANOM_PP_CAT(NANOM_PP_M, NANOM_PP_NARG(__VA_ARGS__))(M, T, __VA_ARGS__))
 

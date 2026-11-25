@@ -390,6 +390,23 @@ static void test_concurrent_calls() {
   CHECK(g.use_count() == 1);
 }
 
+static void test_returning_folds() {
+  std::vector<nm::dyn<std::uint64_t>> ps;
+  ps.push_back(nm::map(nm::u8, [](std::uint8_t b) { return std::uint64_t(b); }));
+  ps.push_back(nm::map(nm::be_u16, [](std::uint16_t v) { return std::uint64_t(v); }));
+  auto sf = nm::seq_fold(ps, [] { return std::uint64_t{0}; },
+                         [](std::uint64_t acc, std::uint64_t v) { return acc + v; });
+  const std::string_view d1("\x05\x00\x0a", 3);
+  auto r1 = sf(nm::from(d1));
+  CHECK(r1 && r1->value == 15u);
+
+  auto lf = nm::length_fold(nm::u8, nm::u8, [] { return 0; },
+                            [](int acc, std::uint8_t v) { return acc + int(v); });
+  const std::string_view d2("\x03\x01\x02\x03", 4);
+  auto r2 = lf(nm::from(d2));
+  CHECK(r2 && r2->value == 6);
+}
+
 int main() {
   test_dyn_basics();
   test_alt_range();
@@ -399,6 +416,7 @@ int main() {
   test_map_and_thin();
   test_recursive();
   test_concurrent_calls();
+  test_returning_folds();
   if (failures == 0) std::printf("PASS: nanom dyn / runtime-composition tests\n");
   return failures == 0 ? 0 : 1;
 }

@@ -11,6 +11,7 @@
 #include <cassert>
 #include <bit>
 #include <charconv>
+#include <compare>
 #include <concepts>
 #include <cstddef>
 #include <cstdint>

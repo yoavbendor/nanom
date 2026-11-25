@@ -299,6 +299,21 @@ static_assert(!nm::detail::emit_can_fail_v<eth_hdr>);
 static_assert(nm::detail::emit_can_fail_v<vlan_hdr>);
 static_assert(nm::detail::emit_can_fail_v<ipv4_hdr>);
 
+struct odd_width_hdr {
+  nm::be_u24_t a24;
+  nm::le_u24_t b24;
+  nm::be_u48_t c48;
+  nm::le_u48_t d48;
+};
+NANOM_DESCRIBE(odd_width_hdr, a24, b24, c48, d48);
+
+constexpr bool compile_time_designated_vlan() {
+  vlan_hdr v{.pcp = 5, .dei = 1, .vid = 0x123, .eth_type = 0x0800};
+  auto b = nm::to_bytes(v);
+  return b && (*b)[0] == std::byte{0xb1} && (*b)[1] == std::byte{0x23};
+}
+static_assert(compile_time_designated_vlan(), "designated initializer syntax with ubits<N>");
+
 int main() {
   std::mt19937_64 rng(2026);
   byte_roundtrip<eth_hdr>("eth_hdr", rng, 500);
@@ -309,6 +324,7 @@ int main() {
   byte_roundtrip<fat_dirent>("fat_dirent", rng, 500);
   byte_roundtrip<mixed_bits>("mixed_bits", rng, 2000);
   byte_roundtrip<scalars_t>("scalars_t", rng, 2000);
+  byte_roundtrip<odd_width_hdr>("odd_width_hdr", rng, 1000);
   test_computed();
   test_errors();
   if (failures) {

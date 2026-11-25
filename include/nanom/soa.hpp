@@ -13,6 +13,86 @@ namespace nanom {
 // 23. soa<T> — columnar chunked storage (SoA) for nanoarrow / nanolance
 // ---------------------------------------------------------------------------
 
+namespace detail {
+
+template <fixed_string Name, class LeafType>
+struct soa_leaf_col {
+  static constexpr auto name = Name;
+  using type = LeafType;
+};
+
+template <std::size_t NA, std::size_t NB>
+consteval auto soa_join_names(fixed_string<NA> a, fixed_string<NB> b) {
+  fixed_string<NA + NB> out{};
+  std::size_t pos = 0;
+  for (std::size_t i = 0; i < NA - 1; ++i) out.data[pos++] = a.data[i];
+  out.data[pos++] = '.';
+  for (std::size_t i = 0; i < NB - 1; ++i) out.data[pos++] = b.data[i];
+  out.data[pos] = '\0';
+  return out;
+}
+
+template <Described T, fixed_string Prefix, bool HasPrefix>
+struct soa_flatten;
+
+template <class Fld, fixed_string Prefix, bool HasPrefix>
+struct soa_build_one {
+  using M = member_t<Fld::mem_ptr>;
+
+  static consteval auto full_name() {
+    if constexpr (HasPrefix) return soa_join_names(Prefix, Fld::name);
+    else return Fld::name;
+  }
+
+  static consteval auto make() {
+    if constexpr (Described<M>) {
+      return soa_flatten<M, full_name(), true>::make();
+    } else {
+      return std::tuple<soa_leaf_col<full_name(), typename wire<M>::decoded>>{};
+    }
+  }
+};
+
+template <Described T, fixed_string Prefix, bool HasPrefix>
+struct soa_flatten {
+  using Flds = decltype(describe<T>::fields());
+
+  template <std::size_t... I>
+  static consteval auto build(std::index_sequence<I...>) {
+    return std::tuple_cat(soa_build_one<std::tuple_element_t<I, Flds>, Prefix, HasPrefix>::make()...);
+  }
+
+  static consteval auto make() { return build(std::make_index_sequence<std::tuple_size_v<Flds>>{}); }
+};
+
+template <Described T>
+using soa_columns_of_t = decltype(soa_flatten<T, fixed_string{""}, false>::make());
+
+template <class Cols, fixed_string Name, std::size_t... I>
+consteval std::size_t soa_col_index_impl(std::index_sequence<I...>) {
+  std::size_t idx = std::size_t(-1);
+  ((std::tuple_element_t<I, Cols>::name == Name.sv() ? void(idx = I) : void()), ...);
+  return idx;
+}
+
+template <class Cols, fixed_string Name>
+consteval std::size_t soa_col_index() {
+  return soa_col_index_impl<Cols, Name>(std::make_index_sequence<std::tuple_size_v<Cols>>{});
+}
+
+template <fixed_string Bad, fixed_string... Valid>
+struct soa_column_not_found {
+  static constexpr bool value = false;
+};
+
+template <fixed_string Bad, class... Cols>
+consteval void diagnose_unknown_soa_column(std::tuple<Cols...>) {
+  static_assert(soa_column_not_found<Bad, Cols::name...>::value,
+                "nanom::soa: unknown column name (see soa_column_not_found template args for valid names)");
+}
+
+}  // namespace detail
+
 /// Column-oriented accumulator: push() decomposes each struct into flat,
 /// host-order leaf columns; full chunks are sealed at chunk_rows so buffers
 /// can be handed to ArrowArray / Lance fragment writers without a transpose.
@@ -35,6 +115,31 @@ class soa {
     template <class V>
     std::span<const V> as(std::size_t i) const {
       return std::span<const V>(reinterpret_cast<const V*>(cols[i].data()), rows);
+    }
+    /// Compile-time named raw column access (supports top-level and dotted nested names).
+    template <fixed_string Name>
+    bytes column() const {
+      using Cols = detail::soa_columns_of_t<T>;
+      constexpr std::size_t I = detail::soa_col_index<Cols, Name>();
+      if constexpr (I == std::size_t(-1)) {
+        detail::diagnose_unknown_soa_column<Name>(Cols{});
+        return {};
+      } else {
+        return col(I);
+      }
+    }
+    /// Compile-time named typed span access (deduces the column's decoded type V).
+    template <fixed_string Name>
+    auto span() const {
+      using Cols = detail::soa_columns_of_t<T>;
+      constexpr std::size_t I = detail::soa_col_index<Cols, Name>();
+      if constexpr (I == std::size_t(-1)) {
+        detail::diagnose_unknown_soa_column<Name>(Cols{});
+        return std::span<const std::byte>{};
+      } else {
+        using V = typename std::tuple_element_t<I, Cols>::type;
+        return as<V>(I);
+      }
     }
   };
 

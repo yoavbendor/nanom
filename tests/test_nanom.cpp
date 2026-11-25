@@ -587,6 +587,168 @@ static void test_phase0_fixes() {
   }
 }
 
+struct ptp_ts_hdr {
+  nm::be_u48_t seconds;
+  nm::be<uint32_t> nanos;
+  nm::be_u24_t ttl24;
+  nm::le_u24_t le24;
+  bool operator==(const ptp_ts_hdr&) const = default;
+};
+NANOM_DESCRIBE(ptp_ts_hdr, seconds, nanos, ttl24, le24);
+
+struct wide_40_fields {
+  uint8_t f01, f02, f03, f04, f05, f06, f07, f08, f09, f10;
+  uint8_t f11, f12, f13, f14, f15, f16, f17, f18, f19, f20;
+  uint8_t f21, f22, f23, f24, f25, f26, f27, f28, f29, f30;
+  uint8_t f31, f32, f33, f34, f35, f36, f37, f38, f39, f40;
+};
+NANOM_DESCRIBE(wide_40_fields,
+               f01, f02, f03, f04, f05, f06, f07, f08, f09, f10,
+               f11, f12, f13, f14, f15, f16, f17, f18, f19, f20,
+               f21, f22, f23, f24, f25, f26, f27, f28, f29, f30,
+               f31, f32, f33, f34, f35, f36, f37, f38, f39, f40);
+
+static void test_phase2_ergonomics() {
+  // WP-2.1: wire-type converting ctors, ==/<=>, = default struct equality, be_u24_t / be_u48_t
+  {
+    static_assert(std::is_trivially_copyable_v<nm::ubits<12>>);
+    static_assert(std::is_trivially_copyable_v<nm::ibits<12>>);
+    static_assert(std::is_trivially_copyable_v<nm::be<uint16_t>>);
+    static_assert(std::is_trivially_copyable_v<nm::be_u24_t>);
+    static_assert(std::is_trivially_copyable_v<nm::be_u48_t>);
+    static_assert(nm::wire_size_v<ptp_ts_hdr> == 16);
+
+    vlan_tag v{.pcp = 5, .dei = 1, .vid = 42, .ether = 0x0800};
+    CHECK(v.pcp == 5 && 5 == v.pcp && v.pcp < 6);
+    CHECK(v.vid == 42 && v.ether == 0x0800 && 0x0800 == v.ether && v.ether != 0x86dd);
+    v.vid = 100;
+    CHECK(v.vid == 100);
+
+    const uint8_t raw[16] = {
+        0x00, 0x01, 0x02, 0x03, 0x04, 0x05,  // be_u48: 0x000102030405
+        0x00, 0x00, 0x00, 0x2a,              // be_u32: 42
+        0xab, 0xcd, 0xef,                    // be_u24: 0xabcdef
+        0x34, 0x12, 0x00                     // le_u24: 0x001234
+    };
+    auto r = nm::strct<ptp_ts_hdr>()(nm::from(raw, sizeof raw));
+    CHECK(r && r->value.seconds == 0x000102030405ULL && r->value.nanos == 42u &&
+          r->value.ttl24 == 0xabcdefu && r->value.le24 == 0x1234u);
+    ptp_ts_hdr expected{.seconds = 0x000102030405ULL, .nanos = 42u, .ttl24 = 0xabcdefu, .le24 = 0x1234u};
+    CHECK(r->value == expected);
+    auto ov = nm::overlay<ptp_ts_hdr>()(nm::from(raw, sizeof raw));
+    CHECK(ov && ov->value.get<"seconds">() == 0x000102030405ULL &&
+          ov->value.get<"ttl24">() == 0xabcdefu && ov->value.get<"le24">() == 0x1234u);
+  }
+
+  // WP-2.2: fold_many0/1/m_n with both void mutating and Rust-style returning lambdas
+  {
+    const uint8_t b[4] = {1, 2, 3, 4};
+    auto r_mut = nm::fold_many0(nm::u8, [] { return 0; }, [](int& acc, uint8_t v) { acc += v; })(nm::from(b, 4));
+    auto r_ret = nm::fold_many0(nm::u8, [] { return 0; }, [](int acc, uint8_t v) { return acc + v; })(nm::from(b, 4));
+    CHECK(r_mut && r_mut->value == 10 && r_ret && r_ret->value == 10);
+
+    auto r1 = nm::fold_many1(nm::u8, [] { return 1; }, [](int acc, uint8_t v) { return acc * v; })(nm::from(b, 4));
+    CHECK(r1 && r1->value == 24);
+
+    auto rmn = nm::fold_many_m_n(2, 3, nm::u8, [] { return 0; }, [](int acc, uint8_t v) { return acc + v; })(nm::from(b, 4));
+    CHECK(rmn && rmn->value == 6 && rmn->rest.size() == 1);
+  }
+
+  // WP-2.3: 10-element seq & expected-aware map_res
+  {
+    const uint8_t ten[10] = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    auto p10 = nm::seq(nm::u8, nm::u8, nm::u8, nm::u8, nm::u8,
+                       nm::u8, nm::u8, nm::u8, nm::u8, nm::u8);
+    auto r10 = p10(nm::from(ten, 10));
+    CHECK(r10 && std::get<0>(r10->value) == 0 && std::get<9>(r10->value) == 9);
+
+    auto mr_ok = nm::map_res(nm::dec<int>(), [](int v) -> nm::expected<int, const char*> {
+      if (v < 0) return nm::unexpected<const char*>{"must be non-negative"};
+      return v * 2;
+    });
+    CHECK(mr_ok(in("21")) && mr_ok(in("21"))->value == 42);
+    auto mr_bad = mr_ok(in("-3"));
+    CHECK(!mr_bad && std::string_view(mr_bad.error().expected) == "must be non-negative");
+
+    auto mr_err = nm::map_res(nm::u8, [](uint8_t) -> nm::expected<int, nm::error> {
+      nm::error e{};
+      e.kind = nm::errk::fail;
+      e.expected = "custom fatal";
+      return nm::unexpected<nm::error>{e};
+    })(in("x"));
+    CHECK(!mr_err && mr_err.error().kind == nm::errk::fail &&
+          std::string_view(mr_err.error().expected) == "custom fatal");
+  }
+
+  // WP-2.4: scoped parser pipes (`|`) & latching nm::cursor
+  {
+    auto p_pipe = nm::dec<int>()
+                | nm::map([](int x) { return x + 1; })
+                | nm::verify([](int x) { return x > 10; })
+                | nm::context("big_num");
+    auto ok = p_pipe(in("41"));
+    CHECK(ok && ok->value == 42);
+    auto bad = p_pipe(in("5"));
+    CHECK(!bad && bad.error().frames().size == 1);
+
+    // Pre-composed reusable adaptor chain
+    auto stage = nm::map([](uint8_t b) { return int(b) * 2; })
+               | nm::verify([](int x) { return x >= 10; })
+               | nm::into<long>();
+    auto p2 = nm::u8 | stage | nm::opt() | nm::all_consuming();
+    const uint8_t one[1] = {7};
+    auto r2 = p2(nm::from(one, 1));
+    CHECK(r2 && r2->value.has_value() && *r2->value == 14L);
+
+    auto p_many = nm::chr('a') | nm::many1() | nm::recognize();
+    auto rm = p_many(in("aaab"));
+    CHECK(rm && nm::as_str(rm->value) == "aaa" && rm->rest.size() == 1);
+
+    // constexpr pipe evaluation
+    constexpr bool cx_pipe = [] {
+      std::array<std::byte, 2> raw{std::byte{3}, std::byte{4}};
+      auto p = nm::u8 | nm::map([](uint8_t b) { return int(b) + 10; }) | nm::verify([](int x) { return x == 13; });
+      auto r = p(nm::input{nm::bytes(raw.data(), raw.size())});
+      return r.has_value() && r->value == 13 && r->rest.size() == 1;
+    }();
+    static_assert(cx_pipe, "parser pipes must work in constant expressions");
+
+    // Latching nm::cursor
+    const uint8_t pkt[6] = {0x00, 0x2a, 0x01, 0x02, 0x03, 0x04};
+    nm::cursor c{nm::from(pkt, sizeof pkt)};
+    auto a = c.next(nm::be_u16);
+    c.skip(2);
+    auto b = c.next(nm::be_u16);
+    auto res = c.finish(a + b);
+    CHECK(res && res->value == (0x002a + 0x0304) && res->rest.empty());
+
+    // Cursor latches first error (including streaming incomplete)
+    nm::cursor cs{nm::streaming(nm::from(pkt, 1))};
+    (void)cs.next(nm::be_u16);  // incomplete(1)
+    (void)cs.next(nm::be_u32);  // ignored because first error already latched
+    CHECK(!cs && cs.failure().kind == nm::errk::incomplete && cs.failure().needed == 1);
+    auto res_fail = cs.finish(0);
+    CHECK(!res_fail && res_fail.error().kind == nm::errk::incomplete);
+  }
+
+  // WP-2.5: soa::chunk::column<Name>() / span<Name>() and 40-field NANOM_DESCRIBE
+  {
+    nm::soa<outer_msg> tbl(8);
+    outer_msg bx{0xaa, inner_pt{nm::le<uint16_t>(11), nm::le<uint16_t>(22)}, {1, 2, 3, 4}, 2.5f};
+    tbl.push(bx);
+    const auto& ch = tbl.chunk_at(0);
+    CHECK(ch.column<"kind">().size() == 1);
+    CHECK(ch.span<"kind">().size() == 1 && ch.span<"kind">()[0] == 0xaa);
+    CHECK(ch.span<"pt.x">()[0] == 11u && ch.span<"pt.y">()[0] == 22u);
+    CHECK(ch.span<"raw">()[0][3] == 4u && ch.span<"scale">()[0] == 2.5f);
+
+    std::array<uint8_t, 40> raw40{};
+    for (uint8_t i = 0; i < 40; ++i) raw40[i] = uint8_t(i + 1);
+    auto r40 = nm::strct<wide_40_fields>()(nm::from(raw40));
+    CHECK(r40 && r40->value.f01 == 1 && r40->value.f40 == 40);
+  }
+}
+
 int main() {
   test_primitives();
   test_characters();
@@ -602,6 +764,7 @@ int main() {
   test_soa();
   test_errors();
   test_phase0_fixes();
+  test_phase2_ergonomics();
   if (failures) {
     std::printf("%d FAILURE(S)\n", failures);
     return 1;

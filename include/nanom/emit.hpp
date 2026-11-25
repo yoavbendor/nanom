@@ -402,7 +402,16 @@ NANOM_ALWAYS_INLINE constexpr bool emit_fields_at(const T& v, std::byte* p, std:
 /// Store an integer result into field type F, refusing a value that does not fit.
 template <class F, class V>
 constexpr bool set_computed(F& field, V value) {
-  if constexpr (requires { field.raw; typename F::value_type; F::order; }) {  // be / le
+  if constexpr (requires { field.raw; F::wire_bytes; typename F::value_type; F::order; }) {  // be_uint / le_uint
+    using T = typename F::value_type;
+    if (!std::in_range<std::uint64_t>(value)) return false;
+    const auto u = std::uint64_t(value);
+    if constexpr (F::wire_bytes < 8) {
+      if ((u >> (8 * F::wire_bytes)) != 0) return false;
+    }
+    field.set(T(u));
+    return true;
+  } else if constexpr (requires { field.raw; typename F::value_type; F::order; }) {  // be / le
     using T = typename F::value_type;
     if (!std::in_range<T>(value)) return false;
     field.set(T(value));

@@ -871,26 +871,35 @@ inline constexpr auto rest_len = [](input in) -> result<std::size_t> {
 // 8. sequence combinators (nom::sequence)
 // ---------------------------------------------------------------------------
 
-namespace detail {
-template <class Tup, Parser P, Parser... Ps>
-constexpr auto seq_step(Tup&& acc, input in, const P& p, const Ps&... ps)
-    -> result<decltype(std::tuple_cat(std::move(acc), std::declval<std::tuple<parsed_t<P>, parsed_t<Ps>...>>()))> {
-  auto r = p(in);
-  if (!r) return unexp(r.error());
-  auto acc2 = std::tuple_cat(std::move(acc), std::make_tuple(std::move(r->value)));
-  if constexpr (sizeof...(Ps) == 0)
-    return done{std::move(acc2), r->rest};
-  else
-    return seq_step(std::move(acc2), r->rest, ps...);
-}
-}  // namespace detail
-
 /// seq(p1, p2, …) — run parsers in order, yield std::tuple of their values.
 /// (nom calls this `tuple`; `seq` avoids clashing with std::tuple.)
 template <Parser... Ps>
   requires(sizeof...(Ps) >= 1)
 constexpr auto seq(Ps... ps) {
-  return [ps...](input in) { return detail::seq_step(std::tuple<>{}, in, ps...); };
+  return [ps...](input in) -> result<std::tuple<parsed_t<Ps>...>> {
+    std::tuple<std::optional<parsed_t<Ps>>...> vals;
+    input cur = in;
+    error err{};
+    bool ok = true;
+    auto step = [&]<std::size_t I>(const auto& p, std::integral_constant<std::size_t, I>) {
+      if (!ok) return;
+      auto r = p(cur);
+      if (!r) {
+        err = r.error();
+        ok = false;
+        return;
+      }
+      std::get<I>(vals).emplace(std::move(r->value));
+      cur = r->rest;
+    };
+    [&]<std::size_t... I>(std::index_sequence<I...>) {
+      (step(ps, std::integral_constant<std::size_t, I>{}), ...);
+    }(std::make_index_sequence<sizeof...(Ps)>{});
+    if (!ok) return unexp(err);
+    return [&]<std::size_t... I>(std::index_sequence<I...>) {
+      return done{std::tuple<parsed_t<Ps>...>{std::move(*std::get<I>(vals))...}, cur};
+    }(std::make_index_sequence<sizeof...(Ps)>{});
+  };
 }
 
 /// pair(a, b) — two values as std::pair.
@@ -1207,8 +1216,32 @@ constexpr auto separated_list1(S sep, P p) {
   };
 }
 
+namespace detail {
+/// Apply a fold step, accepting both mutating void(Acc&, V) and Rust-style
+/// functional Acc(Acc, V) -> Acc callables (never silently discarding a return).
+template <class F, class Acc, class V>
+constexpr void apply_fold(const F& f, Acc& acc, V&& v) {
+  if constexpr (std::invocable<const F&, Acc&, V&&>) {
+    if constexpr (std::is_void_v<std::invoke_result_t<const F&, Acc&, V&&>>) {
+      f(acc, std::forward<V>(v));
+    } else {
+      static_assert(std::assignable_from<Acc&, std::invoke_result_t<const F&, Acc&, V&&>>,
+                    "nanom fold: non-void fold function must return the updated accumulator");
+      acc = f(std::move(acc), std::forward<V>(v));
+    }
+  } else {
+    static_assert(std::invocable<const F&, Acc&&, V&&>,
+                  "nanom fold: fold function must accept (Acc&, V) or (Acc, V) -> Acc");
+    static_assert(std::assignable_from<Acc&, std::invoke_result_t<const F&, Acc&&, V&&>>,
+                  "nanom fold: non-void fold function must return the updated accumulator");
+    acc = f(std::move(acc), std::forward<V>(v));
+  }
+}
+}  // namespace detail
+
 /// fold_many0(p, init, f) — like many0 but folds instead of collecting.
-/// init is a callable returning the accumulator; f(acc&, value).
+/// init is a callable returning the accumulator; f accepts either mutating
+/// void(acc&, value) or functional acc(acc, value) -> acc.
 template <Parser P, class Init, class F>
 constexpr auto fold_many0(P p, Init init, F f) {
   return [p, init, f](input in) -> result<std::decay_t<std::invoke_result_t<const Init&>>> {
@@ -1221,7 +1254,7 @@ constexpr auto fold_many0(P p, Init init, F f) {
         return done{std::move(acc), cur};
       }
       if (r->rest.first == cur.first) return make_err(cur, "fold_many0: inner parser must consume input");
-      f(acc, std::move(r->value));
+      detail::apply_fold(f, acc, std::move(r->value));
       cur = r->rest;
     }
   };
@@ -1232,7 +1265,7 @@ constexpr auto fold_many1(P p, Init init, F f) {
     auto first = p(in);
     if (!first) return unexp(first.error());
     auto acc = init();
-    f(acc, std::move(first->value));
+    detail::apply_fold(f, acc, std::move(first->value));
     input cur = first->rest;
     for (;;) {
       auto r = p(cur);
@@ -1241,7 +1274,7 @@ constexpr auto fold_many1(P p, Init init, F f) {
         return done{std::move(acc), cur};
       }
       if (r->rest.first == cur.first) return make_err(cur, "fold_many1: inner parser must consume input");
-      f(acc, std::move(r->value));
+      detail::apply_fold(f, acc, std::move(r->value));
       cur = r->rest;
     }
   };
@@ -1259,7 +1292,7 @@ constexpr auto fold_many_m_n(std::size_t m, std::size_t n, P p, Init init, F f) 
         break;
       }
       if (r->rest.first == cur.first) return make_err(cur, "fold_many_m_n: inner parser must consume input");
-      f(acc, std::move(r->value));
+      detail::apply_fold(f, acc, std::move(r->value));
       cur = r->rest;
       ++got;
     }
@@ -1332,9 +1365,34 @@ constexpr auto map_opt(P p, F f) {
     return done{std::move(*v), r->rest};
   };
 }
-/// map_res — alias of map_opt (C++ has no std Result; use optional/expected).
+/// map_res(p, f) — f returns std::optional<V> or expected<V, E>; empty/unexpected = parse error.
+/// When E is nanom::error, it propagates verbatim; const char* or structs with .what become the message.
 template <Parser P, class F>
-constexpr auto map_res(P p, F f) { return map_opt(p, f); }
+constexpr auto map_res(P p, F f) {
+  return [p, f](input in)
+             -> result<typename std::decay_t<std::invoke_result_t<const F&, parsed_t<P>&&>>::value_type> {
+    auto r = p(in);
+    if (!r) return unexp(r.error());
+    auto v = f(std::move(r->value));
+    if (!v) {
+      if constexpr (requires { v.error(); }) {
+        using E = std::decay_t<decltype(v.error())>;
+        if constexpr (std::is_same_v<E, error>) {
+          return unexp(std::move(v.error()));
+        } else if constexpr (std::convertible_to<const E&, const char*>) {
+          return make_err(in, static_cast<const char*>(v.error()));
+        } else if constexpr (requires { v.error().what; }) {
+          return make_err(in, v.error().what);
+        } else {
+          return make_err(in, "map_res: conversion");
+        }
+      } else {
+        return make_err(in, "map_res: conversion");
+      }
+    }
+    return done{std::move(*v), r->rest};
+  };
+}
 
 /// map_parser(p, q) — run q over the bytes produced by p (p must yield bytes
 /// or string_view).
@@ -1513,6 +1571,131 @@ constexpr auto context(const char* label, P p) {
     return r;
   };
 }
+
+// ---------------------------------------------------------------------------
+// 11b. scoped parser pipeline adaptors (`|`) & latching cursor
+// ---------------------------------------------------------------------------
+// C++20 std::ranges-style scoped pipes: `|` is ONLY enabled when the LHS is a
+// Parser (or another parser_adaptor) and the RHS is a nanom::parser_adaptor.
+// It is strictly disjoint from nanom::craft::craft_adaptor.
+
+template <class F>
+struct parser_adaptor {
+  F fn;
+};
+template <class F>
+parser_adaptor(F) -> parser_adaptor<F>;
+
+template <Parser P, class F>
+constexpr auto operator|(P p, parser_adaptor<F> a) {
+  return a.fn(std::move(p));
+}
+
+template <class F, class G>
+constexpr auto operator|(parser_adaptor<F> a, parser_adaptor<G> b) {
+  return parser_adaptor{[a = std::move(a), b = std::move(b)](Parser auto p) {
+    return b.fn(a.fn(std::move(p)));
+  }};
+}
+
+// Curried pipe adaptors (0-arg or 1-arg non-Parser overloads — zero ambiguity with prefix forms).
+template <class F>
+  requires(!Parser<F>)
+constexpr auto map(F f) {
+  return parser_adaptor{[f = std::move(f)](Parser auto p) { return map(std::move(p), f); }};
+}
+template <class F>
+  requires(!Parser<F>)
+constexpr auto map_opt(F f) {
+  return parser_adaptor{[f = std::move(f)](Parser auto p) { return map_opt(std::move(p), f); }};
+}
+template <class F>
+  requires(!Parser<F>)
+constexpr auto map_res(F f) {
+  return parser_adaptor{[f = std::move(f)](Parser auto p) { return map_res(std::move(p), f); }};
+}
+template <class F>
+  requires(!Parser<F>)
+constexpr auto flat_map(F f) {
+  return parser_adaptor{[f = std::move(f)](Parser auto p) { return flat_map(std::move(p), f); }};
+}
+template <class Pred>
+  requires(!Parser<Pred>)
+constexpr auto verify(Pred pred) {
+  return parser_adaptor{[pred = std::move(pred)](Parser auto p) { return verify(std::move(p), pred); }};
+}
+constexpr auto context(const char* label) {
+  return parser_adaptor{[label](Parser auto p) { return context(label, std::move(p)); }};
+}
+template <class T>
+constexpr auto into() {
+  return parser_adaptor{[](Parser auto p) { return into<T>(std::move(p)); }};
+}
+constexpr auto opt() {
+  return parser_adaptor{[](Parser auto p) { return opt(std::move(p)); }};
+}
+constexpr auto cut() {
+  return parser_adaptor{[](Parser auto p) { return cut(std::move(p)); }};
+}
+constexpr auto complete() {
+  return parser_adaptor{[](Parser auto p) { return complete(std::move(p)); }};
+}
+constexpr auto all_consuming() {
+  return parser_adaptor{[](Parser auto p) { return all_consuming(std::move(p)); }};
+}
+constexpr auto recognize() {
+  return parser_adaptor{[](Parser auto p) { return recognize(std::move(p)); }};
+}
+constexpr auto consumed() {
+  return parser_adaptor{[](Parser auto p) { return consumed(std::move(p)); }};
+}
+constexpr auto many0() {
+  return parser_adaptor{[](Parser auto p) { return many0(std::move(p)); }};
+}
+constexpr auto many1() {
+  return parser_adaptor{[](Parser auto p) { return many1(std::move(p)); }};
+}
+constexpr auto peek() {
+  return parser_adaptor{[](Parser auto p) { return peek(std::move(p)); }};
+}
+
+/// Latching imperative cursor over nanom::input — generalizes manual `cur = r->rest`
+/// walkers while latching the FIRST error (preserving offset, needed, and context).
+struct cursor {
+  input cur;
+  error err{};
+  bool  ok = true;
+
+  constexpr explicit cursor(input in) noexcept : cur(in) {}
+
+  constexpr explicit operator bool() const noexcept { return ok; }
+  constexpr bool empty() const noexcept { return cur.empty(); }
+  constexpr std::size_t remaining() const noexcept { return cur.size(); }
+  constexpr input rest() const noexcept { return cur; }
+  constexpr const error& failure() const noexcept { return err; }
+
+  template <Parser P>
+  constexpr parsed_t<P> next(P p) {
+    if (!ok) return parsed_t<P>{};
+    auto r = p(cur);
+    if (!r) {
+      err = r.error();
+      ok = false;
+      return parsed_t<P>{};
+    }
+    cur = r->rest;
+    return std::move(r->value);
+  }
+
+  constexpr bytes take(std::size_t n) { return next(::nanom::take(n)); }
+  constexpr void skip(std::size_t n) { (void)next(::nanom::take(n)); }
+
+  template <class T>
+  constexpr result<T> finish(T val) const {
+    if (!ok) return unexp(err);
+    return done{std::move(val), cur};
+  }
+};
 
 // ---------------------------------------------------------------------------
 // 12. binary numbers (nom::number) — be_/le_/ne_ × u8..u64, i8..i64, f32, f64
@@ -2069,23 +2252,33 @@ constexpr auto bool_bit(bit_order ord = bit_order::msb0) {
 }
 
 /// bseq(b1, b2, …) — sequence of bit parsers, tuple of values.
-namespace detail {
-template <class Tup, BitParser P, BitParser... Ps>
-constexpr auto bseq_step(Tup&& acc, bit_input bi, const P& p, const Ps&... ps)
-    -> bresult<decltype(std::tuple_cat(std::move(acc), std::declval<std::tuple<bit_parsed_t<P>, bit_parsed_t<Ps>...>>()))> {
-  auto r = p(bi);
-  if (!r) return unexp(r.error());
-  auto acc2 = std::tuple_cat(std::move(acc), std::make_tuple(std::move(r->value)));
-  if constexpr (sizeof...(Ps) == 0)
-    return bdone{std::move(acc2), r->rest};
-  else
-    return bseq_step(std::move(acc2), r->rest, ps...);
-}
-}  // namespace detail
 template <BitParser... Ps>
   requires(sizeof...(Ps) >= 1)
 constexpr auto bseq(Ps... ps) {
-  return [ps...](bit_input bi) { return detail::bseq_step(std::tuple<>{}, bi, ps...); };
+  return [ps...](bit_input bi) -> bresult<std::tuple<bit_parsed_t<Ps>...>> {
+    std::tuple<std::optional<bit_parsed_t<Ps>>...> vals;
+    bit_input cur = bi;
+    error err{};
+    bool ok = true;
+    auto step = [&]<std::size_t I>(const auto& p, std::integral_constant<std::size_t, I>) {
+      if (!ok) return;
+      auto r = p(cur);
+      if (!r) {
+        err = r.error();
+        ok = false;
+        return;
+      }
+      std::get<I>(vals).emplace(std::move(r->value));
+      cur = r->rest;
+    };
+    [&]<std::size_t... I>(std::index_sequence<I...>) {
+      (step(ps, std::integral_constant<std::size_t, I>{}), ...);
+    }(std::make_index_sequence<sizeof...(Ps)>{});
+    if (!ok) return unexp(err);
+    return [&]<std::size_t... I>(std::index_sequence<I...>) {
+      return bdone{std::tuple<bit_parsed_t<Ps>...>{std::move(*std::get<I>(vals))...}, cur};
+    }(std::make_index_sequence<sizeof...(Ps)>{});
+  };
 }
 
 /// bits(bp) — enter bit mode: run a bit parser over the byte stream, then
