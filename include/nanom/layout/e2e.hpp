@@ -84,8 +84,8 @@ struct config {
   std::array<std::uint8_t, 16> data_id_list{};     ///< P02 / P22
   data_id_mode id_mode = data_id_mode::both;       ///< P01 / P11
   std::uint32_t offset = 0;                        ///< bits: header start (P01/P11: CRC offset)
-  std::optional<std::uint32_t> counter_offset;     ///< P01/P11 bits (default offset + 8)
-  std::optional<std::uint32_t> nibble_offset;      ///< P01/P11 bits (default offset + 12)
+  std::optional<std::uint32_t> counter_offset{};   ///< P01/P11 bits (default offset + 8)
+  std::optional<std::uint32_t> nibble_offset{};    ///< P01/P11 bits (default offset + 12)
   std::uint32_t max_delta_counter = 1;             ///< check(): largest accepted counter step
   std::size_t min_length = 0, max_length = 0;      ///< check() bytes, P04/P06/P07 (0 = no limit)
 };

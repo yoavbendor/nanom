@@ -417,8 +417,8 @@ struct selection {
 };
 
 struct compile_options {
-  std::optional<std::uint64_t> stride;  ///< record size in bytes for every raw_file
-  std::map<std::string, std::uint64_t, std::less<>> stride_by_file;  ///< per-raw_file override
+  std::optional<std::uint64_t> stride{};  ///< record size in bytes for every raw_file
+  std::map<std::string, std::uint64_t, std::less<>> stride_by_file{};  ///< per-raw_file override
   std::endian order = std::endian::little;
   bool strict = true;  ///< name conflicts are errors (lenient: warnings)
   std::uint64_t max_record_bytes = std::uint64_t(1) << 30;
