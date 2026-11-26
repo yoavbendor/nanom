@@ -46,7 +46,18 @@ static std::atomic<bool>        g_track_allocs{false};
 #else
 #  define NANOM_TEST_NOINLINE
 #endif
-#if !NANOM_TEST_ASAN
+#if defined(__SANITIZE_THREAD__)
+#  define NANOM_TEST_TSAN 1
+#elif defined(__has_feature)
+#  if __has_feature(thread_sanitizer)
+#    define NANOM_TEST_TSAN 1
+#  else
+#    define NANOM_TEST_TSAN 0
+#  endif
+#else
+#  define NANOM_TEST_TSAN 0
+#endif
+#if !NANOM_TEST_ASAN && !NANOM_TEST_TSAN
 NANOM_TEST_NOINLINE void* operator new(std::size_t n) {
   if (g_track_allocs.load(std::memory_order_relaxed))
     g_alloc_count.fetch_add(1, std::memory_order_relaxed);
@@ -336,6 +347,12 @@ static void test_primitives_and_errors() {
   auto fv = nc::to_vector(framed);
   CHECK(fv && fv->size() == 6 && u8((*fv)[0]) == 0 && u8((*fv)[1]) == 4 &&
         char((*fv)[2]) == 'a' && u8((*fv)[5]) == 0);
+
+  // size_of(frame(...)) validates non-computed header fields (e.g. out-of-range bitfield)
+  vlan_hdr bad_vlan{};
+  bad_vlan.vid = 5000;  // 12-bit max is 4095
+  auto bad_frame = nc::frame(bad_vlan, nc::put_lit("x"));
+  CHECK(!nc::size_of(bad_frame));
 }
 
 int main() {

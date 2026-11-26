@@ -24,6 +24,7 @@
 
 #include <array>
 #include <bit>
+#include <concepts>
 #include <cstddef>
 #include <cstdint>
 #include <cstring>
@@ -170,8 +171,11 @@ class sum {
   }
   /// Add a 32-bit value as two big-endian words.
   constexpr sum& add32(std::uint32_t w) noexcept { return add16(std::uint16_t(w >> 16)).add16(std::uint16_t(w)); }
-  /// Add a previously folded partial sum (e.g. a precomputed pseudo-header sum).
-  constexpr sum& add_folded(std::uint16_t partial) noexcept { return add16(partial); }
+  /// Add a previously folded partial sum (e.g. a precomputed pseudo-header sum, word-aligned).
+  constexpr sum& add_folded(std::uint16_t partial) noexcept {
+    acc_ += partial;
+    return *this;
+  }
 
   /// The 16-bit one's-complement sum so far (not inverted).
   [[nodiscard]] constexpr std::uint16_t folded() const noexcept { return detail::fold64(acc_); }
@@ -219,7 +223,7 @@ constexpr std::array<std::byte, 12> pseudo_header_v4(const std::array<std::uint8
                                                      const std::array<std::uint8_t, 4>& dst,
                                                      std::uint8_t protocol, std::uint16_t l4_length) noexcept {
   std::array<std::byte, 12> h{};
-  for (int i = 0; i < 4; ++i) {
+  for (std::size_t i = 0; i < 4; ++i) {
     h[i] = std::byte(src[i]);
     h[4 + i] = std::byte(dst[i]);
   }
@@ -234,7 +238,7 @@ constexpr std::array<std::byte, 40> pseudo_header_v6(const std::array<std::uint8
                                                      const std::array<std::uint8_t, 16>& dst,
                                                      std::uint32_t upper_length, std::uint8_t next_header) noexcept {
   std::array<std::byte, 40> h{};
-  for (int i = 0; i < 16; ++i) {
+  for (std::size_t i = 0; i < 16; ++i) {
     h[i] = std::byte(src[i]);
     h[16 + i] = std::byte(dst[i]);
   }
@@ -276,6 +280,7 @@ constexpr std::uint16_t update32(std::uint16_t csum, std::uint32_t old_value, st
 /// A CRC in the Rocksoft parameter model. `T` is the register (uint8/16/32/64_t, W = its width),
 /// `Poly` the normal (MSB-first) polynomial, `Reflected` = refin = refout.
 template <class T, T Poly, T Init, bool Reflected, T XorOut, T Check>
+  requires(std::unsigned_integral<T> && sizeof(T) <= 8)
 struct crc_params {
   using type = T;
   static constexpr unsigned width = 8 * sizeof(T);
@@ -434,5 +439,7 @@ using crc32_p4 = crc<crc_params<std::uint32_t, 0xF4ACFB13, 0xFFFFFFFF, true, 0xF
 using crc64 = crc<crc_params<std::uint64_t, 0x42F0E1EBA9EA3693ull, ~0ull, true, ~0ull, 0x995DC9BBDF1939FAull>>;
 
 }  // namespace nanom
+
+#undef NANOM_CSUM_INLINE
 
 #endif  // NANOM_CHECKSUM_HPP_INCLUDED

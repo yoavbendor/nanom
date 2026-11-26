@@ -167,6 +167,10 @@ class StreamingDecodeSession {
       pins_added = visitor.pin_count;
     }
 
+    // Record newly added pins BEFORE evict_stale(): if a fragment ages out immediately (e.g.
+    // timeout_ticks == 0), evict_stale() will unpin it cleanly rather than missing an unrecorded pin.
+    if (pins_added != 0 && token != defrag::kNoToken) pins_[token] += pins_added;
+
     // completion_status 0 (complete) was already pushed at completion time inside the walk; only
     // timed_out/conflict/capacity entries are new information here. Their tokens, however, are
     // always news: an entry that never completed has been holding its caller's buffers until now.
@@ -190,7 +194,6 @@ class StreamingDecodeSession {
     // release contract sound even for a pathological packet that yields two fragments (an IPv6
     // header chain with two Fragment extension headers), where flagging would report the buffer
     // free while the second reassembly still pointed into it.
-    if (pins_added != 0 && token != defrag::kNoToken) pins_[token] += pins_added;
     for (defrag::Token t : retired) unpin(t, fr.released);
 
     fr.pinned = token != defrag::kNoToken && pins_.find(token) != pins_.end();

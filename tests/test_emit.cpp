@@ -452,6 +452,37 @@ static void test_ubits_values() {
 #  pragma GCC diagnostic pop
 #endif
 
+static void test_public_reflect_and_mut_view_ranges() {
+  static_assert(nm::field_count_v<ipv4_hdr> == 13);
+  static_assert(nm::field_index_v<ipv4_hdr, "ttl"> == 8);
+  static_assert(nm::field_index<ipv4_hdr, "missing">() == std::size_t(-1));
+  static_assert(nm::field_bit_offset_v<ipv4_hdr, "ttl"> == 64);
+  static_assert(std::same_as<nm::field_type_t<ipv4_hdr, 8>, u8>);
+  static_assert(nm::wire_bits_v<nm::be<u16>> == 16);
+  static_assert(std::same_as<nm::decoded_t<nm::be<u16>>, u16>);
+  static_assert(nm::is_std_array_v<std::array<u8, 4>>);
+  static_assert(nm::is_byte_array_v<std::array<u8, 4>>);
+  std::size_t visited = 0;
+  nm::for_each_field<ipv4_hdr>([&](auto f) {
+    (void)f;
+    ++visited;
+  });
+  CHECK(visited == 13);
+
+  std::array<std::byte, nm::wire_size_v<ipv4_hdr>> buf{};
+  nm::mut_view<ipv4_hdr> mv{buf.data(), std::endian::big};
+  CHECK(mv.set<"ttl">(64).has_value());
+  CHECK(mv.get<"ttl">() == 64);
+  CHECK(!mv.set<"ttl">(300).has_value());
+  CHECK(!mv.set<"ttl">(-1).has_value());
+  CHECK(mv.get<"ttl">() == 64);
+
+  std::array<std::byte, nm::wire_size_v<vlan_hdr>> vbuf{};
+  nm::mut_view<vlan_hdr> vmv{vbuf.data(), std::endian::big};
+  CHECK(vmv.set<"dei">(true).has_value());
+  CHECK(vmv.get<"dei">() == 1);
+}
+
 int main() {
   std::mt19937_64 rng(2026);
   byte_roundtrip<eth_hdr>("eth_hdr", rng, 500);
@@ -467,6 +498,7 @@ int main() {
   test_errors();
   test_ubits_values();
   test_mut_view_and_custom_ctx();
+  test_public_reflect_and_mut_view_ranges();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;

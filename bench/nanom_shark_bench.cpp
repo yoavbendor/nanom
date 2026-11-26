@@ -47,6 +47,18 @@
 #  define NM_BENCH_NOINLINE
 #endif
 static std::atomic<std::uint64_t> g_allocs{0};
+#if defined(__SANITIZE_ADDRESS__) || defined(__SANITIZE_THREAD__)
+#  define NM_BENCH_SANITIZED 1
+#elif defined(__has_feature)
+#  if __has_feature(address_sanitizer) || __has_feature(thread_sanitizer)
+#    define NM_BENCH_SANITIZED 1
+#  else
+#    define NM_BENCH_SANITIZED 0
+#  endif
+#else
+#  define NM_BENCH_SANITIZED 0
+#endif
+#if !NM_BENCH_SANITIZED
 NM_BENCH_NOINLINE void* operator new(std::size_t n) {
   g_allocs.fetch_add(1, std::memory_order_relaxed);
   if (void* p = std::malloc(n ? n : 1)) return p;
@@ -56,15 +68,20 @@ NM_BENCH_NOINLINE void* operator new[](std::size_t n) { return ::operator new(n)
 NM_BENCH_NOINLINE void* operator new(std::size_t n, std::align_val_t a) {
   g_allocs.fetch_add(1, std::memory_order_relaxed);
   const std::size_t al = std::size_t(a);
-  if (void* p = std::aligned_alloc(al, (n + al - 1) / al * al)) return p;
+  const std::size_t sz = n ? ((n + al - 1) / al * al) : al;
+  if (void* p = std::aligned_alloc(al, sz)) return p;
   throw std::bad_alloc{};
 }
+NM_BENCH_NOINLINE void* operator new[](std::size_t n, std::align_val_t a) { return ::operator new(n, a); }
 NM_BENCH_NOINLINE void operator delete(void* p) noexcept { std::free(p); }
 NM_BENCH_NOINLINE void operator delete(void* p, std::size_t) noexcept { std::free(p); }
 NM_BENCH_NOINLINE void operator delete[](void* p) noexcept { std::free(p); }
 NM_BENCH_NOINLINE void operator delete[](void* p, std::size_t) noexcept { std::free(p); }
 NM_BENCH_NOINLINE void operator delete(void* p, std::align_val_t) noexcept { std::free(p); }
 NM_BENCH_NOINLINE void operator delete(void* p, std::size_t, std::align_val_t) noexcept { std::free(p); }
+NM_BENCH_NOINLINE void operator delete[](void* p, std::align_val_t) noexcept { std::free(p); }
+NM_BENCH_NOINLINE void operator delete[](void* p, std::size_t, std::align_val_t) noexcept { std::free(p); }
+#endif
 
 namespace {
 

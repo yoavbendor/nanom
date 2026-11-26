@@ -187,6 +187,19 @@ static void test_inet(std::mt19937_64& rng) {
     auto v = random_bytes(rng, (1 << 20) + 3);
     CHECK(nm::inet::checksum(bspan(v)) == ref_inet(v));
   }
+  // add_folded after an odd-length span must NOT byte-swap the pre-folded word-aligned partial sum
+  {
+    const std::array<u8, 4> sa{10, 0, 0, 1}, da{10, 0, 0, 2};
+    const std::array<std::byte, 5> odd_pay{std::byte{0x11}, std::byte{0x22}, std::byte{0x33},
+                                           std::byte{0x44}, std::byte{0x55}};
+    const auto ph = nm::inet::pseudo_header_v4(sa, da, 17, 13);
+    const u16 ph_folded = nm::inet::sum{}.add(ph).folded();
+    const u16 before = nm::inet::sum{}.add_folded(ph_folded).add(bspan(odd_pay)).checksum();
+    const u16 after  = nm::inet::sum{}.add(bspan(odd_pay)).add_folded(ph_folded).checksum();
+    const u16 direct = nm::inet::checksum({ph, odd_pay});
+    CHECK(before == direct);
+    CHECK(after == direct);
+  }
 }
 
 // ------------------------------------------------------------------ CRCs

@@ -227,15 +227,17 @@ concept Described = requires {
 };
 
 namespace detail {
+template <class M> struct member_type;
+template <class C, class M> struct member_type<M C::*> { using type = M; };
+template <auto P> using member_t = typename member_type<std::remove_cv_t<decltype(P)>>::type;
+
 /// One registered field: name + member pointer, all compile-time.
 template <fixed_string Name, auto MemPtr>
 struct fld {
   static constexpr auto name    = Name;
   static constexpr auto mem_ptr = MemPtr;
+  using value_type              = member_t<MemPtr>;
 };
-template <class M> struct member_type;
-template <class C, class M> struct member_type<M C::*> { using type = M; };
-template <auto P> using member_t = typename member_type<std::remove_cv_t<decltype(P)>>::type;
 
 /// Visit every registered field of T in declaration order: v(f) receives a fld<> value — read
 /// decltype(f)::name / ::mem_ptr / member_t<decltype(f)::mem_ptr>. THE one field-iteration
@@ -434,14 +436,14 @@ NANOM_HD NANOM_ALWAYS_INLINE constexpr typename wire<F>::decoded decode_field_at
       const std::byte* q = p + BitOff / 8;
       std::uint64_t w = 0;
       for (unsigned i = 0; i < nbytes; ++i) w = (w << 8) | std::uint8_t(q[i]);
-      raw = (w >> shift) & (N >= 64 ? ~std::uint64_t(0) : ((std::uint64_t(1) << N) - 1));
+      raw = (w >> shift) & (~std::uint64_t(0) >> (64 - N));
     } else if constexpr (F::order == bit_order::lsb0 && ((BitOff % 8) + N) <= 64u) {
       constexpr unsigned startbit = unsigned(BitOff % 8);
       constexpr unsigned nbytes = (startbit + N + 7) / 8;
       const std::byte* q = p + BitOff / 8;
       std::uint64_t w = 0;
       for (unsigned i = 0; i < nbytes; ++i) w |= std::uint64_t(std::uint8_t(q[i])) << (8 * i);
-      raw = (w >> startbit) & (N >= 64 ? ~std::uint64_t(0) : ((std::uint64_t(1) << N) - 1));
+      raw = (w >> startbit) & (~std::uint64_t(0) >> (64 - N));
     } else {
       input fake{p + BitOff / 8, p + (BitOff + N + 7) / 8, p};
       raw = read_bits(bit_input{fake, BitOff % 8}, N, F::order)->value;
@@ -518,7 +520,7 @@ NANOM_HD constexpr typename wire<F>::decoded decode_field(const std::byte* p, st
       std::uint64_t w = 0;
       for (unsigned i = 0; i < nbytes; ++i) w = (w << 8) | std::uint8_t(q[i]);
       const unsigned shift = nbytes * 8 - startbit - N;
-      raw = (w >> shift) & (N >= 64 ? ~std::uint64_t(0) : ((std::uint64_t(1) << N) - 1));
+      raw = (w >> shift) & (~std::uint64_t(0) >> (64 - N));
     } else {
       input fake{p + bitoff / 8, p + (bitoff + N + 7) / 8, p};
       raw = read_bits(bit_input{fake, bitoff % 8}, N, F::order)->value;
@@ -675,6 +677,75 @@ template <Described T, std::size_t I>
 using field_type_at = member_t<std::remove_cvref_t<decltype(std::get<I>(describe<T>::fields()))>::mem_ptr>;
 
 }  // namespace detail
+
+// ---------------------------------------------------------------------------
+// 18b. public reflection & wire-layout queries (for downstream libraries)
+// ---------------------------------------------------------------------------
+
+/// One registered field descriptor: `name`, `mem_ptr`, and `value_type`.
+template <fixed_string Name, auto MemPtr>
+using field_desc = detail::fld<Name, MemPtr>;
+
+/// Member value type for a pointer-to-member `MemPtr`.
+template <auto MemPtr>
+using member_t = detail::member_t<MemPtr>;
+
+/// Number of registered fields in a Described struct.
+template <Described T>
+inline constexpr std::size_t field_count_v = detail::field_count_v<std::remove_cv_t<T>>;
+
+/// Visit every registered field of T in declaration order: `fn(field<Name, MemPtr>{})`.
+template <Described T, class Fn>
+NANOM_HD constexpr void for_each_field(Fn&& fn) {
+  detail::for_each_field<std::remove_cv_t<T>>(std::forward<Fn>(fn));
+}
+
+/// Visit every registered field of T with its compile-time bit offset as `std::integral_constant`.
+template <Described T, class Fn>
+NANOM_HD constexpr void for_each_field_with_offset(Fn&& fn) {
+  detail::for_each_field_with_offset<std::remove_cv_t<T>>(std::forward<Fn>(fn));
+}
+
+/// Index of field `Name` in T, or `std::size_t(-1)` if absent.
+template <Described T, fixed_string Name>
+NANOM_HD constexpr std::size_t field_index() {
+  return detail::field_index<std::remove_cv_t<T>, Name>();
+}
+
+template <Described T, fixed_string Name>
+inline constexpr std::size_t field_index_v = field_index<T, Name>();
+
+/// Member type of field `I` in T.
+template <Described T, std::size_t I>
+using field_type_t = detail::field_type_at<std::remove_cv_t<T>, I>;
+
+/// Compile-time bit offsets (msb0 from struct start) of every field in T.
+template <Described T>
+NANOM_HD constexpr auto field_bit_offsets() {
+  return detail::field_bit_offsets<std::remove_cv_t<T>>();
+}
+
+/// Compile-time bit offset of field `Name` in T (fails with static_assert if absent).
+template <Described T, fixed_string Name>
+inline constexpr std::size_t field_bit_offset_v = [] {
+  constexpr std::size_t i = field_index<T, Name>();
+  static_assert(i != std::size_t(-1), "nanom: unknown field name");
+  return field_bit_offsets<T>()[i];
+}();
+
+/// Width in bits of a wire field type F (scalar, be/le, ubits/ibits, array, or Described struct).
+template <class F>
+inline constexpr std::size_t wire_bits_v = detail::wire<F>::bits;
+
+/// Host-order decoded value type of a wire field type F.
+template <class F>
+using decoded_t = typename detail::wire<F>::decoded;
+
+/// Type traits for fixed-size arrays in wire structs.
+template <class T>
+inline constexpr bool is_std_array_v = detail::is_std_array_v<T>;
+template <class T>
+inline constexpr bool is_byte_array_v = detail::is_byte_array_v<T>;
 
 // ---------------------------------------------------------------------------
 // 19. strct<T>() — parse a registered struct by value; the workhorse

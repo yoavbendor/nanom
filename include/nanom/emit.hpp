@@ -644,6 +644,7 @@ struct mut_view {
   /// Read a field by name; nested Described structs return mut_view<Inner>, byte arrays return mutable span.
   template <fixed_string Name>
   constexpr auto get() const {
+    detail::guard_view_pointer(p);
     constexpr std::size_t I = detail::field_index<T, Name>();
     if constexpr (I == std::size_t(-1)) {
       detail::diagnose_unknown_field<Name>(describe<T>::fields());
@@ -664,21 +665,26 @@ struct mut_view {
   /// Patch ONLY the named field in place at its compile-time BitOff (range-checked).
   template <fixed_string Name, class V>
   constexpr expected<unit, encode_error> set(const V& val) const {
+    detail::guard_view_pointer(p);
     constexpr std::size_t I = detail::field_index<T, Name>();
     if constexpr (I == std::size_t(-1)) {
       detail::diagnose_unknown_field<Name>(describe<T>::fields());
       return unit{};
     } else {
       using F = detail::field_type_at<T, I>;
+      using RV = std::remove_cvref_t<V>;
       constexpr std::size_t off = detail::field_bit_offsets<T>()[I];
       std::string_view bad_field;
       const char* err = nullptr;
-      if constexpr (std::same_as<std::remove_cvref_t<V>, F>) {
+      if constexpr (std::same_as<RV, F>) {
         err = detail::emit_field_at<F, off, false>(val, p, dflt, bad_field);
       } else if constexpr (requires { F::order; F::bits; }) {
         using VT = typename F::value_type;
         constexpr unsigned N = F::bits;
-        if constexpr (std::is_signed_v<VT>) {
+        if constexpr (std::same_as<RV, bool>) {
+          F tmp{VT(val ? 1 : 0)};
+          err = detail::emit_field_at<F, off, false>(tmp, p, dflt, bad_field);
+        } else if constexpr (std::is_signed_v<VT>) {
           if (!std::in_range<std::int64_t>(val)) {
             err = "a value outside its signed bit field";
           } else {
@@ -709,14 +715,17 @@ struct mut_view {
         }
       } else if constexpr (requires { typename F::value_type; F::wire_bytes; F::order; }) {
         F tmp{};
-        if (!detail::set_computed(tmp, val)) {
+        if constexpr (std::same_as<RV, bool>) {
+          tmp.set(typename F::value_type(val ? 1 : 0));
+          err = detail::emit_field_at<F, off, false>(tmp, p, dflt, bad_field);
+        } else if (!detail::set_computed(tmp, val)) {
           err = "a value that does not fit its wire integer field";
         } else {
           err = detail::emit_field_at<F, off, false>(tmp, p, dflt, bad_field);
         }
       } else if constexpr (requires { typename F::value_type; F::order; }) {
         using VT = typename F::value_type;
-        if constexpr (std::integral<VT> && std::integral<V>) {
+        if constexpr (std::integral<VT> && std::integral<RV> && !std::same_as<VT, bool> && !std::same_as<RV, bool>) {
           if (!std::in_range<VT>(val)) {
             err = "a value that does not fit its wire integer field";
           } else {
@@ -725,6 +734,13 @@ struct mut_view {
           }
         } else {
           F tmp{VT(val)};
+          err = detail::emit_field_at<F, off, false>(tmp, p, dflt, bad_field);
+        }
+      } else if constexpr (std::integral<F> && std::integral<RV> && !std::same_as<F, bool> && !std::same_as<RV, bool>) {
+        if (!std::in_range<F>(val)) {
+          err = "a value that does not fit its integer field";
+        } else {
+          F tmp = static_cast<F>(val);
           err = detail::emit_field_at<F, off, false>(tmp, p, dflt, bad_field);
         }
       } else {
@@ -741,6 +757,7 @@ struct mut_view {
   /// Re-run computed<T> calc and checksum fields directly on the buffer in place.
   template <class Ctx = emit_ctx>
   constexpr expected<unit, encode_error> recompute(const Ctx& ctx = Ctx{}) const {
+    detail::guard_view_pointer(p);
     if constexpr (!detail::has_computed_v<T>) {
       (void)ctx;
       return unit{};

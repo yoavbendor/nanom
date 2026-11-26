@@ -7,6 +7,7 @@
 
 #include "schema.hpp"
 
+#include <limits>
 #include <new>
 
 namespace nanom {
@@ -116,8 +117,13 @@ consteval std::size_t soa_leaf_offset() {
 /// Bytes per row of one leaf column of type F.
 template <class F>
 consteval std::size_t soa_elem_bytes() {
-  if constexpr (is_std_array_v<F>) return wire<F>::bits / 8;
-  else return sizeof(typename wire<F>::decoded);
+  if constexpr (is_std_array_v<F>) {
+    static_assert(!Described<typename F::value_type>,
+                  "nanom::soa: arrays of Described structs are not supported as a single leaf column");
+    return std::tuple_size_v<F> * sizeof(typename wire<typename F::value_type>::decoded);
+  } else {
+    return sizeof(typename wire<F>::decoded);
+  }
 }
 }  // namespace detail
 
@@ -157,7 +163,7 @@ class soa {
   class column_bytes {
    public:
     const std::byte* data() const noexcept { return data_; }
-    std::size_t      size() const noexcept { return *rows_ * elem_; }
+    std::size_t      size() const noexcept { return (rows_ptr_ ? *rows_ptr_ : fixed_rows_) * elem_; }
     bool             empty() const noexcept { return size() == 0; }
     const std::byte* begin() const noexcept { return data_; }
     const std::byte* end() const noexcept { return data_ + size(); }
@@ -169,13 +175,14 @@ class soa {
     friend class chunk;
     std::byte*         data_ = nullptr;
     std::size_t        elem_ = 0;
-    const std::size_t* rows_ = nullptr;  // the owning chunk's row count
+    const std::size_t* rows_ptr_ = nullptr;  // live pointer while open; null once sealed
+    std::size_t        fixed_rows_ = 0;      // row count frozen on seal() (safe across chunk moves)
   };
 
   class chunk {
    public:
-    std::size_t               rows = 0;
-    std::vector<column_bytes> cols;  ///< one contiguous buffer per column
+    std::size_t                             rows = 0;
+    std::array<column_bytes, column_count>  cols{};  ///< one contiguous buffer per column
     bytes col(std::size_t i) const { return {cols[i].data(), cols[i].size()}; }
     /// Typed access; V must match the column's decoded type.
     template <class V>
@@ -210,7 +217,8 @@ class soa {
 
     chunk() = default;
     chunk(chunk&& o) noexcept
-        : rows(o.rows), cols(std::move(o.cols)), block_(o.block_), block_bytes_(o.block_bytes_), cap_(o.cap_) {
+        : rows(o.rows), cols(o.cols), block_(o.block_), block_bytes_(o.block_bytes_), cap_(o.cap_),
+          sealed_flag_(o.sealed_flag_) {
       o.release_();
       rebind_();
     }
@@ -218,16 +226,17 @@ class soa {
       if (this != &o) {
         free_();
         rows = o.rows;
-        cols = std::move(o.cols);
+        cols = o.cols;
         block_ = o.block_;
         block_bytes_ = o.block_bytes_;
         cap_ = o.cap_;
+        sealed_flag_ = o.sealed_flag_;
         o.release_();
         rebind_();
       }
       return *this;
     }
-    chunk(const chunk& o) : rows(o.rows), cols(o.cols), cap_(o.cap_) {
+    chunk(const chunk& o) : rows(o.rows), cols(o.cols), cap_(o.cap_), sealed_flag_(o.sealed_flag_) {
       if (o.block_) {
         block_ = alloc_(o.block_bytes_);
         block_bytes_ = o.block_bytes_;
@@ -257,14 +266,30 @@ class soa {
       block_bytes_ = 0;
       cap_ = 0;
       rows = 0;
-      cols.clear();
+      sealed_flag_ = false;
+      cols = {};
+    }
+    void freeze_() noexcept {
+      sealed_flag_ = true;
+      for (auto& c : cols) {
+        c.rows_ptr_ = nullptr;
+        c.fixed_rows_ = rows;
+      }
     }
     void rebind_() noexcept {
-      for (auto& c : cols) c.rows_ = &rows;
+      if (sealed_flag_) {
+        freeze_();
+      } else {
+        for (auto& c : cols) {
+          c.rows_ptr_ = &rows;
+          c.fixed_rows_ = 0;
+        }
+      }
     }
     std::byte*  block_ = nullptr;  // every column of this chunk, each kAlign-aligned
     std::size_t block_bytes_ = 0;
     std::size_t cap_ = 0;          // rows the block has room for
+    bool        sealed_flag_ = false;
   };
 
   explicit soa(std::size_t chunk_rows = 65536) : chunk_rows_(chunk_rows ? chunk_rows : 1) {
@@ -328,7 +353,8 @@ class soa {
   /// Make room for `n` more rows in the open chunk now (capped at chunk_rows), so the next pushes
   /// do not grow it. Purely an optimization; pushes work without it.
   void reserve(std::size_t n) {
-    const std::size_t want = std::min(chunk_rows_, open_.rows + n);
+    const std::size_t room = chunk_rows_ - open_.rows;
+    const std::size_t want = n >= room ? chunk_rows_ : open_.rows + n;
     if (want > open_.cap_) regrow_(want);
   }
 
@@ -363,49 +389,63 @@ class soa {
   /// Force-seal the open chunk (e.g. before a final flush).
   void seal() {
     if (!open_.rows) return;
-    sealed_rows_ += open_.rows;
+    const std::size_t n = open_.rows;
+    sealed_.push_back(std::move(open_));
+    sealed_.back().freeze_();
+    sealed_rows_ += n;
     // the next chunk starts at the size this one reached: a table that fills whole chunks gets
     // chunk_rows at once, one sealed early and often (streaming flushes) stays small
-    next_cap_ = std::max(open_.rows, kFirstRows);
-    sealed_.push_back(std::move(open_));
+    next_cap_ = std::max(n, kFirstRows);
     init_open_();
   }
 
  private:
   static constexpr std::size_t kFirstRows = 256;
 
-  void init_open_() {
+  void init_open_() noexcept {
     open_ = chunk{};
-    open_.cols.resize(column_count);
     for (std::size_t c = 0; c < column_count; ++c) open_.cols[c].elem_ = elem_[c];
     open_.rebind_();
     base_.fill(nullptr);
   }
   void bind_base_() noexcept {
-    for (std::size_t c = 0; c < column_count; ++c) base_[c] = c < open_.cols.size() ? open_.cols[c].data_ : nullptr;
+    for (std::size_t c = 0; c < column_count; ++c) base_[c] = open_.cols[c].data_;
   }
 
   // Cold path: the open chunk is full (or was never allocated).
   void grow_() {
-    std::size_t want = open_.cap_ ? open_.cap_ * 2 : next_cap_;
+    constexpr std::size_t kMax = std::numeric_limits<std::size_t>::max();
+    std::size_t want;
+    if (open_.cap_) {
+      want = open_.cap_ > kMax / 2 ? chunk_rows_ : open_.cap_ * 2;
+    } else {
+      want = next_cap_;
+    }
     regrow_(std::min(std::max<std::size_t>(want, 1), chunk_rows_));
   }
   void regrow_(std::size_t cap) {
+    constexpr std::size_t kMax = std::numeric_limits<std::size_t>::max();
     std::array<std::size_t, column_count> off{};
     std::size_t total = 0;
     for (std::size_t c = 0; c < column_count; ++c) {
       off[c] = total;
-      total += (cap * elem_[c] + chunk::kAlign - 1) / chunk::kAlign * chunk::kAlign;
+      const std::size_t eb = elem_[c];
+      if (eb && cap > (kMax - (chunk::kAlign - 1)) / eb) throw std::bad_alloc{};
+      const std::size_t bytes_c = cap * eb;
+      const std::size_t aligned = ((bytes_c + chunk::kAlign - 1) / chunk::kAlign) * chunk::kAlign;
+      if (aligned > kMax - total) throw std::bad_alloc{};
+      total += aligned;
     }
-    std::byte* nb = chunk::alloc_(total ? total : chunk::kAlign);
+    const std::size_t alloc_bytes = total ? total : chunk::kAlign;
+    std::byte* nb = chunk::alloc_(alloc_bytes);
     for (std::size_t c = 0; c < column_count; ++c) {
-      if (open_.rows) std::memcpy(nb + off[c], open_.cols[c].data_, open_.rows * elem_[c]);
+      if (open_.rows && elem_[c]) std::memcpy(nb + off[c], open_.cols[c].data_, open_.rows * elem_[c]);
       open_.cols[c].data_ = nb + off[c];
       base_[c] = nb + off[c];
     }
     open_.free_();
     open_.block_ = nb;
-    open_.block_bytes_ = total;
+    open_.block_bytes_ = alloc_bytes;
     open_.cap_ = cap;
   }
 
@@ -415,11 +455,13 @@ class soa {
     if constexpr (Described<F>) {
       put_fields_<C>(v, r, std::make_index_sequence<detail::field_count_v<F>>{});
     } else if constexpr (detail::is_std_array_v<F>) {
-      using ED = typename detail::wire<typename F::value_type>::decoded;
-      std::array<ED, std::tuple_size_v<F>> d;
-      for (std::size_t i = 0; i < d.size(); ++i) d[i] = ED(v[i]);
-      static_assert(sizeof(d) == detail::soa_elem_bytes<F>());
-      std::memcpy(base_[C] + r * sizeof(d), &d, sizeof(d));
+      if constexpr (std::tuple_size_v<F> > 0) {
+        using ED = typename detail::wire<typename F::value_type>::decoded;
+        std::array<ED, std::tuple_size_v<F>> d;
+        for (std::size_t i = 0; i < d.size(); ++i) d[i] = ED(v[i]);
+        static_assert(sizeof(d) == detail::soa_elem_bytes<F>());
+        std::memcpy(base_[C] + r * sizeof(d), &d, sizeof(d));
+      }
     } else {
       using D = typename detail::wire<F>::decoded;
       const D d = D(v);
@@ -439,14 +481,19 @@ class soa {
     if constexpr (Described<F>) {
       put_view_fields_<C, F, BitOff>(p, dflt, r, std::make_index_sequence<detail::field_count_v<F>>{});
     } else if constexpr (detail::is_byte_array_v<F>) {
-      std::memcpy(base_[C] + r * std::tuple_size_v<F>, p + BitOff / 8, std::tuple_size_v<F>);
+      if constexpr (std::tuple_size_v<F> > 0) {
+        std::memcpy(base_[C] + r * std::tuple_size_v<F>, p + BitOff / 8, std::tuple_size_v<F>);
+      }
     } else if constexpr (detail::is_std_array_v<F>) {
-      using E = typename F::value_type;
-      using ED = typename detail::wire<E>::decoded;
-      constexpr std::size_t eb = detail::wire<E>::bits;
-      std::array<ED, std::tuple_size_v<F>> d;
-      for (std::size_t i = 0; i < d.size(); ++i) d[i] = detail::decode_field<E>(p, BitOff + i * eb, dflt);
-      std::memcpy(base_[C] + r * sizeof(d), &d, sizeof(d));
+      if constexpr (std::tuple_size_v<F> > 0) {
+        using E = typename F::value_type;
+        using ED = typename detail::wire<E>::decoded;
+        constexpr std::size_t eb = detail::wire<E>::bits;
+        std::array<ED, std::tuple_size_v<F>> d;
+        for (std::size_t i = 0; i < d.size(); ++i) d[i] = detail::decode_field<E>(p, BitOff + i * eb, dflt);
+        static_assert(sizeof(d) == detail::soa_elem_bytes<F>());
+        std::memcpy(base_[C] + r * sizeof(d), &d, sizeof(d));
+      }
     } else {
       using D = typename detail::wire<F>::decoded;
       const D d = detail::decode_field_at<F, BitOff>(p, dflt);
@@ -470,9 +517,9 @@ class soa {
       column_info ci;
       ci.name = prefix + std::string(name);
       if (s.kind == dkind::fixed_bin || s.kind == dkind::list) {
-        // store fixed lists as flat fixed-size binary (elem×len bytes per row)
+        // store fixed lists as flat fixed-size binary (decoded elem * len bytes per row)
         ci.kind = dkind::fixed_bin;
-        ci.elem_bytes = detail::wire<F>::bits / 8;
+        ci.elem_bytes = detail::soa_elem_bytes<F>();
         schema_field bin = s;
         bin.kind = dkind::fixed_bin;
         bin.size = std::uint32_t(ci.elem_bytes);

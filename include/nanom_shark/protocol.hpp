@@ -382,7 +382,7 @@ class table_set<table_spec<Decls...>> : private detail::table_slot<Decls>... {
  private:
   template <class... Ds>
   bool any_enabled_(table_spec<Ds...>) const noexcept {
-    if constexpr (sizeof...(Ds) == 0) return false;
+    if constexpr (sizeof...(Ds) == 0) return true;
     else return (... || get<Ds::table_name>().enabled());
   }
 };

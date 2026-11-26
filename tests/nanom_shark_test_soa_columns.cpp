@@ -7,6 +7,7 @@
 // (no nesting) synthesized row, bit-field members (SomeipHeader's plain-looking-but-packed fields),
 // and a fixed byte-array member (LldpTlvRow::value_head).
 
+#include <nanom/emit.hpp>
 #include <nanom_shark/l2l3_nodes.hpp>
 #include <nanom_shark/soa_columns.hpp>
 
@@ -59,6 +60,69 @@ using FragCols = columns_of<defrag::Ipv4FragMeta>;
 static_assert(std::tuple_element_t<0, FragCols>::name.sv() == "packet_id");
 static_assert(std::tuple_element_t<2, FragCols>::name.sv() == "frag_offset_bytes");
 
+struct WideArrayRow {
+  std::array<nanom::be_u24_t, 2> vals;
+  std::array<nanom::be<std::uint16_t>, 3> words;
+};
+NANOM_DESCRIBE(WideArrayRow, vals, words);
+
+static_assert(std::is_same_v<std::tuple_element_t<0, columns_of<WideArrayRow>>::type,
+                             std::array<std::uint32_t, 2>>);
+static_assert(std::is_same_v<std::tuple_element_t<1, columns_of<WideArrayRow>>::type,
+                             std::array<std::uint16_t, 3>>);
+
+void test_soa_safety_regressions() {
+  check_matches_soa<WideArrayRow>();
+  nanom::soa<WideArrayRow> tbl(/*chunk_rows=*/4);
+  static_assert(noexcept(nanom::soa<WideArrayRow>(std::move(tbl))));
+
+  // Default-constructed column_bytes must not dereference null
+  nanom::soa<WideArrayRow>::column_bytes empty_cb{};
+  CHECK(empty_cb.size() == 0 && empty_cb.empty());
+
+  // Push >256 rows? Use chunk_rows=4 and push 20 rows via both value and view<T>
+  for (std::uint32_t i = 0; i < 20; ++i) {
+    WideArrayRow r{{nanom::be_u24_t(0x100000u + i), nanom::be_u24_t(0x200000u + i)},
+                   {nanom::be<std::uint16_t>(std::uint16_t(i)),
+                    nanom::be<std::uint16_t>(std::uint16_t(i + 1)),
+                    nanom::be<std::uint16_t>(std::uint16_t(i + 2))}};
+    if (i % 2 == 0) {
+      tbl.push(r);
+    } else {
+      auto raw = nanom::to_bytes(r);
+      CHECK(raw.has_value());
+      if (raw) {
+        auto v = nanom::overlay<WideArrayRow>()(nanom::from(std::span<const std::byte>(*raw)));
+        CHECK(v.has_value());
+        if (v) tbl.push(v->value);
+      }
+    }
+  }
+  CHECK(tbl.rows() == 20 && tbl.chunk_count() == 5);
+
+  // Copy a column_bytes from sealed chunk 0, then trigger many seals so sealed_ reallocates
+  auto cb0 = tbl.chunk_at(0).cols[0];
+  CHECK(cb0.size() == 4 * sizeof(std::array<std::uint32_t, 2>));
+  for (std::uint32_t i = 0; i < 40; ++i) {
+    WideArrayRow r{{nanom::be_u24_t(i), nanom::be_u24_t(i)}, {0, 0, 0}};
+    tbl.push(r);
+  }
+  CHECK(cb0.size() == 4 * sizeof(std::array<std::uint32_t, 2>));
+
+  // Verify decoded values in chunk 0
+  auto sp_vals = tbl.chunk_at(0).as<std::array<std::uint32_t, 2>>(0);
+  auto sp_words = tbl.chunk_at(0).as<std::array<std::uint16_t, 3>>(1);
+  CHECK(sp_vals.size() == 4 && sp_vals[1][0] == 0x100001u && sp_vals[1][1] == 0x200001u);
+  CHECK(sp_words.size() == 4 && sp_words[3][0] == 3 && sp_words[3][2] == 5);
+
+  // reserve(SIZE_MAX) must clamp to chunk_rows instead of wrapping
+  tbl.reserve(std::numeric_limits<std::size_t>::max());
+
+  // Move preserves rows and leaves moved-from empty
+  auto moved = std::move(tbl);
+  CHECK(moved.rows() == 60 && tbl.rows() == 0);
+}
+
 int main() {
   check_matches_soa<PacketRow>();
   check_matches_soa<EthNode>();
@@ -75,6 +139,7 @@ int main() {
   check_matches_soa<SomeipSdEntryRow>();
   check_matches_soa<SomeipSdOptionRow>();
   check_matches_soa<SomeipTlvMemberRow>();
+  test_soa_safety_regressions();
 
   if (failures) {
     std::printf("%d failure(s)\n", failures);

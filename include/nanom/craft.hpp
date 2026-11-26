@@ -222,6 +222,11 @@ struct frame_crafter : crafter_tag {
   expected<std::size_t, encode_error> write(S& sink) const {
     constexpr std::size_t hsz = wire_size_v<H>;
     if constexpr (std::is_same_v<S, counting_sink>) {
+      if constexpr (!::nanom::detail::has_computed_v<H>) {
+        std::array<std::byte, hsz> tmp{};
+        auto hr = ::nanom::emit(hdr, std::span<std::byte>(tmp), ctx, dflt);
+        if (!hr) return hr;
+      }
       if (!sink.put(nullptr, hsz)) return sink_refused(describe<H>::name());
       auto bn = body.write(sink);
       if (!bn) return bn;

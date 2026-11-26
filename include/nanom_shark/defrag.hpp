@@ -274,6 +274,7 @@ class ReassemblyTable {
                       bool more_fragments, std::span<const std::byte> payload,
                       Token token = kNoToken) {
     Result out;
+    if (payload.size() > cfg_.max_datagram_bytes) return out;  // oversized; drop before creating entry
     std::uint32_t id;
     auto kit = key_to_id_.find(key);
     if (kit == key_to_id_.end()) {
@@ -287,6 +288,13 @@ class ReassemblyTable {
       by_id_.emplace(id, std::move(r));
     } else {
       id = kit->second;
+      detail::Reassembly& existing = by_id_.at(id);
+      std::size_t already = 0;
+      for (const auto& f : existing.fragments) already += f.data.size();
+      if (payload.size() > cfg_.max_datagram_bytes - already) {
+        out.datagram_id = id;
+        return out;  // oversized; drop without mutating existing reassembly
+      }
     }
     out.datagram_id = id;
     detail::Reassembly& r = by_id_.at(id);
@@ -296,10 +304,6 @@ class ReassemblyTable {
       r.have_last = true;
       r.total_length = offset_bytes + std::uint32_t(payload.size());
     }
-
-    std::size_t already = 0;
-    for (const auto& f : r.fragments) already += f.data.size();
-    if (already + payload.size() > cfg_.max_datagram_bytes) return out;  // oversized; drop
 
     r.fragments.push_back(detail::FragmentSpan{offset_bytes, pid, more_fragments, payload, token});
     ++r.fragment_count;
@@ -451,7 +455,8 @@ class ReassemblyTable {
     for (auto it = by_id_.begin(); it != by_id_.end();) {
       detail::Reassembly& r = it->second;
       const bool aged_out =
-          now_packet_id >= r.last_packet_id + cfg_.timeout_ticks || r.last_packet_id == kNoPacket;
+          (r.last_packet_id == kNoPacket) ||
+          (now_packet_id >= r.last_packet_id && (now_packet_id - r.last_packet_id) >= cfg_.timeout_ticks);
       if (!aged_out) {
         note_deadline_(r.last_packet_id);
         ++it;
@@ -510,8 +515,13 @@ class ReassemblyTable {
     if (it == by_id_.end()) return 0;
     detail::Reassembly& r = it->second;
     if (!r.completed || r.retired) return 0;
-    const std::size_t n = r.fragments.size();
-    for (const auto& f : r.fragments) out(f.token);
+    std::size_t n = 0;
+    for (const auto& f : r.fragments) {
+      if (f.token != kNoToken) {
+        out(f.token);
+        ++n;
+      }
+    }
     r.fragments.clear();
     r.fragments.shrink_to_fit();  // give the storage back too, not just the size
     r.parts.clear();
@@ -529,8 +539,13 @@ class ReassemblyTable {
   static constexpr packet_id_t kNever = ~packet_id_t{0};
   packet_id_t earliest_ = kNever;
   void note_deadline_(packet_id_t last) noexcept {
-    // matches evict_stale's test: aged out once now >= last + timeout, or immediately for kNoPacket
-    const packet_id_t d = (last == kNoPacket || last > kNever - cfg_.timeout_ticks) ? 0 : last + cfg_.timeout_ticks;
+    // matches evict_stale's test: aged out once now - last >= timeout, or immediately for kNoPacket
+    if (last == kNoPacket) {
+      earliest_ = 0;
+      return;
+    }
+    if (last > kNever - cfg_.timeout_ticks) return;  // cannot expire within packet_id_t range
+    const packet_id_t d = last + cfg_.timeout_ticks;
     if (d < earliest_) earliest_ = d;
   }
 };

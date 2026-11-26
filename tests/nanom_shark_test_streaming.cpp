@@ -447,12 +447,43 @@ void test_malformed_block_releases_its_buffer() {
   CHECK(session.packets_fed() == 0);
 }
 
+// Immediate eviction (timeout_ticks == 0) must release the current packet's token cleanly
+// without leaking a pin.
+void test_immediate_evict_does_not_leak_pin() {
+  Capture c = new_capture();
+  // Build a non-completing IPv4 fragment (first half of a fragmented UDP datagram)
+  const std::vector<std::size_t> seams{16, 24, 24};
+  const auto frags = fragment_packets(0xbeef, 55, someip_sd_datagram(0x55), seams);
+  CHECK(!frags.empty());
+  if (frags.empty()) return;
+  add_record(c, frags[0]);
+
+  nanom_shark::AllTables tables;
+  nanom_shark::SinkHub sink{};
+  nanom_shark::DecodeOptions opts{};
+  opts.ipv4_defrag.timeout_ticks = 0;
+  nanom_shark::StreamingDecodeSession<nanom_shark::default_decoder> session(tables, sink, opts);
+  {
+    std::vector<std::byte> idb = to_byte_vector(c.file.data(), 28);
+    session.feed_idb(nanom::bytes(idb.data(), idb.size()), true, 24);
+  }
+  const auto& rec = c.records[0];
+  std::vector<std::byte> blk = to_byte_vector(c.file.data() + rec.off, rec.len);
+  const auto fr = session.feed_epb(nanom::bytes(blk.data(), blk.size()), true, /*token=*/77,
+                                   nmpcap::Kind::PcapRecord, rec.off);
+  CHECK(fr.ok);
+  CHECK(!fr.pinned);
+  CHECK(session.pinned_buffers() == 0);
+  CHECK(fr.released.size() == 1 && fr.released[0] == 77);
+}
+
 }  // namespace
 
 int main() {
   test_streaming_matches_whole_file_with_buffer_reuse();
   test_non_fragment_tokens_release_immediately();
   test_malformed_block_releases_its_buffer();
+  test_immediate_evict_does_not_leak_pin();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;
