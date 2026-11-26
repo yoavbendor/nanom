@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795082848660,
+  "lastUpdate": 1795683348115,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -1275,6 +1275,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 16.3,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "16f8ec1d1113bb6b99160949d1a9b87dcf88c374",
+          "message": "Merge pull request #37 from yoavbendor/claude/nanom-lance-parquet-enhancements-2erjot\n\nErgonomics + performance for packet parsing/crafting: Gemini's phases 0–3, checksums/CRCs, 2.8× faster nanom_shark tables",
+          "timestamp": "2026-11-26T10:49:47+02:00",
+          "tree_id": "de0b59cbda308025738d0c0288caa954cbc3c33a",
+          "url": "https://github.com/yoavbendor/nanom/commit/16f8ec1d1113bb6b99160949d1a9b87dcf88c374"
+        },
+        "date": 1795683346913,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 28.5,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 64.2,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 38.2,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 20.2,
             "unit": "ns/pkt"
           }
         ]
