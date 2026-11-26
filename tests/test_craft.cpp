@@ -37,15 +37,27 @@ using u64 = std::uint64_t;
 static std::atomic<std::size_t> g_alloc_count{0};
 static std::atomic<bool>        g_track_allocs{false};
 
+// The replacements are kept out of line: once GCC inlines a replaced operator delete into a caller
+// it sees free() applied to a pointer that came from `operator new` and reports
+// -Wmismatched-new-delete, although the replaced pair (malloc / free) does match. The array forms
+// are replaced too, so every allocation the test makes is counted, not only the scalar ones.
+#if defined(__GNUC__) || defined(__clang__)
+#  define NANOM_TEST_NOINLINE __attribute__((noinline))
+#else
+#  define NANOM_TEST_NOINLINE
+#endif
 #if !NANOM_TEST_ASAN
-void* operator new(std::size_t n) {
+NANOM_TEST_NOINLINE void* operator new(std::size_t n) {
   if (g_track_allocs.load(std::memory_order_relaxed))
     g_alloc_count.fetch_add(1, std::memory_order_relaxed);
   if (void* p = std::malloc(n ? n : 1)) return p;
   throw std::bad_alloc();
 }
-void operator delete(void* p) noexcept { std::free(p); }
-void operator delete(void* p, std::size_t) noexcept { std::free(p); }
+NANOM_TEST_NOINLINE void* operator new[](std::size_t n) { return ::operator new(n); }
+NANOM_TEST_NOINLINE void operator delete(void* p) noexcept { std::free(p); }
+NANOM_TEST_NOINLINE void operator delete(void* p, std::size_t) noexcept { std::free(p); }
+NANOM_TEST_NOINLINE void operator delete[](void* p) noexcept { std::free(p); }
+NANOM_TEST_NOINLINE void operator delete[](void* p, std::size_t) noexcept { std::free(p); }
 #endif
 
 static int failures = 0;
