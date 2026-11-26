@@ -413,6 +413,45 @@ static void test_mut_view_and_custom_ctx() {
   }
 }
 
+// ------------------------------------------------------------------ ubits / ibits from integers
+// Plain-integer assignment and designated initializers produce the same wire bytes, and every
+// in-range value round-trips through emit + strct.
+#if defined(__GNUC__)
+#  pragma GCC diagnostic push
+#  pragma GCC diagnostic ignored "-Wmissing-field-initializers"
+#endif
+static void test_ubits_values() {
+  ipv4_hdr ip{};
+  ip.version = 4;
+  ip.ihl = 5;
+  ip.flags = 2;
+  ip.frag_off = 0x1abc;
+  ip.ttl = 64;
+  CHECK(ip.version == 4 && ip.ihl == 5 && ip.flags == 2 && ip.frag_off == 0x1abc);
+  ipv4_hdr ip2{.version = 4, .ihl = 5, .flags = 2, .frag_off = 0x1abc, .ttl = 64};
+  auto a = nm::to_bytes(ip), b = nm::to_bytes(ip2);
+  CHECK(a && b && *a == *b);
+  if (a) CHECK((*a)[0] == std::byte{0x45} && (*a)[6] == std::byte{0x5a} && (*a)[7] == std::byte{0xbc});
+  mixed_bits m{};
+  m.b = -64;
+  m.d = -4;
+  CHECK(m.b == -64 && m.d == -4 && nm::to_bytes(m).has_value());
+  // runtime values: in-range values are stored unchanged and round trip through emit + strct
+  for (int x = 0; x < 4096; x += 7) {
+    vlan_hdr v{};
+    v.vid = x;
+    v.pcp = x & 7;
+    auto bytes = nm::to_bytes(v);
+    CHECK(bytes.has_value());
+    if (!bytes) continue;
+    auto back = nm::strct<vlan_hdr>()(nm::from(std::span<const std::byte>(*bytes)));
+    CHECK(back && back->value.vid == x && back->value.pcp == (x & 7));
+  }
+}
+#if defined(__GNUC__)
+#  pragma GCC diagnostic pop
+#endif
+
 int main() {
   std::mt19937_64 rng(2026);
   byte_roundtrip<eth_hdr>("eth_hdr", rng, 500);
@@ -426,6 +465,7 @@ int main() {
   byte_roundtrip<odd_width_hdr>("odd_width_hdr", rng, 1000);
   test_computed();
   test_errors();
+  test_ubits_values();
   test_mut_view_and_custom_ctx();
   if (failures) {
     std::printf("%d failure(s)\n", failures);

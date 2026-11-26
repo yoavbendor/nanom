@@ -533,12 +533,28 @@ add_test(NAME bench_smoke_streaming COMMAND nm_streaming_bench 1 1)
 add_test(NAME bench_smoke_thrift COMMAND nm_thrift_bench 10 5 1)
 add_test(NAME bench_smoke_layout COMMAND nm_layout_bench 0.002 1)
 add_test(NAME bench_smoke_emit COMMAND nm_emit_bench 1000 1)
+# nanom_shark decode throughput (docs/PERF_NETWORK.md): zero-copy floor / bare walk / decode into
+# tables / projected decode / streaming session, on a synthetic automotive capture from
+# bench/automotive_gen.py; plus frame crafting (emit<> per layer vs a patched template).
+nanom_exe(nm_shark_bench bench/nanom_shark_bench.cpp)
+target_link_libraries(nm_shark_bench PRIVATE nanom::shark)
+nanom_exe(nm_craft_bench bench/craft_bench.cpp)
+target_link_libraries(nm_craft_bench PRIVATE nanom::shark)
+add_test(NAME bench_smoke_craft COMMAND nm_craft_bench 20000 1)
+add_test(NAME bench_smoke_shark_on_fixture COMMAND nm_shark_bench ${nanom_shark_td}/someip_fixture.pcap 1)
 # Runtime-composed parsing (spec read at run time -> nm::dyn tree) vs the same layout composed
 # statically; the check script generates data and asserts both report the identical hash.
 # bench/rust_nom's `runtime_compose` binary is the Rust nom counterpart (docs/RUNTIME_COMPOSE.md).
 nanom_exe(nm_runtime_compose_bench bench/runtime_compose_bench.cpp)
 nanom_exe(nm_runtime_compose_static bench/runtime_compose_static.cpp)
 if(Python3_Interpreter_FOUND)
+  # A small (~2 k packet) automotive capture generated at test time, then every bench section.
+  add_test(NAME bench_shark_capture_gen
+           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/bench/automotive_gen.py
+                   ${CMAKE_CURRENT_BINARY_DIR}/bench_automotive_small.pcap 2000)
+  set_tests_properties(bench_shark_capture_gen PROPERTIES FIXTURES_SETUP shark_capture)
+  add_test(NAME bench_smoke_shark COMMAND nm_shark_bench ${CMAKE_CURRENT_BINARY_DIR}/bench_automotive_small.pcap 1)
+  set_tests_properties(bench_smoke_shark PROPERTIES FIXTURES_REQUIRED shark_capture)
   add_test(NAME bench_smoke_runtime_compose
            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/bench/runtime_compose_check.py
                    --dyn $<TARGET_FILE:nm_runtime_compose_bench>

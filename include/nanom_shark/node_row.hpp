@@ -43,14 +43,24 @@ class node_table {
   explicit node_table(std::string_view proto_name, std::size_t chunk_rows = 65536)
       : proto_name_(proto_name), table_(chunk_rows) {}
 
-  void push(const Row& r) { table_.push(r); }
+  /// Append a row -- unless this table was switched off (projection), in which case nothing is
+  /// stored. The check is one predictable branch; the row itself is built by the caller either
+  /// way, so callers on a hot path may test enabled() first to skip building it.
+  void push(const Row& r) {
+    if (enabled_) table_.push(r);
+  }
   const nm::soa<Row>& soa() const { return table_; }
   std::size_t rows() const { return table_.rows(); }
   std::string_view proto_name() const { return proto_name_; }
 
+  /// Projection: a disabled table keeps no rows (and allocates nothing). Enabled by default.
+  void set_enabled(bool on) noexcept { enabled_ = on; }
+  [[nodiscard]] bool enabled() const noexcept { return enabled_; }
+
  private:
   std::string  proto_name_;
   nm::soa<Row> table_;
+  bool         enabled_ = true;
 };
 
 }  // namespace nanom_shark

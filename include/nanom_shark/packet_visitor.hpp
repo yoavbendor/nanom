@@ -131,7 +131,7 @@ struct PacketVisitor {
   // tokens here. The whole-file path leaves it null (nothing to release; `file` outlives the pass).
   defrag::Token               token = defrag::kNoToken;
   std::uint32_t               pin_count = 0;
-  std::vector<defrag::Token>* retired_tokens = nullptr;
+  defrag::token_list*         retired_tokens = nullptr;
 
   void on_eth(const nmproto::Ethernet& v) {
     tables->template get<"eth">().push(EthNode{ctx.packet_id, 0, false, v});
@@ -150,9 +150,8 @@ struct PacketVisitor {
     ctx.ethertype = ethertype;
     ctx.l2_end = l2_end;
     if (l2_end > ctx.pkt.size()) return;
-    const nanom::bytes           region = ctx.pkt.subspan(l2_end, ctx.pkt.size() - l2_end);
-    const nanom::single_segment  one{region};
-    dispatch<layer::eth_payload, Decoder>(ctx, nanom::from(one.view()), *tables, *states, json);
+    const nanom::bytes region = ctx.pkt.subspan(l2_end, ctx.pkt.size() - l2_end);
+    dispatch<layer::eth_payload, Decoder>(ctx, region, *tables, *states, json);
   }
 
   void on_ipv4(const nmproto::Ipv4& v) {
@@ -216,8 +215,7 @@ struct PacketVisitor {
         payload_offset <= ctx.pkt.size()
             ? ctx.pkt.subspan(payload_offset, ctx.pkt.size() - payload_offset)
             : nanom::bytes{};
-    const nanom::single_segment one{payload};
-    on_tcp_layer<Decoder>(ctx, v, nanom::from(one.view()), *tables, *states, json);
+    on_tcp_layer<Decoder>(ctx, v, payload, *tables, *states, json);
   }
 
   void on_udp(const nmproto::Udp& v) {
@@ -235,10 +233,9 @@ struct PacketVisitor {
       const std::size_t avail = ctx.pkt.size() - payload_offset;
       payload = ctx.pkt.subspan(payload_offset, std::min(declared_payload, avail));
     }
-    // Wrap the contiguous UDP payload as a 1-part segment so the normal and reassembled paths share
-    // one seg_input-based code path; seg_input's fast path keeps this pointer-based.
-    const nanom::single_segment one{payload};
-    on_udp_layer<Decoder>(ctx, v, nanom::from(one.view()), *tables, *states, json);
+    // The contiguous UDP payload goes to the same dispatch as a reassembled datagram's segment
+    // list; it becomes a 1-part seg_input only for a protocol whose trigger matched.
+    on_udp_layer<Decoder>(ctx, v, payload, *tables, *states, json);
   }
 
   void on_ext_opt(nmproto::Ipv6ExtKind kind, const nmproto::Ipv6ExtOpt& v) {
@@ -355,10 +352,7 @@ struct PacketVisitor {
     // COMPLETION release, and strictly after dispatch: `result.parts` views the entry's own parts
     // storage, so retiring any earlier would pull the segment list out from under an in-flight
     // parse. Everything above this line has finished reading the datagram.
-    if (retired_tokens) {
-      auto freed = table.retire(result.datagram_id);
-      retired_tokens->insert(retired_tokens->end(), freed.begin(), freed.end());
-    }
+    if (retired_tokens) table.retire(result.datagram_id, *retired_tokens);
   }
 
   // on_ipv6 and on_fragment are separate callbacks; these carry IPv6 src/dst/identification from

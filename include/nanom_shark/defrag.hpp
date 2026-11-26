@@ -75,6 +75,59 @@ namespace nanom_shark::defrag {
 using Token = std::uint64_t;
 inline constexpr Token kNoToken = 0;
 
+/// A short list of tokens that does not allocate in the common case: up to `inline_capacity`
+/// tokens live in the object itself (one packet releases its own buffer, plus the handful a
+/// completing or aged-out datagram was pinning); only a longer list moves to the heap. Reads like
+/// the std::vector<Token> it replaces in FeedResult: size/empty/[]/begin/end/data, so range-for,
+/// indexing and <algorithm> over it work unchanged.
+class token_list {
+ public:
+  static constexpr std::size_t inline_capacity = 6;
+
+  token_list() = default;
+  token_list(const token_list&) = default;
+  token_list& operator=(const token_list&) = default;
+  token_list(token_list&& o) noexcept : inl_(o.inl_), n_(o.n_), heap_(std::move(o.heap_)) { o.clear(); }
+  token_list& operator=(token_list&& o) noexcept {
+    if (this != &o) {
+      inl_ = o.inl_;
+      n_ = o.n_;
+      heap_ = std::move(o.heap_);
+      o.clear();
+    }
+    return *this;
+  }
+
+  void push_back(Token t) {
+    if (n_ < inline_capacity) {
+      inl_[n_++] = t;
+      return;
+    }
+    if (n_ == inline_capacity) heap_.assign(inl_.begin(), inl_.end());
+    heap_.push_back(t);
+    ++n_;
+  }
+  void clear() noexcept {
+    n_ = 0;
+    heap_.clear();
+  }
+  [[nodiscard]] std::size_t  size() const noexcept { return n_; }
+  [[nodiscard]] bool         empty() const noexcept { return n_ == 0; }
+  [[nodiscard]] const Token* data() const noexcept { return n_ > inline_capacity ? heap_.data() : inl_.data(); }
+  [[nodiscard]] const Token* begin() const noexcept { return data(); }
+  [[nodiscard]] const Token* end() const noexcept { return data() + n_; }
+  [[nodiscard]] Token        operator[](std::size_t i) const noexcept { return data()[i]; }
+  [[nodiscard]] Token        front() const noexcept { return data()[0]; }
+  [[nodiscard]] Token        back() const noexcept { return data()[n_ - 1]; }
+  /// A std::vector copy, for callers that want one.
+  [[nodiscard]] std::vector<Token> to_vector() const { return {begin(), end()}; }
+
+ private:
+  std::array<Token, inline_capacity> inl_{};
+  std::size_t                        n_ = 0;
+  std::vector<Token>                 heap_;  // holds ALL tokens once n_ > inline_capacity
+};
+
 struct Ipv4Key {
   std::array<std::uint8_t, 4> src, dst;
   std::uint8_t                proto;
@@ -230,6 +283,7 @@ class ReassemblyTable {
       detail::Reassembly r{};
       r.datagram_id = id;
       r.first_packet_id = pid;
+      r.fragments.reserve(4);  // one allocation covers the usual 2-4 fragments
       by_id_.emplace(id, std::move(r));
     } else {
       id = kit->second;
@@ -237,6 +291,7 @@ class ReassemblyTable {
     out.datagram_id = id;
     detail::Reassembly& r = by_id_.at(id);
     r.last_packet_id = pid;
+    note_deadline_(pid);
     if (!more_fragments) {
       r.have_last = true;
       r.total_length = offset_bytes + std::uint32_t(payload.size());
@@ -254,10 +309,17 @@ class ReassemblyTable {
 
     if (!r.have_last) return out;  // can't know completeness without the terminal fragment
 
-    std::vector<const detail::FragmentSpan*> ordered;
-    ordered.reserve(r.fragments.size());
-    for (const auto& f : r.fragments) ordered.push_back(&f);
-    std::sort(ordered.begin(), ordered.end(), [](const auto* a, const auto* b) {
+    // fragment order by offset: on the stack for the usual few fragments, on the heap beyond that
+    const std::size_t nfrag = r.fragments.size();
+    std::array<const detail::FragmentSpan*, 16> ordered_small;
+    std::vector<const detail::FragmentSpan*>    ordered_big;
+    const detail::FragmentSpan**                ordered = ordered_small.data();
+    if (nfrag > ordered_small.size()) {
+      ordered_big.resize(nfrag);
+      ordered = ordered_big.data();
+    }
+    for (std::size_t i = 0; i < nfrag; ++i) ordered[i] = &r.fragments[i];
+    std::sort(ordered, ordered + nfrag, [](const auto* a, const auto* b) {
       return a->offset_bytes != b->offset_bytes ? a->offset_bytes < b->offset_bytes
                                                  : a->packet_id < b->packet_id;
     });
@@ -272,11 +334,18 @@ class ReassemblyTable {
     //     (evict_stale reports it as status 3);
     //   * bytes extending past the declared total_length        -> clamped (old code: ignored);
     //   * completeness check uses the UNCLAMPED end             -> same as the old `covered`.
-    std::vector<std::span<const std::byte>> parts;
-    parts.reserve(ordered.size());
+    // Built straight into the entry (its storage outlives this call, which Result::parts needs);
+    // cleared again on every path that does not complete.
+    std::vector<std::span<const std::byte>>& parts = r.parts;
+    parts.clear();
+    parts.reserve(nfrag);
     std::uint32_t covered = 0;  // unclamped high-water mark, matching the old loop's `covered`
-    for (const detail::FragmentSpan* f : ordered) {
-      if (f->offset_bytes > covered) return out;  // gap: still incomplete
+    for (std::size_t k = 0; k < nfrag; ++k) {
+      const detail::FragmentSpan* f = ordered[k];
+      if (f->offset_bytes > covered) {  // gap: still incomplete
+        parts.clear();
+        return out;
+      }
       const std::uint32_t clamped_covered = std::min(covered, r.total_length);
       const std::uint32_t end = f->offset_bytes + std::uint32_t(f->data.size());
       // overlap with already-covered content: verify byte equality (conflict detection)
@@ -285,6 +354,7 @@ class ReassemblyTable {
             std::min<std::size_t>(clamped_covered - f->offset_bytes, f->data.size());
         if (!detail::range_equals(parts, f->offset_bytes, f->data.first(ov))) {
           r.conflict = true;  // two fragments disagree on an overlapping byte
+          parts.clear();
           return out;         // never completes; evict_stale reports it as a conflict
         }
       }
@@ -295,9 +365,11 @@ class ReassemblyTable {
         parts.push_back(f->data.subspan(emit_from - f->offset_bytes, emit_to - emit_from));
       if (end > covered) covered = end;
     }
-    if (covered < r.total_length) return out;  // still missing bytes
+    if (covered < r.total_length) {  // still missing bytes
+      parts.clear();
+      return out;
+    }
 
-    r.parts = std::move(parts);
     r.completed = true;
     key_to_id_.erase(key);  // free the 4-tuple so a NEW datagram reusing it starts fresh
     out.completed = true;
@@ -322,18 +394,13 @@ class ReassemblyTable {
   /// against a caller that retires optimistically.
   std::vector<Token> retire(std::uint32_t datagram_id) {
     std::vector<Token> out;
-    auto it = by_id_.find(datagram_id);
-    if (it == by_id_.end()) return out;
-    detail::Reassembly& r = it->second;
-    if (!r.completed || r.retired) return out;
-    out.reserve(r.fragments.size());
-    for (const auto& f : r.fragments) out.push_back(f.token);
-    r.fragments.clear();
-    r.fragments.shrink_to_fit();  // give the storage back too, not just the size
-    r.parts.clear();
-    r.parts.shrink_to_fit();
-    r.retired = true;
+    retire_into_(datagram_id, [&](Token t) { out.push_back(t); });
     return out;
+  }
+  /// The same, appending the freed tokens to `out` instead of returning a new vector (no
+  /// allocation for a datagram of up to token_list::inline_capacity fragments). Returns how many.
+  std::size_t retire(std::uint32_t datagram_id, token_list& out) {
+    return retire_into_(datagram_id, [&](Token t) { out.push_back(t); });
   }
 
   /// Escape hatch for a consumer that genuinely needs the completed datagram as ONE contiguous
@@ -362,13 +429,31 @@ class ReassemblyTable {
   // summary now also carries the buffer tokens that entry was still pinning (empty if it was
   // retire()d first) -- this is where an in-flight reassembly that never completes finally gives
   // its caller's buffers back.
+  /// False while evict_stale(now_packet_id) is certain to evict nothing -- a cheap inline test so a
+  /// per-packet caller can skip the call (and its result vector) altogether.
+  [[nodiscard]] bool may_evict(packet_id_t now_packet_id) const noexcept { return now_packet_id >= earliest_; }
+
   std::vector<ReassemblySummary> evict_stale(packet_id_t now_packet_id) {
     std::vector<ReassemblySummary> out;
+    evict_stale(now_packet_id, [&](ReassemblySummary&& s) { out.push_back(std::move(s)); });
+    return out;
+  }
+
+  /// The same eviction, handing each summary to `on_evicted(ReassemblySummary&&)` as it is made
+  /// instead of collecting a vector (what the per-packet streaming session uses).
+  template <class OnEvicted>
+  void evict_stale(packet_id_t now_packet_id, OnEvicted&& on_evicted) {
+    // Called once per packet: skip the walk entirely while no entry can have aged out yet.
+    // `earliest_` never exceeds the smallest deadline in the table (deadlines only move later as
+    // fragments arrive), so this never skips an eviction the full walk would have made.
+    if (now_packet_id < earliest_) return;
+    earliest_ = kNever;
     for (auto it = by_id_.begin(); it != by_id_.end();) {
       detail::Reassembly& r = it->second;
       const bool aged_out =
           now_packet_id >= r.last_packet_id + cfg_.timeout_ticks || r.last_packet_id == kNoPacket;
       if (!aged_out) {
+        note_deadline_(r.last_packet_id);
         ++it;
         continue;
       }
@@ -393,7 +478,6 @@ class ReassemblyTable {
         s.completion_status = 1;
       }
       s.gap_bytes = (r.have_last && r.total_length > covered) ? (r.total_length - covered) : 0;
-      out.push_back(s);
       // A completed reassembly already erased its own key_to_id_ entry in add_fragment(); a
       // still-open one (timed out / evicted for capacity / stuck in conflict) has not, so its
       // 4-tuple key would otherwise keep resolving to this about-to-be-freed id forever -- the next
@@ -401,14 +485,17 @@ class ReassemblyTable {
       // doesn't carry its own key (it's Key-agnostic, shared by every ReassemblyTable<Key>
       // instantiation), so find it by value instead; key_to_id_ is bounded by max_concurrent, so
       // this scan is cheap and only runs for entries actually being evicted.
+      // (A completed entry has nothing left to find: its key was erased at completion, and a newer
+      // datagram reusing that key maps to its own id.)
       const std::uint32_t evicted_id = it->first;
-      for (auto kit = key_to_id_.begin(); kit != key_to_id_.end();) {
-        if (kit->second == evicted_id) kit = key_to_id_.erase(kit);
-        else ++kit;
-      }
+      if (!r.completed)
+        for (auto kit = key_to_id_.begin(); kit != key_to_id_.end();) {
+          if (kit->second == evicted_id) kit = key_to_id_.erase(kit);
+          else ++kit;
+        }
       it = by_id_.erase(it);
+      on_evicted(std::move(s));
     }
-    return out;
   }
 
   const detail::Reassembly* find(std::uint32_t datagram_id) const {
@@ -417,10 +504,35 @@ class ReassemblyTable {
   }
 
  private:
+  template <class Out>
+  std::size_t retire_into_(std::uint32_t datagram_id, Out&& out) {
+    auto it = by_id_.find(datagram_id);
+    if (it == by_id_.end()) return 0;
+    detail::Reassembly& r = it->second;
+    if (!r.completed || r.retired) return 0;
+    const std::size_t n = r.fragments.size();
+    for (const auto& f : r.fragments) out(f.token);
+    r.fragments.clear();
+    r.fragments.shrink_to_fit();  // give the storage back too, not just the size
+    r.parts.clear();
+    r.parts.shrink_to_fit();
+    r.retired = true;
+    return n;
+  }
+
   std::unordered_map<Key, std::uint32_t, typename key_hash_for<Key>::type> key_to_id_;
   std::unordered_map<std::uint32_t, detail::Reassembly>                   by_id_;
   std::uint32_t next_id_ = 1;
   Config        cfg_;
+
+  // Lower bound on the packet id at which some entry ages out (kNever: none can).
+  static constexpr packet_id_t kNever = ~packet_id_t{0};
+  packet_id_t earliest_ = kNever;
+  void note_deadline_(packet_id_t last) noexcept {
+    // matches evict_stale's test: aged out once now >= last + timeout, or immediately for kNoPacket
+    const packet_id_t d = (last == kNoPacket || last > kNever - cfg_.timeout_ticks) ? 0 : last + cfg_.timeout_ticks;
+    if (d < earliest_) earliest_ = d;
+  }
 };
 
 struct Ipv4FragMeta {

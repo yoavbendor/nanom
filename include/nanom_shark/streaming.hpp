@@ -59,7 +59,11 @@ struct FeedResult {
   /// Every token whose buffer became free during THIS call: this block's own if it was not pinned,
   /// plus any OTHER in-flight datagram's buffers whose reassembly just completed-and-dispatched
   /// (retire) or aged out (evict_stale) here. Never contains defrag::kNoToken.
-  std::vector<defrag::Token> released;
+  ///
+  /// A defrag::token_list: it holds the usual handful of tokens inline, so a tracked feed_epb does
+  /// not allocate per packet. It reads like the std::vector<Token> it used to be (size, [],
+  /// begin/end, range-for); call .to_vector() where a real vector is needed.
+  defrag::token_list released;
 };
 
 /// One streaming decode. Blocks are fed in capture order; state (interface link types, open
@@ -140,7 +144,7 @@ class StreamingDecodeSession {
       pj->add_layer_json("frame", detail::frame_json(e, link_type));
     }
 
-    std::vector<defrag::Token> retired;  // stays empty (no allocation) unless something completes
+    defrag::token_list retired;  // inline storage: no allocation unless a datagram had many fragments
     std::uint32_t pins_added = 0;
 
     const std::size_t poff = std::size_t(e.payload_file_offset);
@@ -166,16 +170,18 @@ class StreamingDecodeSession {
     // completion_status 0 (complete) was already pushed at completion time inside the walk; only
     // timed_out/conflict/capacity entries are new information here. Their tokens, however, are
     // always news: an entry that never completed has been holding its caller's buffers until now.
-    for (auto& s : defrag_.ipv4.evict_stale(pid_)) {
-      if (s.completion_status != 0)
-        tables_->template get<"datagram">().push(defrag::to_datagram_row(s, 4));
-      for (defrag::Token t : s.tokens) unpin(t, fr.released);
-    }
-    for (auto& s : defrag_.ipv6.evict_stale(pid_)) {
-      if (s.completion_status != 0)
-        tables_->template get<"datagram">().push(defrag::to_datagram_row(s, 6));
-      for (defrag::Token t : s.tokens) unpin(t, fr.released);
-    }
+    if (defrag_.ipv4.may_evict(pid_))  // inline test: the common packet skips both calls
+      defrag_.ipv4.evict_stale(pid_, [&](defrag::ReassemblySummary&& s) {
+        if (s.completion_status != 0)
+          tables_->template get<"datagram">().push(defrag::to_datagram_row(s, 4));
+        for (defrag::Token t : s.tokens) unpin(t, fr.released);
+      });
+    if (defrag_.ipv6.may_evict(pid_))
+      defrag_.ipv6.evict_stale(pid_, [&](defrag::ReassemblySummary&& s) {
+        if (s.completion_status != 0)
+          tables_->template get<"datagram">().push(defrag::to_datagram_row(s, 6));
+        for (defrag::Token t : s.tokens) unpin(t, fr.released);
+      });
     ++pid_;
 
     // Token bookkeeping. `pins_` counts, per token, how many fragment spans across BOTH tables
@@ -204,7 +210,7 @@ class StreamingDecodeSession {
 
  private:
   // Drop one pin on `t`; when the last one goes, the buffer is free -- report it exactly once.
-  void unpin(defrag::Token t, std::vector<defrag::Token>& out) {
+  void unpin(defrag::Token t, defrag::token_list& out) {
     if (t == defrag::kNoToken) return;
     auto it = pins_.find(t);
     if (it == pins_.end()) return;  // never pinned (dropped at capacity/oversize), or already freed

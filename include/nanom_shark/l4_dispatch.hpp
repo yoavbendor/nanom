@@ -23,13 +23,13 @@
 
 namespace nanom_shark {
 
-// `payload` is a seg_input over the bytes AFTER the L4 header -- a 1-part segment on the normal
-// path (contiguous, so seg_input's fast path keeps it pointer-based) and the multi-part reassembled
-// datagram on the defrag path. `c` is taken by value: the port/proto fields it fills in are scoped
+// `payload` is the bytes AFTER the L4 header -- contiguous nanom::bytes on the normal path (made a
+// 1-part seg_input only if a protocol matches) and the multi-part reassembled datagram's seg_input
+// on the defrag path. `c` is taken by value: the port/proto fields it fills in are scoped
 // to this layer and must not leak back into the caller's context.
 
-template <class Decoder, class Tables, class States>
-inline void on_tcp_layer(decode_ctx c, const nmproto::Tcp& v, nanom::seg_input payload,
+template <class Decoder, class Tables, class States, detail::DispatchPayload Payload>
+inline void on_tcp_layer(decode_ctx c, const nmproto::Tcp& v, const Payload& payload,
                          Tables& tables, States& states, PacketJson* json) {
   tables.template get<"tcp">().push(TcpNode{c.packet_id, c.datagram_id, c.is_reassembled, v});
   if (json) json->add_layer("tcp", v);
@@ -40,8 +40,8 @@ inline void on_tcp_layer(decode_ctx c, const nmproto::Tcp& v, nanom::seg_input p
   dispatch<layer::l4_payload, Decoder>(c, payload, tables, states, json);
 }
 
-template <class Decoder, class Tables, class States>
-inline void on_udp_layer(decode_ctx c, const nmproto::Udp& v, nanom::seg_input payload,
+template <class Decoder, class Tables, class States, detail::DispatchPayload Payload>
+inline void on_udp_layer(decode_ctx c, const nmproto::Udp& v, const Payload& payload,
                          Tables& tables, States& states, PacketJson* json) {
   tables.template get<"udp">().push(UdpNode{c.packet_id, c.datagram_id, c.is_reassembled, v});
   if (json) json->add_layer("udp", v);

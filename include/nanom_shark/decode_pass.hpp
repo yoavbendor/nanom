@@ -38,18 +38,21 @@ namespace nanom_shark {
 // `Decoder` is deduced from `tables` -- `tables_of<my_decoder> t; run_decode_pass(file, t, ...)`
 // selects that decoder's protocol set, with no other change at the call site. A malformed layer
 // stops that packet's walk only (walk_packet contract, see protocols.hpp); this function returns
-// false only when the pcap/pcapng block scan itself fails (a corrupt file, not a corrupt packet).
+// false only when the pcap/pcapng block scan itself fails (a corrupt file, not a corrupt packet);
+// the packets before the malformed block have been decoded into `tables` by then.
 template <class Decoder>
 inline bool run_decode_pass(nanom::bytes file, tables_of<Decoder>& tables, SinkHub sink,
                             const DecodeOptions& opts, std::string& error) {
-  std::vector<nmpcap::BlockRef> refs;
-  if (!nmpcap::scan_blocks(file, refs, error)) return false;
-
+  // ONE pass: each block is decoded as the scan finds it, while its bytes are still in cache.
+  // (This used to collect a BlockRef per packet into a vector first and then walk that, touching
+  // every packet of the file twice -- on a large capture the second trip to memory cost as much
+  // as decoding.) A corrupt container still makes this return false with `error` set; the tables
+  // then hold every packet before the malformed block.
   StreamingDecodeSession<Decoder> session(tables, sink, opts);
 
-  for (const nmpcap::BlockRef& ref : refs) {
+  return nmpcap::for_each_block(file, [&](const nmpcap::BlockRef& ref) {
     const std::size_t off = std::size_t(ref.file_offset);
-    if (off > file.size()) continue;
+    if (off > file.size()) return;
     // scan_blocks bounded every ref against the file, except the synthetic IDB it fabricates for a
     // classic-pcap global header: that one declares length 24 (the discriminator parse_idb keys
     // off) while the bytes it must read are the 4-byte magic plus 24 more. Hand the session what it
@@ -62,16 +65,15 @@ inline bool run_decode_pass(nanom::bytes file, tables_of<Decoder>& tables, SinkH
 
     if (ref.kind == nmpcap::Kind::Shb) {
       session.feed_shb(block);
-      continue;
+      return;
     }
     if (ref.kind == nmpcap::Kind::Idb) {
       session.feed_idb(block, ref.little_endian, ref.length);
-      continue;
+      return;
     }
-    if (ref.kind != nmpcap::Kind::Epb && ref.kind != nmpcap::Kind::PcapRecord) continue;
+    if (ref.kind != nmpcap::Kind::Epb && ref.kind != nmpcap::Kind::PcapRecord) return;
     session.feed_epb(block, ref.little_endian, defrag::kNoToken, ref.kind, ref.file_offset);
-  }
-  return true;
+  }, error);
 }
 
 }  // namespace nanom_shark

@@ -107,7 +107,20 @@ inline bool shb_byte_order(nm::input at, bool& little) {
 
 // ---- Phase A: boundary scan (whole buffer). Same contract as nanotins
 // scan_blocks: BlockRefs out, false + error on a malformed frame. ----
+//
+// for_each_block is the scan itself, handing each BlockRef to `on_block` as it is found instead of
+// collecting them (no vector of a million refs when the caller only walks them once);
+// scan_blocks is for_each_block collecting into `out`. On a malformed frame both stop there and
+// return false, after `on_block` has seen every well-formed block before it.
+template <class OnBlock>
+inline bool for_each_block(nm::bytes file, OnBlock&& on_block, std::string& error);
+
 inline bool scan_blocks(nm::bytes file, std::vector<BlockRef>& out, std::string& error) {
+  return for_each_block(file, [&](const BlockRef& r) { out.push_back(r); }, error);
+}
+
+template <class OnBlock>
+inline bool for_each_block(nm::bytes file, OnBlock&& on_block, std::string& error) {
   nm::input whole = nm::from(file);
   if (whole.size() < 4) return (error = "file too small", false);
 
@@ -136,7 +149,7 @@ inline bool scan_blocks(nm::bytes file, std::vector<BlockRef>& out, std::string&
         case kSpb: k = Kind::SimplePacket; break;
         default: break;
       }
-      out.push_back(BlockRef{off, total, hdr->value.type, k, little});
+      on_block(BlockRef{off, total, hdr->value.type, k, little});
       cur = cur.advance(total);
     }
     return true;
@@ -150,7 +163,7 @@ inline bool scan_blocks(nm::bytes file, std::vector<BlockRef>& out, std::string&
     const std::uint32_t link = gh->value.link_type;
     // parity with nanotins: expose the global header as a synthetic IDB so
     // downstream interface/link bookkeeping is format-agnostic
-    out.push_back(BlockRef{0, 24, kIdb, Kind::Idb, little});
+    on_block(BlockRef{0, 24, kIdb, Kind::Idb, little});
     nm::input cur = gh->rest;
     while (!cur.empty()) {
       const std::uint64_t off = cur.offset();
@@ -159,7 +172,7 @@ inline bool scan_blocks(nm::bytes file, std::vector<BlockRef>& out, std::string&
       const std::uint64_t total = 16 + std::uint64_t(rh->value.caplen);
       if (rh->value.caplen > rh->rest.size())
         return (error = "truncated pcap record at offset " + std::to_string(off), false);
-      out.push_back(BlockRef{off, std::uint32_t(total), link, Kind::PcapRecord, little});
+      on_block(BlockRef{off, std::uint32_t(total), link, Kind::PcapRecord, little});
       cur = rh->rest.advance(rh->value.caplen);
     }
     return true;

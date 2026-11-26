@@ -38,6 +38,7 @@
 
 #include <algorithm>
 #include <concepts>
+#include <initializer_list>
 #include <cstdint>
 #include <string_view>
 #include <type_traits>
@@ -147,7 +148,9 @@ struct tcp_port {
 /// tested, shared by `udp_port_cfg`'s trigger and by protocols that consult a second list for a
 /// mode flag (SOME/IP's `someip_tlv_ports`).
 inline bool port_in(const std::vector<std::uint16_t>& v, std::uint16_t a, std::uint16_t b) noexcept {
-  return std::find(v.begin(), v.end(), a) != v.end() || std::find(v.begin(), v.end(), b) != v.end();
+  for (const std::uint16_t p : v)  // one pass for both ports (the list is a handful of entries)
+    if (p == a || p == b) return true;
+  return false;
 }
 
 /// THE runtime-configurable-port trigger, and the reason it does not need a runtime registry.
@@ -334,6 +337,54 @@ class table_set<table_spec<Decls...>> : private detail::table_slot<Decls>... {
        static_cast<const detail::table_slot<Decls>&>(*this).slot_.soa()),
      ...);
   }
+
+  // ---- projection: decode only the tables you will read ----
+  //
+  // A disabled table stores no rows. A protocol whose tables are ALL disabled is not even parsed
+  // (unless a JSON sink is attached, which still wants its layers) -- see dispatch below. The base
+  // L2/L3/L4 walk always runs (it feeds every dispatch point), but each of its tables can be
+  // switched off individually too. Every table starts enabled.
+
+  /// Enable or disable one table by name; false if no table has that name.
+  bool set_enabled(std::string_view name, bool on) {
+    bool found = false;
+    ((Decls::table_name.sv() == name
+          ? (static_cast<detail::table_slot<Decls>&>(*this).slot_.set_enabled(on), found = true)
+          : false),
+     ...);
+    return found;
+  }
+  /// Enable or disable every table.
+  void set_all_enabled(bool on) noexcept {
+    (static_cast<detail::table_slot<Decls>&>(*this).slot_.set_enabled(on), ...);
+  }
+  /// Keep exactly the named tables; false if a name matches no table (the others are still applied).
+  bool enable_only(std::initializer_list<std::string_view> names) {
+    set_all_enabled(false);
+    bool ok = true;
+    for (std::string_view n : names) ok = set_enabled(n, true) && ok;
+    return ok;
+  }
+  [[nodiscard]] bool enabled(std::string_view name) const noexcept {
+    bool on = false;
+    ((Decls::table_name.sv() == name
+          ? (on = static_cast<const detail::table_slot<Decls>&>(*this).slot_.enabled(), true)
+          : false),
+     ...);
+    return on;
+  }
+  /// True if any of the tables in `Spec` (a protocol's table_spec) is enabled.
+  template <class Spec>
+  [[nodiscard]] bool any_enabled() const noexcept {
+    return any_enabled_(Spec{});
+  }
+
+ private:
+  template <class... Ds>
+  bool any_enabled_(table_spec<Ds...>) const noexcept {
+    if constexpr (sizeof...(Ds) == 0) return false;
+    else return (... || get<Ds::table_name>().enabled());
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -427,8 +478,15 @@ class states_of<decoder<Ps...>> : private detail::state_slot<Ps>... {
 
 namespace detail {
 
-template <layer L, class P, class Tables, class States>
-inline void dispatch_one(const decode_ctx& c, nanom::seg_input in, Tables& tables, States& states,
+// A dispatch payload is either a ready seg_input (a reassembled datagram's segment list) or the
+// contiguous bytes of a normal packet, which are wrapped as a one-part seg_input only once some
+// protocol's trigger has matched -- most packets match nothing at most dispatch points, and the
+// wrapping is not free.
+template <class Payload>
+concept DispatchPayload = std::same_as<Payload, nanom::seg_input> || std::same_as<Payload, nanom::bytes>;
+
+template <layer L, class P, class Tables, class States, class Payload>
+inline void dispatch_one(const decode_ctx& c, const Payload& in, Tables& tables, States& states,
                          PacketJson* json) {
   // Compile-time pruning: a trigger that can never match at this dispatch point is not even
   // instantiated, so the fold really is the old hand-written if-chain and nothing more.
@@ -437,12 +495,21 @@ inline void dispatch_one(const decode_ctx& c, nanom::seg_input in, Tables& table
                   "nanom_shark: protocol registered in decoder<...> has no usable  static void "
                   "parse(const decode_ctx&, nanom::seg_input, state&, auto& tables, PacketJson*)  "
                   "-- check the parameter list and that `tables` is a deduced `auto&`.");
-    if (P::trigger::match(c)) P::parse(c, in, states.template get<P>(), tables, json);
+    if (P::trigger::match(c) &&
+        (json != nullptr ||
+         tables.template any_enabled<std::remove_cvref_t<decltype(P::tables)>>())) {
+      if constexpr (std::same_as<Payload, nanom::seg_input>) {
+        P::parse(c, in, states.template get<P>(), tables, json);
+      } else {
+        const nanom::single_segment one{in};
+        P::parse(c, nanom::from(one.view()), states.template get<P>(), tables, json);
+      }
+    }
   }
 }
 
-template <layer L, class... Ps, class Tables, class States>
-inline void dispatch_list(decoder<Ps...>, const decode_ctx& c, nanom::seg_input in, Tables& tables,
+template <layer L, class... Ps, class Tables, class States, class Payload>
+inline void dispatch_list(decoder<Ps...>, const decode_ctx& c, const Payload& in, Tables& tables,
                           States& states, PacketJson* json) {
   (dispatch_one<L, Ps>(c, in, tables, states, json), ...);
 }
@@ -456,8 +523,11 @@ inline void dispatch_list(decoder<Ps...>, const decode_ctx& c, nanom::seg_input 
 ///
 /// Both the normal per-packet walk and the reassembled-datagram re-entry call THIS function, which
 /// is why they can no longer drift apart on e.g. SOME/IP port matching.
-template <layer L, class Decoder, class Tables, class States>
-inline void dispatch(const decode_ctx& c, nanom::seg_input in, Tables& tables, States& states,
+///
+/// `in` is a nanom::seg_input, or the contiguous payload as nanom::bytes (wrapped into a one-part
+/// seg_input only for a protocol that matched): every parse sees a seg_input either way.
+template <layer L, class Decoder, class Tables, class States, detail::DispatchPayload Payload>
+inline void dispatch(const decode_ctx& c, const Payload& in, Tables& tables, States& states,
                      PacketJson* json) {
   detail::dispatch_list<L>(Decoder{}, c, in, tables, states, json);
 }
