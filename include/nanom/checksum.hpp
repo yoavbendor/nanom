@@ -18,7 +18,8 @@
 //     crc32::resume(previous_value)               AUTOSAR's "start value, not first call" chaining
 //
 // Both plug into emit.hpp's computed fields; see test_checksum.cpp for an IPv4 header checksum,
-// a UDP checksum over its pseudo-header (emit_ctx::prefix), and an E2E-style CRC field.
+// a UDP checksum over its pseudo-header (a custom emit context carrying inet::pseudo_header_v4;
+// see examples/craft_frame.cpp), and an E2E-style CRC field.
 #ifndef NANOM_CHECKSUM_HPP_INCLUDED
 #define NANOM_CHECKSUM_HPP_INCLUDED
 

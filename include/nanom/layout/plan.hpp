@@ -511,7 +511,8 @@ class plan {
   /// Errors: not finite, outside [min, max] (when given), raw outside the raw range.
   /// Sets the field's update bit, if it has one.
   lresult<bool> set(const field_handle& h, std::span<std::byte> pdu, double physical) const;
-  /// The raw bits set() would write for `physical` (validated), without writing.
+  /// The raw value set() would write for `physical` (validated), without writing. A negative
+  /// signed signal comes back sign-extended to 64 bits; set() masks it to the field width.
   lresult<std::uint64_t> to_raw(const field_handle& h, double physical) const;
   /// The raw bits set_raw() would write for `raw` (validated).
   lresult<std::uint64_t> raw_bits(const field_handle& h, std::int64_t raw) const;
