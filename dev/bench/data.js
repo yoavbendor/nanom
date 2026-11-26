@@ -1,5 +1,5 @@
 window.BENCHMARK_DATA = {
-  "lastUpdate": 1795683348115,
+  "lastUpdate": 1795706896989,
   "repoUrl": "https://github.com/yoavbendor/nanom",
   "entries": {
     "nanom decode benchmarks": [
@@ -1319,6 +1319,50 @@ window.BENCHMARK_DATA = {
           {
             "name": "bulk bulk-parallel",
             "value": 20.2,
+            "unit": "ns/pkt"
+          }
+        ]
+      },
+      {
+        "commit": {
+          "author": {
+            "email": "119924118+yoavbendor@users.noreply.github.com",
+            "name": "yoavbendor",
+            "username": "yoavbendor"
+          },
+          "committer": {
+            "email": "noreply@github.com",
+            "name": "GitHub",
+            "username": "web-flow"
+          },
+          "distinct": true,
+          "id": "3122f814c359f37a116ebd729f063f84814170f5",
+          "message": "Merge pull request #38 from yoavbendor/claude/nanom-lance-parquet-enhancements-2erjot\n\nCanaries (write-side examples, API-surface check, downstream CI) + the bugs they found",
+          "timestamp": "2026-11-26T17:23:32+02:00",
+          "tree_id": "243e39e67da1a9d76000a57b28747c478e650d3f",
+          "url": "https://github.com/yoavbendor/nanom/commit/3122f814c359f37a116ebd729f063f84814170f5"
+        },
+        "date": 1795706896553,
+        "tool": "customSmallerIsBetter",
+        "benches": [
+          {
+            "name": "decode nanom-overlay",
+            "value": 20.8,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "decode nanom-strct",
+            "value": 44.9,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-serial",
+            "value": 22.4,
+            "unit": "ns/pkt"
+          },
+          {
+            "name": "bulk bulk-parallel",
+            "value": 15.1,
             "unit": "ns/pkt"
           }
         ]
