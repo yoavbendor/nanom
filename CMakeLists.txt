@@ -217,6 +217,13 @@ nanom_exe_strict(nanom_layout_tests_strict tests/test_layout.cpp)
 add_test(NAME nanom_layout_tests_strict COMMAND nanom_layout_tests_strict)
 nanom_exe_generation(nanom_layout_tests_nogen 0 tests/test_layout.cpp)
 add_test(NAME nanom_layout_tests_nogen COMMAND nanom_layout_tests_nogen)
+# AUTOSAR I-PDU signals (byte order, factor/offset, multiplexing, update bits, encode) and E2E.
+nanom_exe(nanom_layout_autosar_tests tests/test_layout_autosar.cpp)
+add_test(NAME nanom_layout_autosar_tests COMMAND nanom_layout_autosar_tests)
+nanom_exe_strict(nanom_layout_autosar_tests_strict tests/test_layout_autosar.cpp)
+add_test(NAME nanom_layout_autosar_tests_strict COMMAND nanom_layout_autosar_tests_strict)
+nanom_exe_generation(nanom_layout_autosar_tests_nogen 0 tests/test_layout_autosar.cpp)
+add_test(NAME nanom_layout_autosar_tests_nogen COMMAND nanom_layout_autosar_tests_nogen)
 nanom_exe(nanom_layout tools/nanom_layout.cpp)
 
 # Memory-safety regression suite: enforced guards (must pass).
@@ -351,6 +358,12 @@ if(Python3_Interpreter_FOUND)
   add_test(NAME layout_oracle
            COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/layout_oracle.py
                    $<TARGET_FILE:nanom_layout>)
+  # AUTOSAR signals vs cantools (DBC packing) and E2E vs the autosar-e2e package; skipped (77)
+  # when the interpreter lacks them.
+  add_test(NAME layout_autosar_oracle
+           COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tests/layout_autosar_oracle.py
+                   $<TARGET_FILE:nanom_layout>)
+  set_tests_properties(layout_autosar_oracle PROPERTIES SKIP_RETURN_CODE 77)
 endif()
 
 # ---- C++26 reflection mode only: the macro-free showcase + the provider-equivalence suite -----

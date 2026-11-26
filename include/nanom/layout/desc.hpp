@@ -11,6 +11,7 @@
 #ifndef NANOM_LAYOUT_DESC_HPP_INCLUDED
 #define NANOM_LAYOUT_DESC_HPP_INCLUDED
 
+#include <cmath>
 #include <fstream>
 #include <map>
 #include <sstream>
@@ -168,6 +169,28 @@ inline std::optional<type_info> classify_type(std::string_view type) {
 // the description
 // ---------------------------------------------------------------------------
 
+/// Byte order of one signal (AUTOSAR/DBC). `plan` = the plan's compile_options::order (the
+/// original description semantics: bit_offset in that order's bit numbering).
+enum class byte_order : std::uint8_t { plan, intel, motorola };
+
+/// The optional AUTOSAR I-PDU signal keys of one description line (docs/LAYOUT.md, "AUTOSAR
+/// signals"). All absent = a plain layout scalar.
+struct signal_desc {
+  byte_order order = byte_order::plan;
+  std::optional<bool> is_signed;          ///< "signed": overrides the type's signedness
+  double factor = 1, offset = 0;          ///< physical = raw * factor + offset
+  bool scaled = false;                    ///< "factor" or "offset" present
+  std::string unit;
+  std::optional<double> min, max;         ///< physical range
+  bool multiplexor = false;               ///< this signal selects the multiplexed group
+  std::string mux_signal;                 ///< the multiplexor's scalar_name ("" = the PDU's only one)
+  std::vector<std::int64_t> mux_values;   ///< valid only when the multiplexor holds one of these
+  std::optional<std::uint64_t> update_bit;   ///< Intel bit position of the update bit in the PDU
+  std::optional<std::uint64_t> pdu_length;   ///< bytes per PDU (= record stride)
+  bool any = false;                       ///< at least one signal key present
+  bool multiplexed() const { return !mux_values.empty(); }
+};
+
 /// One line of the description.
 struct scalar_desc {
   std::string raw_file;
@@ -178,7 +201,19 @@ struct scalar_desc {
   type_info ti;
   bool known_type = true;  ///< false: lenient mode decoded an unknown type as raw bits
   std::size_t line = 0;    ///< 1-based line in the description
+  signal_desc sig;         ///< AUTOSAR signal keys (all optional)
+  /// The field's offset in its access numbering: bit_offset, except for Motorola signals, whose
+  /// bit_offset is the DBC/AUTOSAR start bit (the MSB in sawtooth numbering) and whose linear
+  /// MSB-first offset is msb_linear(bit_offset).
+  std::uint64_t linear_offset() const;
 };
+
+/// Sawtooth (DBC) bit b = bit b % 8 (LSB = 0) of byte b / 8 -> its index when the bits are
+/// numbered MSB-first through big-endian bytes (byte 0 bit 7 = 0, byte 0 bit 0 = 7, byte 1 bit 7 = 8).
+constexpr std::uint64_t msb_linear(std::uint64_t sawtooth) { return sawtooth / 8 * 8 + 7 - sawtooth % 8; }
+inline std::uint64_t scalar_desc::linear_offset() const {
+  return sig.order == byte_order::motorola ? msb_linear(bit_offset) : bit_offset;
+}
 
 struct description {
   std::string source;
@@ -227,6 +262,120 @@ inline lresult<std::uint64_t> get_uint(const json& obj, std::string_view key, co
                    (v->is_int() ? std::to_string(v->i) : std::string(json::type_name(v->t))));
 }
 
+inline lresult<double> get_number(const json& v, std::string_view key, const load_options& o,
+                                  std::size_t line) {
+  if ((v.is_int() || v.t == json::type::real) && std::isfinite(v.d)) return v.d;
+  return lfail(o.source, line, v.offset + 1,
+               "\"" + std::string(key) + "\" must be a finite number, got " + json::type_name(v.t));
+}
+
+/// The optional AUTOSAR signal keys of one line.
+inline std::optional<layout_error> read_signal(const json& obj, scalar_desc& s, const load_options& o,
+                                               std::size_t line) {
+  signal_desc& g = s.sig;
+  const auto fail = [&](const json& v, std::string msg) {
+    return std::optional<layout_error>(layout_error{o.source, line, v.offset + 1, std::move(msg)});
+  };
+  const auto boolean = [&](const json& v, std::string_view key, bool& out) -> std::optional<layout_error> {
+    if (v.t != json::type::boolean) return fail(v, "\"" + std::string(key) + "\" must be true or false");
+    out = v.b;
+    return std::nullopt;
+  };
+  const auto integer = [&](const json& v, std::string_view key) -> std::optional<std::int64_t> {
+    if (v.is_int()) return v.i;
+    if (v.t == json::type::real && v.d == std::floor(v.d) && std::abs(v.d) < 9.0e15) return std::int64_t(v.d);
+    if (v.is_string()) return parse_int(v.s);
+    (void)key;
+    return std::nullopt;
+  };
+  for (const auto& m : obj.members) {
+    const json& v = m.value;
+    const std::string_view k = m.key;
+    if (k == "byte_order") {
+      if (!v.is_string()) return fail(v, "\"byte_order\" must be a string");
+      const std::string b = squash(v.s);
+      if (b == "intel" || b == "little" || b == "littleendian" || b == "mostsignificantbytelast")
+        g.order = byte_order::intel;
+      else if (b == "motorola" || b == "big" || b == "bigendian" || b == "mostsignificantbytefirst")
+        g.order = byte_order::motorola;
+      else
+        return fail(v, "\"byte_order\" must be \"intel\"/\"little\" or \"motorola\"/\"big\", got \"" + v.s + "\"");
+    } else if (k == "motorola_start") {
+      if (!v.is_string() || (squash(v.s) != "msb" && squash(v.s) != "lsb"))
+        return fail(v, "\"motorola_start\" must be \"msb\" or \"lsb\"");
+      // resolved below, once byte_order and bit_width are known
+    } else if (k == "signed") {
+      bool b = false;
+      if (auto e = boolean(v, k, b)) return e;
+      g.is_signed = b;
+    } else if (k == "factor") {
+      auto d = get_number(v, k, o, line);
+      if (!d) return d.error();
+      if (*d == 0) return fail(v, "\"factor\" must not be 0");
+      g.factor = *d;
+      g.scaled = true;
+    } else if (k == "offset") {
+      auto d = get_number(v, k, o, line);
+      if (!d) return d.error();
+      g.offset = *d;
+      g.scaled = true;
+    } else if (k == "unit") {
+      if (!v.is_string()) return fail(v, "\"unit\" must be a string");
+      g.unit = v.s;
+    } else if (k == "min" || k == "max") {
+      auto d = get_number(v, k, o, line);
+      if (!d) return d.error();
+      (k == "min" ? g.min : g.max) = *d;
+    } else if (k == "multiplexor") {
+      if (auto e = boolean(v, k, g.multiplexor)) return e;
+    } else if (k == "mux_signal") {
+      if (!v.is_string() || v.s.empty()) return fail(v, "\"mux_signal\" must be a non-empty string (the multiplexor's scalar_name)");
+      g.mux_signal = v.s;
+    } else if (k == "mux_value") {
+      if (v.t == json::type::array) {
+        if (v.items.empty()) return fail(v, "\"mux_value\" must not be an empty array");
+        for (const auto& it : v.items) {
+          auto n = integer(it, k);
+          if (!n) return fail(it, "\"mux_value\" entries must be integers");
+          g.mux_values.push_back(*n);
+        }
+      } else {
+        auto n = integer(v, k);
+        if (!n) return fail(v, "\"mux_value\" must be an integer or an array of integers");
+        g.mux_values.push_back(*n);
+      }
+    } else if (k == "update_bit" || k == "pdu_length") {
+      auto n = get_uint(obj, k, o, line);
+      if (!n) return n.error();
+      (k == "update_bit" ? g.update_bit : g.pdu_length) = *n;
+    } else {
+      continue;
+    }
+    g.any = true;
+  }
+  if (g.multiplexor && g.multiplexed())
+    return layout_error{o.source, line, obj.offset + 1,
+                        "a signal cannot be a multiplexor and multiplexed (nested multiplexing is not supported)"};
+  if (!g.mux_signal.empty() && !g.multiplexed())
+    return layout_error{o.source, line, obj.offset + 1, "\"mux_signal\" without \"mux_value\""};
+  if (g.min && g.max && *g.min > *g.max)
+    return layout_error{o.source, line, obj.offset + 1, "\"min\" is greater than \"max\""};
+  if (g.pdu_length && (*g.pdu_length == 0 || *g.pdu_length > o.max_record_bytes))
+    return layout_error{o.source, line, obj.offset + 1, "\"pdu_length\" must be 1.." + std::to_string(o.max_record_bytes)};
+  if (const json* ms = obj.find("motorola_start")) {
+    if (g.order != byte_order::motorola)
+      return fail(*ms, "\"motorola_start\" needs \"byte_order\": \"motorola\"");
+    if (squash(ms->s) == "lsb") {  // COM-style: bit_offset names the LSB; store the MSB start bit
+      const std::uint64_t lin_lsb = msb_linear(s.bit_offset);
+      if (lin_lsb + 1 < s.bit_width)
+        return fail(*ms, "Motorola signal with LSB at bit " + std::to_string(s.bit_offset) + " and " +
+                             std::to_string(s.bit_width) + " bits starts before bit 0 of the PDU");
+      s.bit_offset = msb_linear(lin_lsb + 1 - s.bit_width);  // msb_linear is its own inverse
+    }
+  }
+  return std::nullopt;
+}
+
 /// Validate one parsed line into a scalar_desc.
 inline lresult<scalar_desc> make_scalar(const json& obj, std::size_t line, const load_options& o,
                                         std::vector<std::string>& warnings) {
@@ -239,9 +388,26 @@ inline lresult<scalar_desc> make_scalar(const json& obj, std::size_t line, const
   if (!rf) return unexpected<layout_error>(rf.error());
   auto nm = get_string(obj, "scalar_name", o, line);
   if (!nm) return unexpected<layout_error>(nm.error());
-  auto ty = get_string(obj, "type", o, line);
+  static constexpr std::string_view signal_keys[] = {
+      "byte_order", "signed", "factor", "offset", "unit", "min", "max", "multiplexor",
+      "mux_signal", "mux_value", "update_bit", "pdu_length", "motorola_start"};
+  bool signal_line = false;
+  for (auto k : signal_keys) signal_line |= obj.find(k) != nullptr;
+  // AUTOSAR signal lines may omit "type" (unsigned, or Int with "signed": true) and may call
+  // bit_offset "start_bit".
+  lresult<std::string> ty = std::string{};
+  if (signal_line && !obj.find("type")) {  // the smallest C integer type that holds bit_width
+    const json* sg = obj.find("signed");
+    const bool neg = sg && sg->t == json::type::boolean && sg->b;
+    const json* wj = obj.find("bit_width");
+    const double w = wj && (wj->is_int() || wj->t == json::type::real) ? wj->d : 64;
+    ty = std::string(w <= 8 ? (neg ? "SChar" : "UChar") : w <= 16 ? (neg ? "Short" : "UShort")
+                     : w <= 32 ? (neg ? "Int" : "UInt") : (neg ? "LongLong" : "ULongLong"));
+  } else {
+    ty = get_string(obj, "type", o, line);
+  }
   if (!ty) return unexpected<layout_error>(ty.error());
-  auto off = get_uint(obj, "bit_offset", o, line);
+  auto off = get_uint(obj, signal_line && !obj.find("bit_offset") && obj.find("start_bit") ? "start_bit" : "bit_offset", o, line);
   if (!off) return unexpected<layout_error>(off.error());
   auto wid = get_uint(obj, "bit_width", o, line);
   if (!wid) return unexpected<layout_error>(wid.error());
@@ -262,6 +428,13 @@ inline lresult<scalar_desc> make_scalar(const json& obj, std::size_t line, const
                      std::to_string(o.max_record_bytes) + " bytes)");
   s.bit_offset = *off;
   s.bit_width = std::uint32_t(*wid);
+  if (signal_line) {
+    if (auto e = read_signal(obj, s, o, line)) return unexpected<layout_error>(*e);
+    if (s.sig.order == byte_order::motorola && s.linear_offset() + *wid > max_bits)
+      return lfail(o.source, line, col_of("bit_offset"), "Motorola signal leaves the record size limit");
+    if (s.sig.update_bit && *s.sig.update_bit >= max_bits)
+      return lfail(o.source, line, col_of("update_bit"), "update_bit is beyond the record size limit");
+  }
 
   const auto warn_or_fail = [&](std::string msg) -> std::optional<layout_error> {
     if (o.strict) return layout_error{o.source, line, col_of("type"), std::move(msg)};
@@ -276,6 +449,17 @@ inline lresult<scalar_desc> make_scalar(const json& obj, std::size_t line, const
     s.ti = type_info{family::raw, 0, 0};
     s.known_type = false;
   }
+  if (s.sig.is_signed) {
+    const family f = s.ti.fam;
+    if (f == family::unsigned_int || f == family::signed_int || f == family::raw)
+      s.ti.fam = *s.sig.is_signed ? family::signed_int : family::unsigned_int;
+    else if (f != family::enumeration)  // enums: "signed" picks the bit-field signedness (plan.hpp)
+      return lfail(o.source, line, col_of("signed"),
+                   std::string("\"signed\" does not apply to a ") + family_name(f) + " type");
+  }
+  if (s.sig.scaled && (s.ti.fam == family::boolean || s.ti.fam == family::pointer))
+    return lfail(o.source, line, col_of("factor"),
+                 std::string("factor/offset do not apply to a ") + family_name(s.ti.fam) + " type");
   const unsigned w = s.bit_width;
   if (s.ti.fam == family::floating) {
     if ((s.ti.size && w != 8u * s.ti.size) || (w != 32 && w != 64))

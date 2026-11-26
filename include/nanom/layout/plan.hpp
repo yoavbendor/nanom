@@ -153,6 +153,96 @@ inline std::uint64_t extract(const std::byte* rec, const access& a) {
   });
 }
 
+template <class U, bool BE>
+inline void store(std::byte* p, U v) {
+  if constexpr ((std::endian::native == std::endian::big) != BE)
+    if constexpr (sizeof(U) > 1) v = std::byteswap(v);
+  std::memcpy(p, &v, sizeof v);
+}
+
+/// The inverse of extract(): write the low `a.width` bits of `v` into field `a` of record `rec`,
+/// preserving every other bit (read-modify-write of the same window extract() reads).
+template <bool BE>
+inline void insert_t(std::byte* rec, const access& a, std::uint64_t v) {
+  std::byte* p = rec + a.off;
+  const unsigned w = a.width;
+  const std::uint64_t mask = w >= 64 ? ~std::uint64_t(0) : (std::uint64_t(1) << w) - 1;
+  v &= mask;
+  switch (a.m) {
+    case mode::n8: store<std::uint8_t, BE>(p, std::uint8_t(v)); return;
+    case mode::n16: store<std::uint16_t, BE>(p, std::uint16_t(v)); return;
+    case mode::n32: store<std::uint32_t, BE>(p, std::uint32_t(v)); return;
+    case mode::n64: store<std::uint64_t, BE>(p, v); return;
+    case mode::bits64: {
+      const unsigned pos = BE ? 64 - a.sh - w : a.sh;
+      const std::uint64_t x = load<std::uint64_t, BE>(p);
+      store<std::uint64_t, BE>(p, (x & ~(mask << pos)) | (v << pos));
+      return;
+    }
+    case mode::bits72: {  // a.sh in 1..7, a.sh + w in 65..72
+      const std::uint64_t lo = load<std::uint64_t, BE>(p);
+      const std::uint8_t hi = std::uint8_t(p[8]);
+      const unsigned lo_bits = 64 - a.sh, hi_bits = w - lo_bits;  // hi_bits in 1..8
+      const std::uint64_t lo_mask = ~std::uint64_t(0) >> a.sh;    // low lo_bits ones
+      const unsigned hmask = (1u << hi_bits) - 1;
+      if constexpr (BE) {  // the field's high lo_bits bits end the 64-bit word, the rest top byte 8
+        store<std::uint64_t, BE>(p, (lo & ~lo_mask) | (v >> hi_bits));
+        const unsigned sh8 = 8 - hi_bits;
+        p[8] = std::byte((hi & ~(hmask << sh8)) | ((unsigned(v) & hmask) << sh8));
+      } else {  // the field's low lo_bits bits are the top of the word, the rest bottom of byte 8
+        store<std::uint64_t, BE>(p, (lo & ~(lo_mask << a.sh)) | (v << a.sh));
+        p[8] = std::byte((hi & ~hmask) | (unsigned(v >> lo_bits) & hmask));
+      }
+      return;
+    }
+    case mode::small: {
+      std::uint64_t x = 0;
+      const unsigned n = a.span;
+      if constexpr (BE) for (unsigned i = 0; i < n; ++i) x = (x << 8) | std::uint8_t(p[i]);
+      else for (unsigned i = 0; i < n; ++i) x |= std::uint64_t(std::uint8_t(p[i])) << (8 * i);
+      const unsigned pos = BE ? 8 * n - a.sh - w : a.sh;
+      x = (x & ~(mask << pos)) | (v << pos);
+      if constexpr (BE) for (unsigned i = 0; i < n; ++i) p[i] = std::byte(x >> (8 * (n - 1 - i)));
+      else for (unsigned i = 0; i < n; ++i) p[i] = std::byte(x >> (8 * i));
+      return;
+    }
+  }
+}
+inline void insert(std::byte* rec, const access& a, std::uint64_t v) {
+  if (a.be) insert_t<true>(rec, a, v);
+  else insert_t<false>(rec, a, v);
+}
+
+/// The narrowest single load for a field of `w` bits at linear bit `lin` in a record of `stride`
+/// bytes (bit numbering per byte order: LSB-first little-endian / MSB-first big-endian).
+inline access make_access(std::uint64_t lin, unsigned w, bool be, std::size_t stride) {
+  access a;
+  a.width = std::uint8_t(w);
+  a.be = be;
+  const std::uint64_t byte = lin / 8;
+  const unsigned sh0 = unsigned(lin % 8);
+  const unsigned span = (sh0 + w + 7) / 8;
+  if (sh0 == 0 && (w == 8 || w == 16 || w == 32 || w == 64)) {
+    a.m = w == 8 ? mode::n8 : w == 16 ? mode::n16 : w == 32 ? mode::n32 : mode::n64;
+    a.off = std::uint32_t(byte);
+  } else if (stride >= 8 && span <= 8) {
+    const std::uint64_t off = std::min<std::uint64_t>(byte, stride - 8);
+    a.m = mode::bits64;
+    a.off = std::uint32_t(off);
+    a.sh = std::uint8_t(sh0 + 8 * (byte - off));
+  } else if (span == 9) {
+    a.m = mode::bits72;
+    a.off = std::uint32_t(byte);
+    a.sh = std::uint8_t(sh0);
+  } else {
+    a.m = mode::small;
+    a.off = std::uint32_t(byte);
+    a.sh = std::uint8_t(sh0);
+    a.span = std::uint8_t(span);
+  }
+  return a;
+}
+
 inline bool is_array_item(std::string_view c, std::uint64_t* n = nullptr) {
   constexpr std::string_view pre = "array_item_";
   if (!c.starts_with(pre) || c.size() == pre.size() || c.size() > pre.size() + 9) return false;
@@ -216,6 +306,7 @@ struct field_handle {
   storage st = storage::u64;
   family fam = family::raw;
   const enum_table* enums = nullptr;
+  double factor = 1, offset = 0;  ///< physical = raw * factor + offset (1 / 0 unless scaled)
 };
 
 /// One record: `stride` readable bytes (guaranteed by whoever made it).
@@ -227,6 +318,8 @@ class record {
     return scalar{detail::extract(p_, h.acc), h.st, h.fam, h.acc.width, h.enums};
   }
   scalar operator[](const field_handle& h) const { return value(h); }
+  /// Physical value: raw * factor + offset (the raw value itself for unscaled fields).
+  double physical(const field_handle& h) const { return value(h).f64() * h.factor + h.offset; }
   std::span<const std::byte> bytes() const { return std::span<const std::byte>(p_, n_); }
 
  private:
@@ -270,6 +363,24 @@ class record_set {
   std::size_t stride_ = 0, count_ = 0, tail_ = 0;
 };
 
+/// AUTOSAR signal attributes of a field (all defaults for plain layout scalars).
+struct field_signal {
+  static constexpr std::uint32_t none = std::uint32_t(-1);
+  byte_order order = byte_order::plan;  ///< as described (plan = the plan's order)
+  double factor = 1, offset = 0;
+  bool scaled = false;                  ///< factor/offset given: a physical column is produced
+  std::string unit;
+  std::optional<double> min, max;
+  bool multiplexor = false;
+  std::uint32_t mux = none;             ///< field index of the multiplexor (multiplexed signals)
+  std::vector<std::int64_t> mux_values;
+  std::string mux_signal;               ///< as described ("" = the PDU's only multiplexor)
+  std::optional<std::uint64_t> update_bit;
+  detail::access update;                ///< 1-bit Intel access of the update bit
+  bool any = false;                     ///< any signal key given
+  bool conditional() const { return mux != none || update_bit.has_value(); }
+};
+
 /// One field of a plan.
 struct field {
   std::string name;    ///< scalar_name as written
@@ -285,6 +396,8 @@ struct field {
   std::size_t line = 0;        ///< description line
   std::uint32_t occurrence = 0, occurrences = 1;  ///< k-th of n fields with this name (offset order)
   detail::access acc;
+  std::uint64_t linear_offset = 0;  ///< offset in the access numbering (Motorola: MSB-first linear)
+  field_signal sig;
 
   bool bitfield() const { return acc.m >= detail::mode::bits64; }
 };
@@ -358,7 +471,62 @@ class plan {
   }
   field_handle handle(std::uint32_t i) const {
     const field& f = fields_[i];
-    return field_handle{i, f.acc, f.st, f.fam, f.enums};
+    return field_handle{i, f.acc, f.st, f.fam, f.enums, f.sig.factor, f.sig.offset};
+  }
+
+  // ---- AUTOSAR signals -------------------------------------------------------------------
+  /// Some field uses the signal keys (byte_order, factor, multiplexing, update bits, ...).
+  bool has_signals() const { return has_signals_; }
+  /// Some field is multiplexed or has an update bit (decode yields nullable columns).
+  bool conditional() const { return conditional_; }
+  /// Some field has factor/offset (decode can add physical columns).
+  bool scaled() const { return scaled_; }
+  /// Field i holds a value in `r`: its multiplexor selects it and its update bit (if any) is set.
+  /// Always true for unconditional fields.
+  bool valid(const record& r, std::uint32_t i) const {
+    const field_signal& g = fields_[i].sig;
+    if (g.update_bit && detail::extract(r.p_, g.update) == 0) return false;
+    if (g.mux == field_signal::none) return true;
+    const std::int64_t sel = std::int64_t(detail::extract(r.p_, fields_[g.mux].acc));
+    for (auto v : g.mux_values)
+      if (v == sel) return true;
+    return false;
+  }
+  bool valid(const record& r, const field_handle& h) const { return valid(r, h.index); }
+
+  // ---- encode (the inverse of decode): write signals into a PDU buffer --------------------
+  /// Write raw bits (masked to the width) into `pdu` without any check except nothing: the
+  /// caller guarantees pdu.size() >= stride(). Other bits are preserved. The fastest path.
+  void set_bits_unchecked(const field_handle& h, std::span<std::byte> pdu, std::uint64_t bits) const {
+    detail::insert(pdu.data(), h.acc, bits);
+    const field_signal& g = fields_[h.index].sig;
+    if (g.update_bit) detail::insert(pdu.data(), g.update, 1);
+  }
+  /// Write a raw (integer) value. Errors: buffer shorter than stride(), value outside the
+  /// field's raw range ([0, 2^w-1] unsigned, [-2^(w-1), 2^(w-1)-1] signed). Floats: use set().
+  lresult<bool> set_raw(const field_handle& h, std::span<std::byte> pdu, std::int64_t raw) const;
+  lresult<bool> set_raw_unsigned(const field_handle& h, std::span<std::byte> pdu, std::uint64_t raw) const;
+  /// Write a physical value: raw = round((physical - offset) / factor), ties away from zero
+  /// (std::llround); IEEE float signals store (physical - offset) / factor as float/double.
+  /// Errors: not finite, outside [min, max] (when given), raw outside the raw range.
+  /// Sets the field's update bit, if it has one.
+  lresult<bool> set(const field_handle& h, std::span<std::byte> pdu, double physical) const;
+  /// The raw bits set() would write for `physical` (validated), without writing.
+  lresult<std::uint64_t> to_raw(const field_handle& h, double physical) const;
+  /// The raw bits set_raw() would write for `raw` (validated).
+  lresult<std::uint64_t> raw_bits(const field_handle& h, std::int64_t raw) const;
+
+  /// One value for encode(): physical (default) or raw.
+  struct signal_value {
+    field_handle h;
+    double value = 0;
+    bool raw = false;  ///< value is the raw integer (exact up to 2^53)
+  };
+  /// Validate every value first (ranges; a multiplexed signal needs its multiplexor -- given in
+  /// `values` or already in `pdu` -- to select it), then write them all; on error `pdu` is unchanged.
+  lresult<bool> encode(std::span<const signal_value> values, std::span<std::byte> pdu) const;
+  lresult<bool> encode(std::initializer_list<signal_value> values, std::span<std::byte> pdu) const {
+    return encode(std::span<const signal_value>(values.begin(), values.size()), pdu);
   }
 
   /// Every field.
@@ -411,8 +579,13 @@ class plan {
   std::unordered_map<std::string, std::uint32_t> by_name_;
   std::vector<std::shared_ptr<const enum_table>> keep_;  ///< owns the enum tables fields point at
   std::vector<std::string> warnings_;
+  bool has_signals_ = false, conditional_ = false, scaled_ = false;
 
   lresult<bool> build_tree(bool strict);
+  lresult<bool> link_signals(const description& d);
+  layout_error enc_error(const field_handle& h, std::string msg) const {
+    return layout_error{raw_file_, fields_[h.index].line, 0, fields_[h.index].column + ": " + std::move(msg)};
+  }
 };
 
 // ---------------------------------------------------------------------------
@@ -439,6 +612,7 @@ inline lresult<plan> plan::compile(const description& d, std::string_view raw_fi
                                      "\"; the description has:" + known);
   }
   std::uint64_t end_bits = 0;
+  std::optional<std::uint64_t> pdu_length;
   for (const scalar_desc* s : scalars) {
     field f;
     f.name = s->name;
@@ -449,7 +623,8 @@ inline lresult<plan> plan::compile(const description& d, std::string_view raw_fi
     f.line = s->line;
     f.enum_ref = s->ti.enum_ref;
     const unsigned w = s->bit_width;
-    const bool natural = s->bit_offset % 8 == 0 && (w == 8 || w == 16 || w == 32 || w == 64);
+    f.linear_offset = s->linear_offset();
+    const bool natural = f.linear_offset % 8 == 0 && (w == 8 || w == 16 || w == 32 || w == 64);
     // C rule: a plain member aligns to its own size; a bit-field to its declared type's size.
     // An enum bit-field's declared type is the enum's underlying int (4 bytes with GCC).
     f.align = natural ? std::uint8_t(w / 8)
@@ -470,7 +645,9 @@ inline lresult<plan> plan::compile(const description& d, std::string_view raw_fi
       case family::signed_int: sign = true; break;
       // enums are signed (-1 = UNDEF is common); an enum BIT-FIELD is signed only if the enum has
       // a negative value — GCC gives an enum without negatives an unsigned underlying type.
-      case family::enumeration: sign = natural || (f.enums && f.enums->has_negative()); break;
+      case family::enumeration:
+        sign = s->sig.is_signed ? *s->sig.is_signed : natural || (f.enums && f.enums->has_negative());
+        break;
       default: break;
     }
     if (f.fam != family::floating && f.fam != family::boolean) {
@@ -481,13 +658,23 @@ inline lresult<plan> plan::compile(const description& d, std::string_view raw_fi
     }
     f.acc.sign = sign;
     f.acc.width = std::uint8_t(w);
-    f.acc.be = o.order == std::endian::big;
-    end_bits = std::max(end_bits, s->bit_offset + w);
+    f.acc.be = s->sig.order == byte_order::motorola ? true
+               : s->sig.order == byte_order::intel  ? false
+                                                    : o.order == std::endian::big;
+    end_bits = std::max(end_bits, f.linear_offset + w);
+    if (s->sig.update_bit) end_bits = std::max(end_bits, *s->sig.update_bit + 1);
+    if (s->sig.pdu_length) {
+      if (pdu_length && *pdu_length != *s->sig.pdu_length)
+        return lfail(d.source, s->line, 0, "pdu_length " + std::to_string(*s->sig.pdu_length) +
+                                               " disagrees with pdu_length " + std::to_string(*pdu_length) +
+                                               " given earlier for \"" + p.raw_file_ + "\"");
+      pdu_length = s->sig.pdu_length;
+    }
     p.align_ = std::max<std::size_t>(p.align_, f.align);
     p.fields_.push_back(std::move(f));
   }
   p.used_bytes_ = std::size_t((end_bits + 7) / 8);
-  std::uint64_t stride = (p.used_bytes_ + p.align_ - 1) / p.align_ * p.align_;
+  std::uint64_t stride = pdu_length ? *pdu_length : (p.used_bytes_ + p.align_ - 1) / p.align_ * p.align_;
   if (auto it = o.stride_by_file.find(raw_file); it != o.stride_by_file.end()) stride = it->second;
   else if (o.stride) stride = *o.stride;
   if (stride < p.used_bytes_)
@@ -499,32 +686,39 @@ inline lresult<plan> plan::compile(const description& d, std::string_view raw_fi
   p.stride_ = std::size_t(stride);
 
   // Per-field load: the narrowest single load that the stride allows.
+  const auto proven = [&](const detail::access& a) {  // the invariant every unchecked read relies on
+    return std::uint64_t(a.off) + a.load_bytes() <= p.stride_ &&
+           a.sh + (a.m == detail::mode::bits64 ? a.width : 0) <= 64;
+  };
   for (field& f : p.fields_) {
-    auto& a = f.acc;
-    const std::uint64_t byte = f.bit_offset / 8;
-    const unsigned sh0 = unsigned(f.bit_offset % 8), w = f.bit_width;
-    const unsigned span = (sh0 + w + 7) / 8;
-    if (sh0 == 0 && (w == 8 || w == 16 || w == 32 || w == 64)) {
-      a.m = w == 8 ? detail::mode::n8 : w == 16 ? detail::mode::n16 : w == 32 ? detail::mode::n32 : detail::mode::n64;
-      a.off = std::uint32_t(byte);
-    } else if (p.stride_ >= 8 && span <= 8) {
-      const std::uint64_t off = std::min<std::uint64_t>(byte, p.stride_ - 8);
-      a.m = detail::mode::bits64;
-      a.off = std::uint32_t(off);
-      a.sh = std::uint8_t(sh0 + 8 * (byte - off));
-    } else if (span == 9) {
-      a.m = detail::mode::bits72;
-      a.off = std::uint32_t(byte);
-      a.sh = std::uint8_t(sh0);
-    } else {
-      a.m = detail::mode::small;
-      a.off = std::uint32_t(byte);
-      a.sh = std::uint8_t(sh0);
-      a.span = std::uint8_t(span);
-    }
-    // The invariant every unchecked read relies on.
-    if (std::uint64_t(a.off) + a.load_bytes() > p.stride_ || a.sh + (a.m == detail::mode::bits64 ? w : 0) > 64)
+    const bool sign = f.acc.sign, be = f.acc.be;
+    f.acc = detail::make_access(f.linear_offset, f.bit_width, be, p.stride_);
+    f.acc.sign = sign;
+    if (!proven(f.acc))
       return lfail(d.source, f.line, 0, "internal: field \"" + f.name + "\" load leaves the record");
+  }
+  for (std::size_t i = 0; i < scalars.size(); ++i) {
+    const signal_desc& g = scalars[i]->sig;
+    field_signal& fs = p.fields_[i].sig;
+    fs.order = g.order;
+    fs.factor = g.factor;
+    fs.offset = g.offset;
+    fs.scaled = g.scaled;
+    fs.unit = g.unit;
+    fs.min = g.min;
+    fs.max = g.max;
+    fs.multiplexor = g.multiplexor;
+    fs.mux_values = g.mux_values;
+    fs.mux_signal = g.mux_signal;
+    fs.update_bit = g.update_bit;
+    fs.any = g.any;
+    if (g.update_bit) {
+      fs.update = detail::make_access(*g.update_bit, 1, false, p.stride_);
+      if (!proven(fs.update))
+        return lfail(d.source, p.fields_[i].line, 0, "internal: update bit load leaves the record");
+    }
+    p.has_signals_ |= g.any;
+    p.scaled_ |= g.scaled;
   }
 
   // Occurrences of repeated names, in (bit_offset, line) order.
@@ -544,11 +738,200 @@ inline lresult<plan> plan::compile(const description& d, std::string_view raw_fi
   }
   auto t = p.build_tree(o.strict);
   if (!t) return unexpected<layout_error>(t.error());
+  if (p.has_signals_) {
+    auto l = p.link_signals(d);
+    if (!l) return unexpected<layout_error>(l.error());
+  }
   for (std::uint32_t i = 0; i < p.fields_.size(); ++i) {
     p.by_name_.emplace(p.fields_[i].column, i);
     if (p.fields_[i].occurrence == 0) p.by_name_.emplace(p.fields_[i].name, i);
   }
   return p;
+}
+
+// Multiplexed signals -> their multiplexor's field index.
+inline lresult<bool> plan::link_signals(const description& d) {
+  std::vector<std::uint32_t> muxes;
+  for (std::uint32_t i = 0; i < fields_.size(); ++i)
+    if (fields_[i].sig.multiplexor) muxes.push_back(i);
+  for (field& f : fields_) {
+    field_signal& g = f.sig;
+    if (g.mux_values.empty()) continue;
+    const std::string& want = g.mux_signal;
+    std::uint32_t m = field_signal::none;
+    if (want.empty()) {
+      if (muxes.size() != 1)
+        return lfail(d.source, f.line, 0,
+                     "multiplexed signal \"" + f.name + "\" needs \"mux_signal\": \"" + raw_file_ + "\" has " +
+                         std::to_string(muxes.size()) + " multiplexor signals");
+      m = muxes[0];
+    } else {
+      for (std::uint32_t i = 0; i < fields_.size(); ++i)
+        if (fields_[i].name == want || fields_[i].column == want) { m = i; break; }
+      if (m == field_signal::none)
+        return lfail(d.source, f.line, 0, "mux_signal \"" + want + "\" is not a signal of \"" + raw_file_ + "\"");
+      if (!fields_[m].sig.mux_values.empty())
+        return lfail(d.source, f.line, 0, "mux_signal \"" + want + "\" is itself multiplexed (nested multiplexing is not supported)");
+      if (fields_[m].fam == family::floating)
+        return lfail(d.source, f.line, 0, "mux_signal \"" + want + "\" is a float");
+      fields_[m].sig.multiplexor = true;
+    }
+    g.mux = m;
+  }
+  for (const field& f : fields_) conditional_ |= f.sig.conditional();
+  return true;
+}
+
+namespace detail {
+/// [lo, hi] of a field's raw integer values.
+inline std::pair<std::int64_t, std::uint64_t> raw_range(const field& f, bool& is_signed) {
+  const unsigned w = f.bit_width;
+  is_signed = f.acc.sign;
+  if (is_signed) {
+    const std::int64_t lo = w >= 64 ? std::numeric_limits<std::int64_t>::min() : -(std::int64_t(1) << (w - 1));
+    return {lo, w >= 64 ? std::uint64_t(std::numeric_limits<std::int64_t>::max()) : (std::uint64_t(1) << (w - 1)) - 1};
+  }
+  return {0, w >= 64 ? ~std::uint64_t(0) : (std::uint64_t(1) << w) - 1};
+}
+inline std::string num_text(double v) {
+  char b[40];
+  auto r = std::to_chars(b, b + sizeof b, v);
+  return std::string(b, r.ptr);
+}
+}  // namespace detail
+
+inline lresult<std::uint64_t> plan::raw_bits(const field_handle& h, std::int64_t raw) const {
+  const field& f = fields_[h.index];
+  if (f.fam == family::floating) return unexpected<layout_error>(enc_error(h, "float signal: use set() with a value"));
+  bool sg = false;
+  const auto [lo, hi] = detail::raw_range(f, sg);
+  const bool bad = sg ? (raw < lo || (raw > 0 && std::uint64_t(raw) > hi)) : (raw < 0 || std::uint64_t(raw) > hi);
+  if (bad)
+    return unexpected<layout_error>(enc_error(h, "raw value " + std::to_string(raw) + " outside [" +
+                                                     std::to_string(lo) + ", " + std::to_string(hi) + "]"));
+  return std::uint64_t(raw);
+}
+
+inline lresult<bool> plan::set_raw(const field_handle& h, std::span<std::byte> pdu, std::int64_t raw) const {
+  if (pdu.size() < stride_)
+    return unexpected<layout_error>(enc_error(h, "PDU buffer of " + std::to_string(pdu.size()) +
+                                                     " bytes is shorter than " + std::to_string(stride_)));
+  auto b = raw_bits(h, raw);
+  if (!b) return unexpected<layout_error>(b.error());
+  set_bits_unchecked(h, pdu, *b);
+  return true;
+}
+
+inline lresult<bool> plan::set_raw_unsigned(const field_handle& h, std::span<std::byte> pdu, std::uint64_t raw) const {
+  const field& f = fields_[h.index];
+  if (f.acc.sign || f.fam == family::floating) {
+    if (raw > std::uint64_t(std::numeric_limits<std::int64_t>::max()))
+      return unexpected<layout_error>(enc_error(h, "raw value " + std::to_string(raw) + " out of range"));
+    return set_raw(h, pdu, std::int64_t(raw));
+  }
+  if (pdu.size() < stride_)
+    return unexpected<layout_error>(enc_error(h, "PDU buffer shorter than the stride"));
+  bool sg = false;
+  const auto hi = detail::raw_range(f, sg).second;
+  if (raw > hi)
+    return unexpected<layout_error>(enc_error(h, "raw value " + std::to_string(raw) + " outside [0, " + std::to_string(hi) + "]"));
+  set_bits_unchecked(h, pdu, raw);
+  return true;
+}
+
+inline lresult<std::uint64_t> plan::to_raw(const field_handle& h, double physical) const {
+  const field& f = fields_[h.index];
+  const field_signal& g = f.sig;
+  if (!std::isfinite(physical)) return unexpected<layout_error>(enc_error(h, "value is not finite"));
+  if ((g.min && physical < *g.min) || (g.max && physical > *g.max))
+    return unexpected<layout_error>(enc_error(h, "physical value " + detail::num_text(physical) + " outside [" +
+                                                     detail::num_text(g.min.value_or(-INFINITY)) + ", " +
+                                                     detail::num_text(g.max.value_or(INFINITY)) + "]"));
+  const double r = (physical - g.offset) / g.factor;
+  if (f.fam == family::floating) {
+    if (f.bit_width == 32) {
+      if (std::isfinite(r) && std::abs(r) > double(std::numeric_limits<float>::max()))
+        return unexpected<layout_error>(enc_error(h, "value overflows float"));
+      return std::uint64_t(std::bit_cast<std::uint32_t>(float(r)));
+    }
+    return std::bit_cast<std::uint64_t>(r);
+  }
+  // round half away from zero, then range-check the integer
+  bool sg = false;
+  const auto [lo, hi] = detail::raw_range(f, sg);
+  const double rr = std::round(r);
+  const bool bad = !std::isfinite(rr) || (sg ? (rr < double(lo) || rr > double(hi)) : (rr < 0 || rr > double(hi)));
+  if (bad)
+    return unexpected<layout_error>(enc_error(h, "physical value " + detail::num_text(physical) + " -> raw " +
+                                                     detail::num_text(rr) + " outside [" + std::to_string(lo) +
+                                                     ", " + std::to_string(hi) + "]"));
+  // double(hi) may round up to 2^w: re-check exactly in the integer domain
+  if (sg) {
+    if (rr >= 9.2233720368547758e18) return unexpected<layout_error>(enc_error(h, "raw value out of range"));
+    const auto v = std::int64_t(rr);
+    if (v < lo || (v > 0 && std::uint64_t(v) > hi)) return unexpected<layout_error>(enc_error(h, "raw value out of range"));
+    return std::uint64_t(v);
+  }
+  if (rr >= 1.8446744073709552e19) return unexpected<layout_error>(enc_error(h, "raw value out of range"));
+  const auto v = std::uint64_t(rr);
+  if (v > hi) return unexpected<layout_error>(enc_error(h, "raw value out of range"));
+  return v;
+}
+
+inline lresult<bool> plan::set(const field_handle& h, std::span<std::byte> pdu, double physical) const {
+  if (pdu.size() < stride_)
+    return unexpected<layout_error>(enc_error(h, "PDU buffer of " + std::to_string(pdu.size()) +
+                                                     " bytes is shorter than " + std::to_string(stride_)));
+  auto b = to_raw(h, physical);
+  if (!b) return unexpected<layout_error>(b.error());
+  set_bits_unchecked(h, pdu, *b);
+  return true;
+}
+
+inline lresult<bool> plan::encode(std::span<const signal_value> values, std::span<std::byte> pdu) const {
+  if (pdu.size() < stride_)
+    return lfail(raw_file_, 0, 0, "encode: PDU buffer of " + std::to_string(pdu.size()) +
+                                      " bytes is shorter than " + std::to_string(stride_));
+  constexpr std::size_t kInline = 32;
+  std::uint64_t small[kInline];
+  std::vector<std::uint64_t> big;
+  std::uint64_t* bits = small;
+  if (values.size() > kInline) { big.resize(values.size()); bits = big.data(); }
+  for (std::size_t i = 0; i < values.size(); ++i) {
+    const signal_value& v = values[i];
+    if (v.h.index >= fields_.size()) return lfail(raw_file_, 0, 0, "encode: handle of another plan");
+    lresult<std::uint64_t> b = std::uint64_t(0);
+    if (v.raw) {
+      if (!(v.value == std::floor(v.value)) || std::abs(v.value) > 9.0e18)
+        return unexpected<layout_error>(enc_error(v.h, "raw value " + detail::num_text(v.value) + " is not an integer"));
+      b = fields_[v.h.index].fam == family::floating ? to_raw(v.h, v.value * fields_[v.h.index].sig.factor + fields_[v.h.index].sig.offset)
+                                                     : raw_bits(v.h, std::int64_t(v.value));
+    } else {
+      b = to_raw(v.h, v.value);
+    }
+    if (!b) return unexpected<layout_error>(b.error());
+    bits[i] = *b;
+  }
+  if (conditional_)
+    for (std::size_t i = 0; i < values.size(); ++i) {
+      const field_signal& g = fields_[values[i].h.index].sig;
+      if (g.mux == field_signal::none) continue;
+      std::optional<std::int64_t> sel;
+      for (std::size_t j = 0; j < values.size(); ++j)  // the multiplexor among the values (last wins)
+        if (values[j].h.index == g.mux) {
+          const field& m = fields_[g.mux];
+          const std::uint64_t x = bits[j];
+          sel = m.acc.sign && m.bit_width < 64 ? std::int64_t(x << (64 - m.bit_width)) >> (64 - m.bit_width)
+                                               : std::int64_t(x);
+        }
+      if (!sel) sel = std::int64_t(detail::extract(pdu.data(), fields_[g.mux].acc));
+      if (std::find(g.mux_values.begin(), g.mux_values.end(), *sel) == g.mux_values.end())
+        return unexpected<layout_error>(enc_error(values[i].h, "multiplexor \"" + fields_[g.mux].column +
+                                                                   "\" = " + std::to_string(*sel) +
+                                                                   " selects another signal group"));
+    }
+  for (std::size_t i = 0; i < values.size(); ++i) set_bits_unchecked(values[i].h, pdu, bits[i]);
+  return true;
 }
 
 // Name tree: first a trie over the distinct names, then the output tree with implicit arrays

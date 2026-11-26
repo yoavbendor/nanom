@@ -13,7 +13,9 @@
 //
 // Pieces: layout/json.hpp (JSON via nanom combinators), layout/desc.hpp (description + enum file),
 // layout/plan.hpp (compile: stride, loads, name tree), layout/decode.hpp (column kernels),
-// layout/export.hpp (JSON Lines / CSV), layout/arrow.hpp (Arrow C Data Interface).
+// layout/export.hpp (JSON Lines / CSV), layout/arrow.hpp (Arrow C Data Interface),
+// layout/e2e.hpp (AUTOSAR E2E protect/check). AUTOSAR I-PDU signals (byte order, factor/offset,
+// multiplexing, update bits; plan::set / plan::encode) are optional description keys.
 // See docs/LAYOUT.md.
 #ifndef NANOM_LAYOUT_HPP_INCLUDED
 #define NANOM_LAYOUT_HPP_INCLUDED
@@ -21,6 +23,7 @@
 #include "layout/arrow.hpp"
 #include "layout/decode.hpp"
 #include "layout/desc.hpp"
+#include "layout/e2e.hpp"
 #include "layout/export.hpp"
 #include "layout/json.hpp"
 #include "layout/plan.hpp"

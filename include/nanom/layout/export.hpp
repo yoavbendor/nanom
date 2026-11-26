@@ -97,10 +97,40 @@ inline void append_csv_value(std::string& out, const scalar& v) {
   }
 }
 
+/// How JSON / CSV print AUTOSAR signals (no effect on plain layouts).
+struct text_options {
+  /// Print raw * factor + offset for fields with factor/offset (as JSON floats).
+  bool physical = false;
+  /// Print null (JSON) / an empty cell (CSV) for multiplexed signals whose multiplexor selects
+  /// another group and for signals whose update bit is clear.
+  bool nulls = true;
+};
+
+namespace detail {
+/// Per-value signal treatment of a text writer: 1 = may be null, 2 = physical.
+inline std::vector<std::uint8_t> signal_flags(const plan& p, std::span<const field_handle> hs,
+                                              const text_options& o, bool& any) {
+  std::vector<std::uint8_t> fl(hs.size(), 0);
+  any = false;
+  if (!p.has_signals()) return fl;
+  for (std::size_t i = 0; i < hs.size(); ++i) {
+    const field_signal& g = p.fields()[hs[i].index].sig;
+    fl[i] = std::uint8_t((o.nulls && g.conditional() ? 1 : 0) | (o.physical && g.scaled ? 2 : 0));
+    any |= fl[i] != 0;
+  }
+  return fl;
+}
+inline scalar physical_scalar(double v) { return scalar{std::bit_cast<std::uint64_t>(v), storage::f64, family::floating, 64, nullptr}; }
+}  // namespace detail
+
 /// Precompiled JSON Lines writer for one selection.
 class jsonl_writer {
  public:
   explicit jsonl_writer(const plan& p) : jsonl_writer(p, p.all()) {}
+  jsonl_writer(const plan& p, const selection& s, const text_options& to) : jsonl_writer(p, s) {
+    plan_ = &p;
+    flags_ = detail::signal_flags(p, handles_, to, special_);
+  }
   jsonl_writer(const plan& p, const selection& s) {
     const auto tree = p.tree();
     std::vector<char> sel(p.size(), 0), has(tree.size(), 0);
@@ -163,6 +193,12 @@ class jsonl_writer {
 
   /// Append one record as one line.
   void write(std::string& out, const record& r) const {
+    if (special_) {
+      emit_signals(out, [&](std::size_t i) { return plan_->valid(r, handles_[i]); },
+                   [&](std::size_t i) { return r.physical(handles_[i]); },
+                   [&](std::size_t i) { return r.value(handles_[i]); });
+      return;
+    }
     emit(out, [&](std::size_t i) { return r.value(handles_[i]); });
   }
   /// Table columns feeding this writer (call once per table).
@@ -175,6 +211,15 @@ class jsonl_writer {
   }
   /// Append row `row` of a decoded table (cols from bind(); the table must hold the selection).
   void write(std::string& out, const table& t, std::size_t row, std::span<const std::size_t> cols) const {
+    if (special_) {
+      emit_signals(out, [&](std::size_t i) { return t.valid(row, cols[i]); },
+                   [&](std::size_t i) {
+                     const auto ph = t.physical(cols[i]);
+                     return ph.empty() ? t.cell(row, cols[i]).f64() * handles_[i].factor + handles_[i].offset : ph[row];
+                   },
+                   [&](std::size_t i) { return t.cell(row, cols[i]); });
+      return;
+    }
     emit(out, [&](std::size_t i) { return t.cell(row, cols[i]); });
   }
   std::size_t values() const { return handles_.size(); }
@@ -188,14 +233,33 @@ class jsonl_writer {
     }
     out += lits_.back();
   }
+  template <class Valid, class Phys, class Get>
+  void emit_signals(std::string& out, Valid&& valid, Phys&& phys, Get&& get) const {
+    for (std::size_t i = 0; i < handles_.size(); ++i) {
+      out += lits_[i];
+      const std::uint8_t f = flags_[i];
+      if ((f & 1) && !valid(i)) out += "null";
+      else if (f & 2) {
+        if (!detail::append_float(out, detail::physical_scalar(phys(i)))) out += "null";
+      } else append_json_value(out, get(i));
+    }
+    out += lits_.back();
+  }
   std::vector<std::string> lits_;
   std::vector<field_handle> handles_;
+  const plan* plan_ = nullptr;
+  std::vector<std::uint8_t> flags_;
+  bool special_ = false;
 };
 
 /// CSV writer: a header of column names, then one row per record.
 class csv_writer {
  public:
   explicit csv_writer(const plan& p) : csv_writer(p, p.all()) {}
+  csv_writer(const plan& p, const selection& s, const text_options& to) : csv_writer(p, s) {
+    plan_ = &p;
+    flags_ = detail::signal_flags(p, handles_, to, special_);
+  }
   csv_writer(const plan& p, const selection& s) {
     for (auto i : s.fields) {
       handles_.push_back(p.handle(i));
@@ -208,6 +272,10 @@ class csv_writer {
   void write(std::string& out, const record& r) const {
     for (std::size_t i = 0; i < handles_.size(); ++i) {
       if (i) out += ',';
+      if (special_ && flags_[i]) {
+        if ((flags_[i] & 1) && !plan_->valid(r, handles_[i])) continue;  // empty cell
+        if (flags_[i] & 2) { append_csv_value(out, detail::physical_scalar(r.physical(handles_[i]))); continue; }
+      }
       append_csv_value(out, r.value(handles_[i]));
     }
     out += '\n';
@@ -216,16 +284,20 @@ class csv_writer {
  private:
   std::string header_;
   std::vector<field_handle> handles_;
+  const plan* plan_ = nullptr;
+  std::vector<std::uint8_t> flags_;
+  bool special_ = false;
 };
 
 /// Stream records [o.first, o.first + o.count) as JSON Lines into sink(std::string_view), in
 /// chunks of ~1 MiB. Returns the number of records written.
 template <class Sink>
 lresult<std::size_t> export_jsonl(const plan& p, std::span<const std::byte> data, Sink&& sink,
-                                  const selection& s, const decode_options& o = {}) {
+                                  const selection& s, const decode_options& o = {},
+                                  const text_options& to = {}) {
   auto rr = resolve_range(p, data, o);
   if (!rr) return unexpected<layout_error>(rr.error());
-  const jsonl_writer w(p, s);
+  const jsonl_writer w(p, s, to);
   const auto recs = p.records(data);
   std::string buf;
   buf.reserve(std::size_t(1) << 21);
@@ -240,10 +312,11 @@ lresult<std::size_t> export_jsonl(const plan& p, std::span<const std::byte> data
 /// Same, CSV (header first).
 template <class Sink>
 lresult<std::size_t> export_csv(const plan& p, std::span<const std::byte> data, Sink&& sink,
-                                const selection& s, const decode_options& o = {}) {
+                                const selection& s, const decode_options& o = {},
+                                const text_options& to = {}) {
   auto rr = resolve_range(p, data, o);
   if (!rr) return unexpected<layout_error>(rr.error());
-  const csv_writer w(p, s);
+  const csv_writer w(p, s, to);
   const auto recs = p.records(data);
   std::string buf = w.header();
   for (std::size_t i = rr->first; i < rr->first + rr->count; ++i) {
