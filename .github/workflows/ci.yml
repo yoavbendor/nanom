@@ -168,6 +168,52 @@ jobs:
           ./_cons/consumer
           ./_cons/shark_consumer
 
+  # ---- downstream canaries: the real consumers build + test against THIS nanom ----
+  #      nanoarrow2parquet (Parquet writer: Thrift encoder, columnar encoders) and nanolance (Lance
+  #      writer/reader: protobuf codec, FSST, FastLanes, layout) pin nanom through FetchContent;
+  #      FETCHCONTENT_SOURCE_DIR_NANOM points that at this checkout instead of their pinned commit,
+  #      so an API or behaviour change that breaks either fails here, on the PR that makes it.
+  #      Their other deps (nanoarrow, zstd, CLI11) are fetched as they pin them. nanolance's pylance
+  #      interop smoke tests run with pyarrow + pylance installed (as its memory-safety workflow does);
+  #      nanoarrow2parquet's oracle uses pyarrow and the runner's cargo (arrow-rs). nanotins (its
+  #      pcapng2parquet example) is private and not fetched: that example is skipped by its CMake.
+  downstream:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: nanom
+      - uses: actions/checkout@v4
+        with:
+          repository: yoavbendor/nanoarrow2parquet
+          path: nanoarrow2parquet
+      - uses: actions/checkout@v4
+        with:
+          repository: yoavbendor/nanolance
+          path: nanolance
+      - name: install toolchain + python deps
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake ninja-build g++-13
+          python3 -m pip install --quiet --break-system-packages "pyarrow>=16" pandas cffi pylance ||
+            python3 -m pip install --quiet "pyarrow>=16" pandas cffi pylance
+      - name: nanoarrow2parquet against this nanom
+        run: |
+          cmake -S nanoarrow2parquet -B build-n2p -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=g++-13 -DN2P_BUILD_TESTS=ON \
+            -DFETCHCONTENT_SOURCE_DIR_NANOM="$GITHUB_WORKSPACE/nanom"
+          cmake --build build-n2p -j "$(getconf _NPROCESSORS_ONLN)"
+          ctest --test-dir build-n2p --output-on-failure -j "$(getconf _NPROCESSORS_ONLN)"
+      - name: nanolance against this nanom
+        run: |
+          cmake -S nanolance -B build-nl -G Ninja -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_CXX_COMPILER=g++-13 \
+            -DFETCHCONTENT_SOURCE_DIR_NANOM="$GITHUB_WORKSPACE/nanom" \
+            -DNANO_LANCE_WRITER_PYTHON="$(which python3)"
+          cmake --build build-nl -j "$(getconf _NPROCESSORS_ONLN)"
+          ctest --test-dir build-nl --output-on-failure -j "$(getconf _NPROCESSORS_ONLN)"
+
   # ---- every header compiles standalone (no missing includes) -----------
   header-selfcontained:
     runs-on: ubuntu-24.04
