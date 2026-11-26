@@ -104,6 +104,26 @@ class expected {
   constexpr E&       error()            { return e_; }
   constexpr const E& error() const      { return e_; }
 
+  // The three comparisons std::expected has, with its meaning, so `r == 16u` and the like compile
+  // the same with either expected.
+  template <class T2, class E2>
+    requires(!std::is_void_v<T2>)
+  friend constexpr bool operator==(const expected& x, const expected<T2, E2>& y) {
+    if (x.has_value() != y.has_value()) return false;
+    return x.has_value() ? static_cast<bool>(*x == *y) : static_cast<bool>(x.error() == y.error());
+  }
+  template <class T2>
+    requires(!requires { typename T2::value_type; typename T2::error_type; } &&
+             !requires(const T2& u) { u.error(); } &&
+             requires(const T& a, const T2& b) { { a == b } -> std::convertible_to<bool>; })
+  friend constexpr bool operator==(const expected& x, const T2& v) {
+    return x.has_value() && static_cast<bool>(*x == v);
+  }
+  template <class E2>
+  friend constexpr bool operator==(const expected& x, const unexpected<E2>& e) {
+    return !x.has_value() && static_cast<bool>(x.error() == e.error());
+  }
+
  private:
   constexpr void destroy() {
     if (has_) std::destroy_at(&v_);

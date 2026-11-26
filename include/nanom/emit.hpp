@@ -537,6 +537,41 @@ NANOM_ALWAYS_INLINE constexpr expected<std::size_t, encode_error> emit_struct(
   }
 }
 
+/// Reset computed field K of v to its zero value (zero fits every field).
+template <class T, std::size_t K>
+constexpr void zero_computed_field(T& v) {
+  using S = std::remove_cvref_t<std::tuple_element_t<K, std::remove_cvref_t<decltype(computed<T>::fields)>>>;
+  constexpr std::size_t I = field_index<T, S::name>();
+  static_assert(I != std::size_t(-1), "nanom: computed<T> names a field T does not have");
+  field_ref<T, S::name>(v) = field_type_at<T, I>{};
+}
+template <class T, std::size_t... Ks>
+constexpr void zero_computed_fields(T& v, std::index_sequence<Ks...>) {
+  (zero_computed_field<T, Ks>(v), ...);
+}
+
+/// Validate every field of v that is not computed, without a payload: the computed fields are
+/// zeroed first and the rest are encoded into a scratch buffer exactly as emit_struct would. Used
+/// where the size of an encoding is needed before its payload exists (craft::size_of on a frame
+/// whose header has computed fields), so that sizing refuses the same out-of-range values that
+/// writing does. (Plain index recursion rather than std::apply over the computed specs: clang 18
+/// crashes computing std::apply's noexcept over those generic lambdas.)
+template <Described T>
+constexpr expected<std::size_t, encode_error> check_noncomputed_fields(const T& value,
+                                                                       std::endian dflt) {
+  T v = value;
+  if constexpr (has_computed_v<T>)
+    zero_computed_fields(
+        v, std::make_index_sequence<std::tuple_size_v<std::remove_cvref_t<decltype(computed<T>::fields)>>>{});
+  std::array<std::byte, wire_size_v<T>> tmp{};
+  if constexpr (has_bitfields_v<T>()) zero_struct_bitfields<T, 0>(tmp.data());
+  const char* err = nullptr;
+  std::string_view bad_field;
+  if (!emit_fields_at<T, 0, true>(v, tmp.data(), dflt, err, bad_field)) [[unlikely]]
+    return unexpected<encode_error>(encode_error{err, describe<T>::name(), bad_field});
+  return wire_size_v<T>;
+}
+
 }  // namespace detail
 
 // ---------------------------------------------------------------------------

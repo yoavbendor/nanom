@@ -290,6 +290,8 @@ auto csv = nm::separated_list1(nm::chr(','), nm::dec<int>());
 | [examples/ethernet.cpp](examples/ethernet.cpp) | Eth → VLAN → IPv4 → UDP → TLV: bit fields, protocol switches, verify, context errors, soa export |
 | [examples/elf.cpp](examples/elf.cpp) | magic tags, runtime BE/LE selection, cut(), offset seeking, count() |
 | [examples/fat16.cpp](examples/fat16.cpp) | zero-copy views, lsb0 attribute bits, misaligned le<> fields, fixed 32-byte records |
+| [examples/craft_frame.cpp](examples/craft_frame.cpp) | writing: Eth → VLAN → IPv4 → UDP → SOME/IP crafted with `nanom::craft`, computed lengths + checksums (UDP pseudo-header), checked against scapy; in-place patch via `overlay_mut` + RFC 1624 update |
+| [examples/layout_encode_e2e.cpp](examples/layout_encode_e2e.cpp) | AUTOSAR PDUs: encode physical signals (Intel / Motorola, mux, update bit), E2E P05 / P01 protect + check, decode to nullable columns; checked against cantools + autosar-e2e |
 
 ## Data-parallel bulk decode (CPU now, GPU-ready)
 

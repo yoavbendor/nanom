@@ -303,10 +303,20 @@ nanom_exe_generation(nanom_dyn_tests_nogen 0 tests/test_dyn.cpp)
 add_test(NAME nanom_dyn_tests_nogen COMMAND nanom_dyn_tests_nogen)
 
 # ---- worked examples (must run clean) -------------------------------------
-foreach(ex ethernet elf fat16 layout_to_arrow)
+# craft_frame / layout_encode_e2e are write-side canaries: crafted frames and encoded + E2E-protected
+# PDUs are compared with golden bytes from scapy, cantools and autosar-e2e.
+foreach(ex ethernet elf fat16 layout_to_arrow craft_frame layout_encode_e2e)
   nanom_exe(example_${ex} examples/${ex}.cpp)
   add_test(NAME example_${ex} COMMAND example_${ex})
 endforeach()
+
+# Public API surface canary: names every documented public entity with its documented shape
+# (static_asserts + exact function-pointer signatures), so a rename / removal / signature change
+# fails to compile here with a message naming the entity. Also built in the strict profile.
+nanom_exe(nanom_api_surface tests/api_surface.cpp)
+add_test(NAME nanom_api_surface COMMAND nanom_api_surface)
+nanom_exe_strict(nanom_api_surface_strict tests/api_surface.cpp)
+add_test(NAME nanom_api_surface_strict COMMAND nanom_api_surface_strict)
 
 # Parquet footer / page-header / offset-index dump via the reflected Thrift model, checked against
 # pyarrow on a matrix of real files (codecs, page v1/v2, dictionary, nested + logical types, page
