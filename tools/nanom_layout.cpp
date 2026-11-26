@@ -7,6 +7,18 @@
 //                [--name-separator S]
 //                [--big-endian] [--lenient] [--allow-partial] [--via-columns]
 //                [--strategy auto|field|record] [-o OUT]
+//                [--physical] [--no-nulls] [--signals-as raw|physical|both]      (AUTOSAR signals)
+//                [--e2e P --data-id N | --data-id-list HEX32] [--e2e-offset BITS]
+//                [--e2e-mode both|alt|low|nibble] [--e2e-max-delta N]
+//   nanom-layout --layout desc.jsonl --encode VALUES.jsonl [--raw-values] [--pdu-template HEX]
+//                [--e2e ...] -o OUT.raw
+//
+// AUTOSAR: --physical prints raw * factor + offset for scaled signals (JSON/CSV) and adds physical
+// columns (Arrow, --signals-as); multiplexed / update-bit signals print null unless --no-nulls.
+// --encode reads one JSON object per line ({"Signal": value, ...}, physical values unless
+// --raw-values), writes one PDU per line (stride bytes, starting from --pdu-template or zeros) and,
+// with --e2e, protects each PDU (counter 0, 1, ...). --format e2e-check checks the input PDUs
+// with the same --e2e options and prints one status per PDU.
 //
 // arrow-schema decodes the records and prints the schema export_arrow produces (one JSON line per
 // Arrow column: name, format, dictionary values, field metadata); --enums-as picks how enum
@@ -41,6 +53,12 @@ int usage(const char* why) {
       "                    [--name-separator S] (Arrow column names: '.' -> S, default '/')\n"
       "                    [--big-endian] [--lenient] [--allow-partial] [--via-columns]\n"
       "                    [--strategy auto|field|record] [-o OUT]\n"
+      "                    [--physical] [--no-nulls] [--signals-as raw|physical|both]\n"
+      "                    [--e2e p01|p02|p04|p05|p06|p07|p11|p22 --data-id N | --data-id-list HEX32]\n"
+      "                    [--e2e-offset BITS] [--e2e-mode both|alt|low|nibble] [--e2e-max-delta N]\n"
+      "                    [--format ...|e2e-check]\n"
+      "       nanom-layout --layout DESC.jsonl --encode VALUES.jsonl [--raw-values]\n"
+      "                    [--pdu-template HEX] [--e2e ...] -o OUT.raw\n"
       "       nanom-layout --layout DESC.jsonl --list\n"
       "PATTERN: exact name, subtree (\"A.b\" selects A.b.*), prefix ending in '.' or '::', or glob (* ?)\n",
       stderr);
@@ -102,7 +120,11 @@ int main(int argc, char** argv) {
   lay::load_options lo;
   lay::decode_options dopt;
   lay::arrow_options aopt;
-  bool list = false, via_columns = false;
+  bool list = false, via_columns = false, raw_values = false;
+  lay::text_options topt;
+  std::string encode_path, pdu_template;
+  std::optional<lay::e2e::config> e2e;
+  lay::e2e::config ec;
   std::optional<std::pair<std::uint64_t, std::optional<std::uint64_t>>> range;
 
   for (int i = 1; i < argc; ++i) {
@@ -115,6 +137,9 @@ int main(int argc, char** argv) {
     else if (a == "--big-endian") co.order = std::endian::big;
     else if (a == "--allow-partial") dopt.allow_partial = true;
     else if (a == "--via-columns") via_columns = true;
+    else if (a == "--physical") { topt.physical = true; dopt.physical = true; }
+    else if (a == "--no-nulls") { topt.nulls = false; dopt.validity = false; }
+    else if (a == "--raw-values") raw_values = true;
     else if (!(v = next())) return usage(("missing value after " + std::string(a)).c_str());
     else if (a == "--layout") layout_path = v;
     else if (a == "--enums") enums_path = v;
@@ -123,6 +148,58 @@ int main(int argc, char** argv) {
     else if (a == "-o" || a == "--output") out_path = v;
     else if (a == "--format") format = v;
     else if (a == "--select") selects.emplace_back(v);
+    else if (a == "--encode") encode_path = v;
+    else if (a == "--pdu-template") pdu_template = v;
+    else if (a == "--signals-as") {
+      const std::string_view s = v;
+      if (s == "raw") aopt.signals = lay::signal_mode::raw;
+      else if (s == "physical") aopt.signals = lay::signal_mode::physical;
+      else if (s == "both") aopt.signals = lay::signal_mode::both;
+      else return usage("--signals-as is raw, physical or both");
+    }
+    else if (a == "--e2e") {
+      static constexpr std::pair<std::string_view, lay::e2e::profile> ps[] = {
+          {"p01", lay::e2e::profile::p01}, {"p02", lay::e2e::profile::p02}, {"p04", lay::e2e::profile::p04},
+          {"p05", lay::e2e::profile::p05}, {"p06", lay::e2e::profile::p06}, {"p07", lay::e2e::profile::p07},
+          {"p11", lay::e2e::profile::p11}, {"p22", lay::e2e::profile::p22}};
+      bool ok = false;
+      for (auto [n, pr] : ps) if (n == v) { ec.prof = pr; ok = true; }
+      if (!ok) return usage("--e2e is p01, p02, p04, p05, p06, p07, p11 or p22");
+      e2e = ec;
+    }
+    else if (a == "--data-id") {
+      auto n = to_u64(v);
+      if (!n || *n > 0xFFFFFFFFu) return usage("--data-id needs a 32-bit integer");
+      ec.data_id = std::uint32_t(*n);
+    }
+    else if (a == "--data-id-list") {
+      const std::string_view s = v;
+      if (s.size() != 32) return usage("--data-id-list needs 32 hex digits (16 bytes)");
+      for (std::size_t k = 0; k < 16; ++k) {
+        unsigned b = 0;
+        auto r = std::from_chars(s.data() + 2 * k, s.data() + 2 * k + 2, b, 16);
+        if (r.ec != std::errc{} || r.ptr != s.data() + 2 * k + 2) return usage("--data-id-list needs 32 hex digits");
+        ec.data_id_list[k] = std::uint8_t(b);
+      }
+    }
+    else if (a == "--e2e-offset") {
+      auto n = to_u64(v);
+      if (!n || *n > 0xFFFFFFFFu) return usage("--e2e-offset needs a bit offset");
+      ec.offset = std::uint32_t(*n);
+    }
+    else if (a == "--e2e-max-delta") {
+      auto n = to_u64(v);
+      if (!n || *n > 0xFFFFFFFFu) return usage("--e2e-max-delta needs an integer");
+      ec.max_delta_counter = std::uint32_t(*n);
+    }
+    else if (a == "--e2e-mode") {
+      const std::string_view s = v;
+      if (s == "both") ec.id_mode = lay::e2e::data_id_mode::both;
+      else if (s == "alt") ec.id_mode = lay::e2e::data_id_mode::alt;
+      else if (s == "low") ec.id_mode = lay::e2e::data_id_mode::low;
+      else if (s == "nibble") ec.id_mode = lay::e2e::data_id_mode::nibble;
+      else return usage("--e2e-mode is both, alt, low or nibble");
+    }
     else if (a == "--name-separator") {
       if (!*v || std::string_view(v).find_first_of("[]") != std::string_view::npos)
         return usage("--name-separator needs a non-empty string without '[' or ']'");
@@ -165,6 +242,11 @@ int main(int argc, char** argv) {
     } else return usage(("unknown option " + std::string(a)).c_str());
   }
   if (layout_path.empty()) return usage("--layout is required");
+  if (e2e) {  // options may come in any order: take the final values
+    const auto prof = e2e->prof;
+    e2e = ec;
+    e2e->prof = prof;
+  }
 
   auto desc = lay::load_description(layout_path, lo);
   if (!desc) { std::fprintf(stderr, "nanom-layout: %s\n", desc.error().str().c_str()); return 1; }
@@ -218,6 +300,57 @@ int main(int argc, char** argv) {
     return 0;
   }
 
+  if (!encode_path.empty()) {
+    auto text = lay::read_text_file(encode_path);
+    if (!text) { std::fprintf(stderr, "nanom-layout: %s\n", text.error().str().c_str()); return 1; }
+    std::vector<std::byte> tmpl(plan->stride());
+    if (!pdu_template.empty()) {
+      if (pdu_template.size() != 2 * plan->stride()) return usage("--pdu-template needs 2 * stride hex digits");
+      for (std::size_t k = 0; k < plan->stride(); ++k) {
+        unsigned b = 0;
+        auto r = std::from_chars(pdu_template.data() + 2 * k, pdu_template.data() + 2 * k + 2, b, 16);
+        if (r.ec != std::errc{} || r.ptr != pdu_template.data() + 2 * k + 2) return usage("--pdu-template: bad hex");
+        tmpl[k] = std::byte(b);
+      }
+    }
+    std::optional<lay::e2e::protector> tx;
+    if (e2e) tx.emplace(*e2e);
+    std::vector<std::byte> pdu;
+    std::vector<lay::plan::signal_value> vals;
+    std::string_view t = *text;
+    std::size_t line = 0, count = 0;
+    while (!t.empty()) {
+      const auto nl = t.find('\n');
+      std::string_view ln = t.substr(0, nl);
+      t = nl == std::string_view::npos ? std::string_view{} : t.substr(nl + 1);
+      ++line;
+      if (ln.find_first_not_of(" \t\r") == std::string_view::npos) continue;
+      auto j = lay::parse_json(ln);
+      auto fail = [&](const std::string& m) {
+        std::fprintf(stderr, "nanom-layout: %s:%zu: %s\n", encode_path.c_str(), line, m.c_str());
+        return 1;
+      };
+      if (!j) return fail(j.error().what);
+      if (!j->is_object()) return fail("each line must be an object of signal: value");
+      vals.clear();
+      for (const auto& m : j->members) {
+        auto h = plan->find(m.key);
+        if (!h) return fail("no signal \"" + m.key + "\"");
+        if (!m.value.is_int() && m.value.t != lay::json::type::real) return fail("\"" + m.key + "\" needs a number");
+        vals.push_back(lay::plan::signal_value{*h, m.value.d, raw_values});
+      }
+      pdu = tmpl;
+      auto r = plan->encode(vals, pdu);
+      if (!r) return fail(r.error().str());
+      if (tx && !tx->protect(pdu)) return fail("E2E configuration does not fit the PDU");
+      sink(std::string_view(reinterpret_cast<const char*>(pdu.data()), pdu.size()));
+      ++count;
+    }
+    if (out != stdout) std::fclose(out);
+    std::fprintf(stderr, "nanom-layout: encoded %zu PDU(s) of %zu bytes\n", count, plan->stride());
+    return 0;
+  }
+
   if (input_path.empty()) return usage("--input is required");
   mapped in;
   if (!open_input(input_path, in)) { std::fprintf(stderr, "nanom-layout: cannot read %s\n", input_path.c_str()); return 1; }
@@ -241,7 +374,7 @@ int main(int argc, char** argv) {
     auto t = lay::decode(*plan, in.bytes, sel, dopt);
     if (!t) n = nanom::unexpected<lay::layout_error>(t.error());
     else {
-      const lay::jsonl_writer w(*plan, sel);
+      const lay::jsonl_writer w(*plan, sel, topt);
       const auto cols = w.bind(*t);
       std::string buf;
       for (std::size_t r = 0; r < t->rows(); ++r) {
@@ -252,7 +385,7 @@ int main(int argc, char** argv) {
       n = t->rows();
     }
   } else if (format == "jsonl") {
-    n = lay::export_jsonl(*plan, in.bytes, sink, sel, dopt);
+    n = lay::export_jsonl(*plan, in.bytes, sink, sel, dopt, topt);
   } else if (format == "arrow-schema") {
     auto t = lay::decode(*plan, in.bytes, sel, dopt);
     if (!t) n = nanom::unexpected<lay::layout_error>(t.error());
@@ -299,7 +432,17 @@ int main(int argc, char** argv) {
       sink(buf);
     }
   } else if (format == "csv") {
-    n = lay::export_csv(*plan, in.bytes, sink, sel, dopt);
+    n = lay::export_csv(*plan, in.bytes, sink, sel, dopt, topt);
+  } else if (format == "e2e-check") {
+    if (!e2e) return usage("--format e2e-check needs --e2e");
+    lay::e2e::checker rx(*e2e);
+    std::string buf;
+    for (std::size_t i = 0; i < recs.size(); ++i) {
+      buf += lay::e2e::status_name(rx.check(recs[i].bytes()));
+      buf += '\n';
+    }
+    sink(buf);
+    n = recs.size();
   } else if (format == "summary") {
     std::size_t fam[7] = {}, bitfields = 0;
     for (auto i : sel.fields) {

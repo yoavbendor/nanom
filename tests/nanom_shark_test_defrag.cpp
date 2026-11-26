@@ -455,6 +455,49 @@ void test_dropped_fragment_is_not_retained() {
   }
 }
 
+void test_timeout_wraparound_oversized_and_knotoken() {
+  using nanom_shark::defrag::Ipv4Key;
+  using nanom_shark::defrag::ReassemblyTable;
+  using nanom_shark::defrag::kNoToken;
+
+  std::array<std::byte, 64> src{};
+  // 1. Huge timeout_ticks (UINT64_MAX) must NOT wrap and immediately evict
+  {
+    ReassemblyTable<Ipv4Key>::Config cfg;
+    cfg.timeout_ticks = std::numeric_limits<std::uint64_t>::max();
+    ReassemblyTable<Ipv4Key> table(cfg);
+    const Ipv4Key k{{1, 2, 3, 4}, {5, 6, 7, 8}, 17, 1};
+    auto r = table.add_fragment(k, 1, 0, true, std::span<const std::byte>(src.data(), 8), 10);
+    CHECK(r.retained);
+    CHECK(!table.may_evict(1));
+    CHECK(table.evict_stale(1).empty());
+    CHECK(table.evict_stale(1000000).empty());
+  }
+
+  // 2. Oversized first fragment must NOT leak a ghost 0-fragment entry
+  {
+    ReassemblyTable<Ipv4Key>::Config cfg;
+    cfg.max_datagram_bytes = 16;
+    cfg.timeout_ticks = 1;
+    ReassemblyTable<Ipv4Key> table(cfg);
+    const Ipv4Key k{{1, 2, 3, 4}, {5, 6, 7, 8}, 17, 2};
+    auto r = table.add_fragment(k, 1, 0, false, std::span<const std::byte>(src.data(), 32), 20);
+    CHECK(!r.retained && r.datagram_id == 0);
+    CHECK(table.evict_stale(100).empty());
+  }
+
+  // 3. retire() must omit kNoToken entries
+  {
+    ReassemblyTable<Ipv4Key> table;
+    const Ipv4Key k{{1, 2, 3, 4}, {5, 6, 7, 8}, 17, 3};
+    table.add_fragment(k, 0, 0, true, std::span<const std::byte>(src.data(), 8), kNoToken);
+    auto done = table.add_fragment(k, 1, 8, false, std::span<const std::byte>(src.data() + 8, 8), 42);
+    CHECK(done.completed);
+    auto freed = table.retire(done.datagram_id);
+    CHECK(freed.size() == 1 && freed[0] == 42);
+  }
+}
+
 }  // namespace
 
 int main() {
@@ -467,6 +510,7 @@ int main() {
   test_retire_tokens_match_contributing_fragments();
   test_retire_actually_clears_spans();
   test_dropped_fragment_is_not_retained();
+  test_timeout_wraparound_oversized_and_knotoken();
   if (failures) {
     std::printf("%d failure(s)\n", failures);
     return 1;

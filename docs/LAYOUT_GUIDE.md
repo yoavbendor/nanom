@@ -234,7 +234,52 @@ nanom_layout --layout structs.jsonl --enums enums.json --raw-file-name /dev/vdiZ
 nanom_layout ... --format arrow-schema [--enums-as dictionary|integer|both] [--name-separator /]
 ```
 
-## 11. Common mistakes
+## 11. AUTOSAR I-PDU signals (CAN / CAN FD / Ethernet PDUs)
+
+The same description format describes AUTOSAR/DBC signals: `raw_file` is the PDU, `scalar_name`
+the signal, and optional keys add the signal semantics (reference: [LAYOUT.md](LAYOUT.md#autosar-i-pdu-signals)):
+
+```json
+{"raw_file":"VehicleSpeed","scalar_name":"Mux","bit_offset":0,"bit_width":4,"byte_order":"intel","multiplexor":true,"pdu_length":8}
+{"raw_file":"VehicleSpeed","scalar_name":"Speed","bit_offset":15,"bit_width":16,"byte_order":"motorola","factor":0.01,"unit":"km/h","min":0,"max":655,"mux_value":1}
+{"raw_file":"VehicleSpeed","scalar_name":"Temp","bit_offset":32,"bit_width":12,"byte_order":"intel","signed":true,"factor":0.5,"offset":-40,"mux_value":[2,3],"update_bit":63}
+```
+
+* `bit_offset` is the DBC/AUTOSAR **start bit**: the LSB for `intel`, the **MSB** (sawtooth
+  numbering) for `motorola` — exactly what a DBC `SG_ name : start|len@0+` line says. A COM-style
+  description that names the Motorola LSB adds `"motorola_start":"lsb"`.
+* `type` may be omitted on such lines (unsigned; `"signed": true` for two's complement).
+* `pdu_length` makes the record stride the PDU length.
+
+Decode as usual; ask for physical values and get nullable columns for multiplexed / update-bit
+signals:
+
+```cpp
+lay::decode_options o;  o.physical = true;          // validity is on by default
+auto t = lay::decode(plan, pdus, o).value();
+t.physical(c);   // std::span<const double>: raw * factor + offset
+t.validity(c);   // 1 byte per row; empty = always valid; t.null_count(c)
+lay::export_arrow(std::move(t), &schema, &array);   // Speed (float64, nullable) + Speed#raw (uint16)
+```
+
+Encode (crafting PDUs, realtime): get handles once, then write into a buffer; untouched bits stay.
+
+```cpp
+auto speed = plan.find("Speed").value(), mux = plan.find("Mux").value();
+std::array<std::byte, 8> pdu{};
+plan.encode({{mux, 1, /*raw=*/true}, {speed, 88.5}}, pdu);   // checked, all-or-nothing
+plan.set(speed, pdu, 90.0);                                  // one signal, checked (~12 ns)
+plan.set_bits_unchecked(speed, pdu, 9000);                   // raw bits, no checks (~5 ns)
+```
+
+E2E protection (`layout/e2e.hpp`): `e2e::protector tx(cfg); tx.protect(pdu);` on the sender,
+`e2e::checker rx(cfg); rx.check(pdu)` on the receiver (`ok`, `repeated`, `ok_some_lost`,
+`wrong_sequence`, `wrong_crc`, ...). Profiles 1, 2, 4, 5, 6, 7, 11 are verified against an
+independent implementation; profile 22 is implemented from the spec but unverified. CLI:
+`nanom_layout --layout pdu.jsonl --encode values.jsonl --e2e p05 --data-id 0x1234 -o pdus.raw`,
+`nanom_layout --layout pdu.jsonl --input pdus.raw --physical`, `--format e2e-check`.
+
+## 12. Common mistakes
 
 | mistake | symptom | fix |
 |---|---|---|
@@ -244,3 +289,4 @@ nanom_layout ... --format arrow-schema [--enums-as dictionary|integer|both] [--n
 | `.value()` on clang + libstdc++ 13 | compile error | `*r`, `r->` |
 | writing `.` column names to Lance | Lance rejects the schema | keep the default separator `/` |
 | a combinator or `nm::dyn` per field | 10–100x slower | use the plan; it is the compiled parser |
+| Motorola signal given with its LSB as `bit_offset` | wrong values / "stride smaller than ..." | DBC start bit = MSB, or add `"motorola_start":"lsb"` |

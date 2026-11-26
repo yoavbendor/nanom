@@ -40,49 +40,20 @@ namespace nanom {
 
 namespace detail::tc {
 
-/// Stages small writes (headers, varints) in a local buffer and hands them to the sink in blocks;
-/// large payloads go straight through. After the first failure every write is a no-op.
+/// Stages small writes (headers, varints) via the shared buffered_writer.
 template <byte_sink S>
 struct writer {
-  explicit writer(S& s) : sink(s) {}
-  S& sink;
-  std::size_t total = 0;
+  explicit writer(S& s) : bw(s, err) {}
   const char* err = nullptr;
   std::string_view message, field;  ///< where the encoder is (for errors)
-  std::size_t len = 0;
-  std::byte buf[256];
+  detail::buffered_writer<S> bw;
 
-  void fail(const char* what) {
-    if (!err) err = what;
-  }
-  void flush() {
-    if (err || !len) return;
-    if (!sink.put(buf, len)) return fail("the sink refused the bytes (full or failed)");
-    total += len;
-    len = 0;
-  }
-  void u8(std::uint8_t b) {
-    if (len == sizeof(buf)) flush();
-    if (err) return;
-    buf[len++] = std::byte(b);
-  }
-  void varint(std::uint64_t v) {
-    if (sizeof(buf) - len < leb128_max_bytes<std::uint64_t>) flush();
-    if (err) return;
-    len += uleb128_encode(v, buf + len);
-  }
-  void raw(const std::byte* p, std::size_t n) {
-    if (err || !n) return;
-    if (n <= sizeof(buf) - len) {
-      std::memcpy(buf + len, p, n);
-      len += n;
-      return;
-    }
-    flush();
-    if (err) return;
-    if (!sink.put(p, n)) return fail("the sink refused the bytes (full or failed)");
-    total += n;
-  }
+  std::size_t total() const noexcept { return bw.total; }
+  void fail(const char* what) noexcept { bw.fail(what); }
+  void flush() { bw.flush(); }
+  void u8(std::uint8_t b) { bw.u8(b); }
+  void varint(std::uint64_t v) { bw.varint(v); }
+  void raw(const std::byte* p, std::size_t n) { bw.raw(p, n); }
   /// A wire length or count: Thrift compact carries them as (non-negative) i32.
   bool length(std::size_t n) {
     if (n > std::size_t(INT32_MAX)) {
@@ -202,7 +173,7 @@ expected<std::size_t, encode_error> thrift_compact_encode(const M& m, S& sink) {
   detail::tc::write_struct(w, m);
   w.flush();
   if (w.err) return unexpected<encode_error>(encode_error{w.err, w.message, w.field});
-  return w.total;
+  return w.total();
 }
 
 /// Append the encoding of m to `out`.

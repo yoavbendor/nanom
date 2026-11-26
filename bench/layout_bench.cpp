@@ -16,16 +16,20 @@
 //   nanom JSON Lines export
 //   nanom Arrow export (gfi): encode_enum (enum -> dictionary) and decode()+export_arrow
 //   memcpy of the input                    the memory-bandwidth yardstick
+//   AUTOSAR (LAYOUT_BENCH_ONLY_LAYOUT=autosar, also after the two layouts): a 64-byte I-PDU of 21
+//   signals -- decode with validity / physical columns, encode ns/signal, E2E protect/check ns/PDU
 //
 // usage: layout_bench [scale=1.0] [reps=7] [--only static_rm|static_fm|naive|field|record|auto|projection|jsonl|arrow]   (scale shrinks record counts; the
 // smoke test runs scale 0.002). --only runs one contender, silently (for callgrind: run it with
 // reps 1 and reps 11, the difference / 10 is one run; see docs/LAYOUT.md).
 #include <nanom/layout.hpp>
 
+#include <array>
 #include <chrono>
 #include <cstdio>
 #include <cstdlib>
 #include <functional>
+#include <random>
 
 namespace lay = nanom::layout;
 
@@ -473,6 +477,135 @@ static void run_layout(const char* tag, const std::string& desc_text, const char
   }
 }
 
+// ------------------------------------------------------------------ AUTOSAR signals + E2E
+// A 64-byte CAN-FD I-PDU with 24 signals: Intel and Motorola, signed, scaled, a multiplexor with two
+// groups and update bits. Decode with/without physical columns and validity, encode ns/signal,
+// E2E protect/check ns/PDU per profile.
+static std::string describe_autosar() {
+  std::string d;
+  auto add = [&](const std::string& name, unsigned start, unsigned w, bool moto, const std::string& extra) {
+    d += "{\"raw_file\":\"PDU\",\"scalar_name\":\"" + name + "\",\"bit_offset\":" + std::to_string(start) +
+         ",\"bit_width\":" + std::to_string(w) + ",\"byte_order\":\"" + (moto ? "motorola" : "intel") +
+         "\",\"pdu_length\":64" + extra + "}\n";
+  };
+  add("Mux", 0, 4, false, ",\"multiplexor\":true");
+  for (unsigned k = 0; k < 20; ++k) {  // 20 signals of 3..23 bits from byte 1 on, 24 bits apart
+    const unsigned w = 3 + k;
+    const bool moto = k % 2;
+    const unsigned lin = 8 + 24 * k;
+    const unsigned start = moto ? unsigned(lay::msb_linear(lin)) : lin;
+    std::string extra = k % 3 ? ",\"factor\":0.05,\"offset\":-40,\"unit\":\"degC\"" : "";
+    if (k % 4 == 1) extra += ",\"signed\":true";
+    if (k >= 16) extra += ",\"mux_value\":" + std::to_string(k % 2 + 1);
+    if (k == 5 || k == 9) extra += ",\"update_bit\":" + std::to_string(500 + k);
+    add("S" + std::to_string(k), start, w, moto, extra);
+  }
+  return d;
+}
+
+static void run_autosar(double scale) {
+  namespace e2e = nanom::layout::e2e;
+  auto desc = lay::parse_description(describe_autosar());
+  if (!desc) { std::printf("%s\n", desc.error().str().c_str()); std::exit(1); }
+  auto plan = lay::plan::compile(*desc, "PDU");
+  if (!plan) { std::printf("%s\n", plan.error().str().c_str()); std::exit(1); }
+  const std::size_t n = std::max<std::size_t>(64, std::size_t(1'000'000 * scale)), S = plan->stride();
+  const std::size_t NF = plan->size();
+  std::vector<std::byte> data(n * S);
+  std::mt19937_64 rng(5);
+  for (auto& b : data) b = std::byte(rng());
+  const int R = reps;
+  std::printf("autosar  %zu PDUs x %zu bytes, %zu signals (%s)\n", n, S, NF, "Intel+Motorola, 13 scaled, mux, update bits");
+  {
+    columns cols(*plan, plan->all(), n);
+    const lay::decoder dec(*plan, plan->all());
+    const double t = best_of(R, [&] { dec.run_unchecked(data.data(), n, cols.outs); });
+    row("autosar", "decode raw columns (decoder)", t, n, S, NF);
+  }
+  for (int mode = 0; mode < 3; ++mode) {
+    lay::decode_options o;
+    o.validity = mode >= 1;
+    o.physical = mode == 2;
+    const double t = best_of(R, [&] { auto tb = lay::decode(*plan, data, o); if (!tb) std::exit(1); });
+    row("autosar", mode == 0 ? "decode() raw only" : mode == 1 ? "decode() + validity" : "decode() + validity + physical",
+        t, n, S, NF);
+  }
+  // encode
+  std::vector<lay::field_handle> hs;
+  for (std::uint32_t i = 0; i < NF; ++i) hs.push_back(plan->handle(i));
+  std::vector<std::byte> pdu(S);
+  const std::size_t ne = std::max<std::size_t>(1000, n / 4);
+  // phys[i][j]: in-range physical values of signal i (raw drawn from the signal's raw range)
+  std::vector<std::array<double, 64>> phys(NF);
+  for (std::size_t i = 0; i < NF; ++i) {
+    const auto& f = plan->fields()[i];
+    for (auto& v : phys[i]) {
+      const std::int64_t span = std::int64_t(1) << std::min<unsigned>(f.bit_width, 20);
+      std::int64_t raw = std::int64_t(rng() % std::uint64_t(span));
+      if (f.acc.sign) raw -= span / 2;
+      v = double(raw) * f.sig.factor + f.sig.offset;
+    }
+  }
+  volatile std::uint8_t sink = 0;
+  auto per_sig = [&](const char* what, double t, std::size_t sigs) {
+    std::printf("%-8s %-32s %9.3f ms  %8.2f ns/signal\n", "autosar", what, t * 1e3, t * 1e9 / double(sigs));
+  };
+  {
+    const double t = best_of(R, [&] {
+      for (std::size_t r = 0; r < ne; ++r)
+        for (std::size_t i = 1; i < 16; ++i) plan->set_bits_unchecked(hs[i], pdu, r + i);
+      sink = sink + std::uint8_t(pdu[3]);
+    });
+    per_sig("encode set_bits_unchecked", t, ne * 15);
+  }
+  {
+    const double t = best_of(R, [&] {
+      for (std::size_t r = 0; r < ne; ++r)
+        for (std::size_t i = 1; i < 16; ++i)
+          if (!plan->set(hs[i], pdu, phys[i][(r + i) & 63])) std::exit(1);
+      sink = sink + std::uint8_t(pdu[3]);
+    });
+    per_sig("encode set(physical), checked", t, ne * 15);
+  }
+  {
+    std::vector<lay::plan::signal_value> vals;
+    vals.push_back({hs[0], 1, true});
+    for (std::size_t i = 1; i < NF; ++i)
+      if (plan->fields()[i].sig.mux_values.empty() || plan->fields()[i].sig.mux_values[0] == 1) vals.push_back({hs[i], 0});
+    const double t = best_of(R, [&] {
+      for (std::size_t r = 0; r < ne; ++r) {
+        for (std::size_t i = 1; i < vals.size(); ++i) vals[i].value = phys[vals[i].h.index][(r + i) & 63];
+        if (!plan->encode(vals, pdu)) std::exit(1);
+      }
+      sink = sink + std::uint8_t(pdu[3]);
+    });
+    per_sig(("encode() " + std::to_string(vals.size()) + " values, atomic").c_str(), t, ne * vals.size());
+  }
+  // E2E
+  for (std::size_t len : {std::size_t(8), std::size_t(64)}) {
+    for (auto prof : {e2e::profile::p01, e2e::profile::p02, e2e::profile::p04, e2e::profile::p05,
+                      e2e::profile::p06, e2e::profile::p07, e2e::profile::p11, e2e::profile::p22}) {
+      if (len < 20 && (prof == e2e::profile::p07 || prof == e2e::profile::p04)) continue;
+      e2e::config c;
+      c.prof = prof;
+      c.data_id = 0x123;
+      e2e::protector tx(c);
+      e2e::checker rx(c);
+      std::vector<std::byte> b(len);
+      const std::size_t np = std::max<std::size_t>(1000, n);
+      const double tp = best_of(R, [&] { for (std::size_t r = 0; r < np; ++r) tx.protect(b); });
+      std::size_t ok = 0;
+      const double tc = best_of(R, [&] {
+        for (std::size_t r = 0; r < np; ++r) ok += e2e::usable(rx.check(b)) || true;
+      });
+      static const char* names[] = {"P01", "P02", "P04", "P05", "P06", "P07", "P11", "P22"};
+      std::printf("%-8s E2E %s %2zu-byte PDU: protect %6.2f ns/PDU   check %6.2f ns/PDU\n", "autosar",
+                  names[int(prof)], len, tp * 1e9 / double(np), tc * 1e9 / double(np));
+      sink = sink + std::uint8_t(ok);
+    }
+  }
+}
+
 int main(int argc, char** argv) {
   double scale = 1.0;
   int pos = 0;
@@ -486,8 +619,10 @@ int main(int argc, char** argv) {
   if (const char* w = std::getenv("LAYOUT_BENCH_ONLY_LAYOUT")) which = w;
   const auto gfi_n = std::max<std::size_t>(16, std::size_t(4'000'000 * scale));
   const auto dev_n = std::max<std::size_t>(2, std::size_t(2000 * scale));
+  if (which == "autosar") { run_autosar(scale); return 0; }
   if (which != "devices") run_layout<GFI>("gfi", describe_gfi(), "/dev/vdiZ/pacemaker/gfi.raw", gfi_n, "GFI[1].grab_index");
   if (which != "gfi") run_layout<DEV>("devices", describe_dev(), "/proc/app/devices.raw", dev_n,
                                      ("MEIO::IOAppDevices._dev" + std::to_string(NDEV / 200 + NDEV / 800)).c_str());
+  if (which == "both" && only.empty()) run_autosar(scale);
   return 0;
 }

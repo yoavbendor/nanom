@@ -13,22 +13,36 @@
 
 namespace nanom {
 
-// ---------------------------------------------------------------------------
-// 15. fixed_string — string literals as template parameters (get<"name">())
-// ---------------------------------------------------------------------------
-
-template <std::size_t N>
-struct fixed_string {
-  char data[N]{};
-  constexpr fixed_string() = default;  // synthesized names (nanom26 reflection) fill data directly
-  constexpr fixed_string(const char (&s)[N]) { std::copy_n(s, N, data); }
-  constexpr std::string_view sv() const { return {data, N - 1}; }
-  constexpr bool operator==(std::string_view s) const { return sv() == s; }
-};
+// fixed_string is defined in nom.hpp (shared by tag<"LIT">() and view::get<"field">()).
 
 // ---------------------------------------------------------------------------
 // 16. wire field types — endianness and bit width live in the TYPE
 // ---------------------------------------------------------------------------
+
+namespace detail {
+template <class A, class B>
+NANOM_HD constexpr bool wire_eq(A a, B b) noexcept {
+  if constexpr (std::is_integral_v<A> && std::is_integral_v<B> &&
+                !std::is_same_v<A, bool> && !std::is_same_v<B, bool> &&
+                !std::is_same_v<A, char> && !std::is_same_v<B, char>) {
+    return std::cmp_equal(a, b);
+  } else {
+    return a == b;
+  }
+}
+template <class A, class B>
+NANOM_HD constexpr auto wire_cmp(A a, B b) noexcept {
+  if constexpr (std::is_integral_v<A> && std::is_integral_v<B> &&
+                !std::is_same_v<A, bool> && !std::is_same_v<B, bool> &&
+                !std::is_same_v<A, char> && !std::is_same_v<B, char>) {
+    return std::cmp_less(a, b)    ? std::strong_ordering::less
+         : std::cmp_greater(a, b) ? std::strong_ordering::greater
+                                  : std::strong_ordering::equal;
+  } else {
+    return a <=> b;
+  }
+}
+}  // namespace detail
 
 /// be<T> / le<T> — an explicitly big/little-endian wire scalar. Stored as raw
 /// bytes (alignment 1, packing-safe); converts to/from host order on access.
@@ -63,9 +77,82 @@ struct endian_scalar {
       for (std::size_t i = 0; i < sizeof(T); ++i) raw[i] = std::byte((u >> (8 * i)) & 0xff);
   }
   NANOM_HD constexpr operator T() const { return get(); }
+
+  NANOM_HD friend constexpr bool operator==(endian_scalar a, endian_scalar b) {
+    return a.get() == b.get();
+  }
+  NANOM_HD friend constexpr auto operator<=>(endian_scalar a, endian_scalar b) {
+    return a.get() <=> b.get();
+  }
+  template <class U>
+    requires(std::integral<U> || std::floating_point<U>)
+  NANOM_HD friend constexpr bool operator==(endian_scalar a, U b) {
+    return detail::wire_eq(a.get(), b);
+  }
+  template <class U>
+    requires(std::integral<U> || std::floating_point<U>)
+  NANOM_HD friend constexpr auto operator<=>(endian_scalar a, U b) {
+    return detail::wire_cmp(a.get(), b);
+  }
 };
 template <class T> using be = endian_scalar<T, std::endian::big>;
 template <class T> using le = endian_scalar<T, std::endian::little>;
+
+/// be_uint<Bytes> / le_uint<Bytes> — fixed-width byte-aligned unsigned wire
+/// integers of any width 1..8 bytes (notably 24-bit be_u24_t and 48-bit
+/// be_u48_t for gPTP timestamps, SOME/IP TTLs, and 24-bit frame lengths).
+template <std::size_t Bytes, std::endian E>
+  requires(Bytes >= 1 && Bytes <= 8)
+struct endian_uint {
+  using value_type = detail::uint_for_bytes<Bytes>;
+  static constexpr std::endian order      = E;
+  static constexpr std::size_t wire_bytes = Bytes;
+  std::array<std::byte, Bytes> raw{};
+
+  constexpr endian_uint() = default;
+  constexpr endian_uint(value_type v) { set(v); }
+
+  NANOM_HD constexpr value_type get() const {
+    value_type u = 0;
+    if constexpr (E == std::endian::big)
+      for (std::size_t i = 0; i < Bytes; ++i) u = value_type((u << 8) | std::uint8_t(raw[i]));
+    else
+      for (std::size_t i = 0; i < Bytes; ++i)
+        u = value_type(u | (value_type(std::uint8_t(raw[i])) << (8 * i)));
+    return u;
+  }
+  NANOM_HD constexpr void set(value_type v) {
+    if constexpr (E == std::endian::big)
+      for (std::size_t i = 0; i < Bytes; ++i)
+        raw[i] = std::byte((v >> (8 * (Bytes - 1 - i))) & 0xff);
+    else
+      for (std::size_t i = 0; i < Bytes; ++i) raw[i] = std::byte((v >> (8 * i)) & 0xff);
+  }
+  NANOM_HD constexpr operator value_type() const { return get(); }
+
+  NANOM_HD friend constexpr bool operator==(endian_uint a, endian_uint b) {
+    return a.raw == b.raw;
+  }
+  NANOM_HD friend constexpr auto operator<=>(endian_uint a, endian_uint b) {
+    return a.get() <=> b.get();
+  }
+  template <class U>
+    requires(std::integral<U>)
+  NANOM_HD friend constexpr bool operator==(endian_uint a, U b) {
+    return detail::wire_eq(a.get(), b);
+  }
+  template <class U>
+    requires(std::integral<U>)
+  NANOM_HD friend constexpr auto operator<=>(endian_uint a, U b) {
+    return detail::wire_cmp(a.get(), b);
+  }
+};
+template <std::size_t Bytes> using be_uint = endian_uint<Bytes, std::endian::big>;
+template <std::size_t Bytes> using le_uint = endian_uint<Bytes, std::endian::little>;
+using be_u24_t = be_uint<3>;
+using le_u24_t = le_uint<3>;
+using be_u48_t = be_uint<6>;
+using le_u48_t = le_uint<6>;
 
 namespace detail {
 template <unsigned Bits>
@@ -85,7 +172,20 @@ struct ubits {
   static constexpr unsigned  bits  = N;
   static constexpr bit_order order = O;
   value_type v{};
+
+  constexpr ubits() = default;
+  constexpr ubits(value_type x) : v(x) {}
+  constexpr ubits& operator=(value_type x) { v = x; return *this; }
   constexpr operator value_type() const { return v; }
+
+  friend constexpr bool operator==(ubits a, ubits b) = default;
+  friend constexpr auto operator<=>(ubits a, ubits b) = default;
+  template <class U>
+    requires(std::integral<U>)
+  friend constexpr bool operator==(ubits a, U b) { return detail::wire_eq(a.v, b); }
+  template <class U>
+    requires(std::integral<U>)
+  friend constexpr auto operator<=>(ubits a, U b) { return detail::wire_cmp(a.v, b); }
 };
 template <unsigned N, bit_order O = bit_order::msb0>
   requires(N >= 2 && N <= 64)
@@ -94,7 +194,20 @@ struct ibits {
   static constexpr unsigned  bits  = N;
   static constexpr bit_order order = O;
   value_type v{};
+
+  constexpr ibits() = default;
+  constexpr ibits(value_type x) : v(x) {}
+  constexpr ibits& operator=(value_type x) { v = x; return *this; }
   constexpr operator value_type() const { return v; }
+
+  friend constexpr bool operator==(ibits a, ibits b) = default;
+  friend constexpr auto operator<=>(ibits a, ibits b) = default;
+  template <class U>
+    requires(std::integral<U>)
+  friend constexpr bool operator==(ibits a, U b) { return detail::wire_eq(a.v, b); }
+  template <class U>
+    requires(std::integral<U>)
+  friend constexpr auto operator<=>(ibits a, U b) { return detail::wire_cmp(a.v, b); }
 };
 
 // ---------------------------------------------------------------------------
@@ -114,15 +227,17 @@ concept Described = requires {
 };
 
 namespace detail {
+template <class M> struct member_type;
+template <class C, class M> struct member_type<M C::*> { using type = M; };
+template <auto P> using member_t = typename member_type<std::remove_cv_t<decltype(P)>>::type;
+
 /// One registered field: name + member pointer, all compile-time.
 template <fixed_string Name, auto MemPtr>
 struct fld {
   static constexpr auto name    = Name;
   static constexpr auto mem_ptr = MemPtr;
+  using value_type              = member_t<MemPtr>;
 };
-template <class M> struct member_type;
-template <class C, class M> struct member_type<M C::*> { using type = M; };
-template <auto P> using member_t = typename member_type<std::remove_cv_t<decltype(P)>>::type;
 
 /// Visit every registered field of T in declaration order: v(f) receives a fld<> value — read
 /// decltype(f)::name / ::mem_ptr / member_t<decltype(f)::mem_ptr>. THE one field-iteration
@@ -157,6 +272,12 @@ struct wire<endian_scalar<T, E>> {
   static constexpr std::size_t bits = 8 * sizeof(T);
   static constexpr bool is_bits = false;
   using decoded = T;
+};
+template <std::size_t Bytes, std::endian E>
+struct wire<endian_uint<Bytes, E>> {
+  static constexpr std::size_t bits = 8 * Bytes;
+  static constexpr bool is_bits = false;
+  using decoded = typename endian_uint<Bytes, E>::value_type;
 };
 template <unsigned N, bit_order O>
 struct wire<ubits<N, O>> {
@@ -254,6 +375,127 @@ template <class T> constexpr bool is_byte_array_v = is_byte_array<T>::value;
 template <class F>
 NANOM_HD constexpr F assign_field(const std::byte* p, std::size_t bitoff, std::endian dflt);
 
+template <class F, std::size_t BitOff>
+NANOM_HD NANOM_ALWAYS_INLINE constexpr typename wire<F>::decoded decode_field_at(const std::byte* p,
+                                                                                 std::endian dflt);
+template <class F, std::size_t BitOff>
+NANOM_HD NANOM_ALWAYS_INLINE constexpr F assign_field_at(const std::byte* p, std::endian dflt);
+template <Described T, std::size_t BaseBitOff = 0>
+NANOM_HD NANOM_ALWAYS_INLINE constexpr T decode_struct_at(const std::byte* p, std::endian dflt);
+
+template <Described T, class Fn, std::size_t... I>
+NANOM_HD NANOM_ALWAYS_INLINE constexpr void for_each_field_offset_impl(Fn&& fn,
+                                                                       std::index_sequence<I...>) {
+  constexpr auto fs = describe<std::remove_cvref_t<T>>::fields();
+  constexpr auto offs = field_bit_offsets<std::remove_cvref_t<T>>();
+  (fn(std::get<I>(fs), std::integral_constant<std::size_t, offs[I]>{}), ...);
+}
+
+/// Visit every field of T with its compile-time bit offset as std::integral_constant<std::size_t, Off>.
+template <Described T, class Fn>
+NANOM_HD NANOM_ALWAYS_INLINE constexpr void for_each_field_with_offset(Fn&& fn) {
+  for_each_field_offset_impl<T>(std::forward<Fn>(fn),
+                                std::make_index_sequence<field_count_v<std::remove_cvref_t<T>>>{});
+}
+
+template <class U>
+NANOM_HD NANOM_ALWAYS_INLINE constexpr U load_uint_bytes(const std::byte* q, std::endian order) {
+  if consteval {
+    U u = 0;
+    if (order == std::endian::big)
+      for (std::size_t i = 0; i < sizeof(U); ++i) u = U(U(u << 8) | std::uint8_t(q[i]));
+    else
+      for (std::size_t i = 0; i < sizeof(U); ++i) u |= U(U(std::uint8_t(q[i])) << (8 * i));
+    return u;
+  } else {
+    U u{};
+    std::memcpy(&u, q, sizeof(U));
+    if constexpr (sizeof(U) > 1) {
+      if (order != std::endian::native) u = std::byteswap(u);
+    }
+    return u;
+  }
+}
+
+/// Decode one field value at compile-time bit offset BitOff.
+template <class F, std::size_t BitOff>
+NANOM_HD NANOM_ALWAYS_INLINE constexpr typename wire<F>::decoded decode_field_at(const std::byte* p,
+                                                                                 std::endian dflt) {
+  using D = typename wire<F>::decoded;
+  if constexpr (std::integral<F> || std::floating_point<F>) {
+    using U = uint_for_bytes<sizeof(F)>;
+    return std::bit_cast<F>(load_uint_bytes<U>(p + BitOff / 8, dflt));
+  } else if constexpr (requires { F::order; F::bits; }) {  // ubits / ibits
+    using VT = typename F::value_type;
+    constexpr unsigned N = F::bits;
+    std::uint64_t raw;
+    if constexpr (F::order == bit_order::msb0 && ((BitOff % 8) + N) <= 64u) {
+      constexpr unsigned startbit = unsigned(BitOff % 8);
+      constexpr unsigned nbytes = (startbit + N + 7) / 8;
+      constexpr unsigned shift = nbytes * 8 - startbit - N;
+      const std::byte* q = p + BitOff / 8;
+      std::uint64_t w = 0;
+      for (unsigned i = 0; i < nbytes; ++i) w = (w << 8) | std::uint8_t(q[i]);
+      raw = (w >> shift) & (~std::uint64_t(0) >> (64 - N));
+    } else if constexpr (F::order == bit_order::lsb0 && ((BitOff % 8) + N) <= 64u) {
+      constexpr unsigned startbit = unsigned(BitOff % 8);
+      constexpr unsigned nbytes = (startbit + N + 7) / 8;
+      const std::byte* q = p + BitOff / 8;
+      std::uint64_t w = 0;
+      for (unsigned i = 0; i < nbytes; ++i) w |= std::uint64_t(std::uint8_t(q[i])) << (8 * i);
+      raw = (w >> startbit) & (~std::uint64_t(0) >> (64 - N));
+    } else {
+      input fake{p + BitOff / 8, p + (BitOff + N + 7) / 8, p};
+      raw = read_bits(bit_input{fake, BitOff % 8}, N, F::order)->value;
+    }
+    if constexpr (std::is_signed_v<VT>) {
+      using UV = std::make_unsigned_t<VT>;
+      UV u = UV(raw);
+      const UV sign = UV(1) << (N - 1);
+      if (u & sign) u |= ~((sign << 1) - 1);          // sign-extend
+      return std::bit_cast<VT>(u);
+    } else {
+      return VT(raw);
+    }
+  } else if constexpr (requires { F::wire_bytes; F::order; typename F::value_type; }) {  // be_uint / le_uint
+    using U = typename F::value_type;
+    constexpr std::size_t B = F::wire_bytes;
+    if constexpr (B == sizeof(U)) {
+      return load_uint_bytes<U>(p + BitOff / 8, F::order);
+    } else {
+      const std::byte* q = p + BitOff / 8;
+      U u = 0;
+      if constexpr (F::order == std::endian::big)
+        for (std::size_t i = 0; i < B; ++i) u = U((u << 8) | std::uint8_t(q[i]));
+      else
+        for (std::size_t i = 0; i < B; ++i) u = U(u | (U(std::uint8_t(q[i])) << (8 * i)));
+      return u;
+    }
+  } else if constexpr (requires { F::order; typename F::value_type; }) {  // be/le
+    using T = typename F::value_type;
+    using U = uint_for_bytes<sizeof(T)>;
+    return std::bit_cast<T>(load_uint_bytes<U>(p + BitOff / 8, F::order));
+  } else if constexpr (is_byte_array_v<F>) {
+    D out{};
+    if consteval {
+      for (std::size_t i = 0; i < out.size(); ++i)
+        out[i] = static_cast<typename D::value_type>(p[BitOff / 8 + i]);
+    } else {
+      std::memcpy(out.data(), p + BitOff / 8, out.size());
+    }
+    return out;
+  } else if constexpr (is_std_array_v<F>) {
+    using E = typename F::value_type;
+    D out{};
+    constexpr std::size_t eb = wire<E>::bits;
+    for (std::size_t i = 0; i < out.size(); ++i)
+      out[i] = decode_field<E>(p, BitOff + i * eb, dflt);
+    return out;
+  } else {  // nested described struct
+    return decode_struct_at<F, BitOff>(p, dflt);
+  }
+}
+
 /// Decode one field value from wire bytes. `p` points at the struct start;
 /// bitoff is the field's bit offset from p. Used by both strct() and view<T>.
 template <class F>
@@ -262,13 +504,7 @@ NANOM_HD constexpr typename wire<F>::decoded decode_field(const std::byte* p, st
   using D = typename wire<F>::decoded;
   if constexpr (std::integral<F> || std::floating_point<F>) {
     using U = uint_for_bytes<sizeof(F)>;
-    const std::byte* q = p + bitoff / 8;
-    U u = 0;
-    if (dflt == std::endian::big)
-      for (std::size_t i = 0; i < sizeof(F); ++i) u = U(u << 8) | std::uint8_t(q[i]);
-    else
-      for (std::size_t i = 0; i < sizeof(F); ++i) u |= U(U(std::uint8_t(q[i])) << (8 * i));
-    return std::bit_cast<F>(U(u));
+    return std::bit_cast<F>(load_uint_bytes<U>(p + bitoff / 8, dflt));
   } else if constexpr (requires { F::order; F::bits; }) {  // ubits / ibits
     using VT = typename F::value_type;
     constexpr unsigned N = F::bits;
@@ -284,7 +520,7 @@ NANOM_HD constexpr typename wire<F>::decoded decode_field(const std::byte* p, st
       std::uint64_t w = 0;
       for (unsigned i = 0; i < nbytes; ++i) w = (w << 8) | std::uint8_t(q[i]);
       const unsigned shift = nbytes * 8 - startbit - N;
-      raw = (w >> shift) & (N >= 64 ? ~std::uint64_t(0) : ((std::uint64_t(1) << N) - 1));
+      raw = (w >> shift) & (~std::uint64_t(0) >> (64 - N));
     } else {
       input fake{p + bitoff / 8, p + (bitoff + N + 7) / 8, p};
       raw = read_bits(bit_input{fake, bitoff % 8}, N, F::order)->value;
@@ -298,20 +534,33 @@ NANOM_HD constexpr typename wire<F>::decoded decode_field(const std::byte* p, st
     } else {
       return VT(raw);
     }
+  } else if constexpr (requires { F::wire_bytes; F::order; typename F::value_type; }) {  // be_uint / le_uint
+    using U = typename F::value_type;
+    constexpr std::size_t B = F::wire_bytes;
+    if constexpr (B == sizeof(U)) {
+      return load_uint_bytes<U>(p + bitoff / 8, F::order);
+    } else {
+      const std::byte* q = p + bitoff / 8;
+      U u = 0;
+      if constexpr (F::order == std::endian::big)
+        for (std::size_t i = 0; i < B; ++i) u = U((u << 8) | std::uint8_t(q[i]));
+      else
+        for (std::size_t i = 0; i < B; ++i) u = U(u | (U(std::uint8_t(q[i])) << (8 * i)));
+      return u;
+    }
   } else if constexpr (requires { F::order; typename F::value_type; }) {  // be/le
-    // assemble the host value directly from the wire bytes in a single pass —
-    // for widths 2/4/8 the compiler lowers this to one load + bswap, matching
-    // a hand-tuned overlay parser (the old path copied to a temp, then that
-    // temp re-assembled: two loops on the hottest reads — ethertype, ports…).
     using T = typename F::value_type;
     using U = uint_for_bytes<sizeof(T)>;
-    const std::byte* q = p + bitoff / 8;
-    U u = 0;
-    if constexpr (F::order == std::endian::big)
-      for (std::size_t i = 0; i < sizeof(T); ++i) u = U(U(u << 8) | std::uint8_t(q[i]));
-    else
-      for (std::size_t i = 0; i < sizeof(T); ++i) u |= U(U(std::uint8_t(q[i])) << (8 * i));
-    return std::bit_cast<T>(u);
+    return std::bit_cast<T>(load_uint_bytes<U>(p + bitoff / 8, F::order));
+  } else if constexpr (is_byte_array_v<F>) {
+    D out{};
+    if consteval {
+      for (std::size_t i = 0; i < out.size(); ++i)
+        out[i] = static_cast<typename D::value_type>(p[bitoff / 8 + i]);
+    } else {
+      std::memcpy(out.data(), p + bitoff / 8, out.size());
+    }
+    return out;
   } else if constexpr (is_std_array_v<F>) {
     using E = typename F::value_type;
     D out{};
@@ -320,27 +569,69 @@ NANOM_HD constexpr typename wire<F>::decoded decode_field(const std::byte* p, st
       out[i] = decode_field<E>(p, bitoff + i * eb, dflt);
     return out;
   } else {  // nested described struct
-    D out{};
-    constexpr auto offs = field_bit_offsets<F>();
-    std::size_t i = 0;
-    for_each_field<F>([&](auto f) {
-      out.*(decltype(f)::mem_ptr) =
-          assign_field<member_t<decltype(f)::mem_ptr>>(p, bitoff + offs[i++], dflt);
-    });
-    return out;
+    return decode_struct_at<F, 0>(p + bitoff / 8, dflt);
   }
 }
 
-/// Like decode_field, but produces the FIELD type (so be<u16> members keep
+/// Like decode_field_at, but produces the FIELD type (so be<u16> members keep
 /// their raw wire bytes instead of being converted to host order).
+template <class F, std::size_t BitOff>
+NANOM_HD NANOM_ALWAYS_INLINE constexpr F assign_field_at(const std::byte* p, std::endian dflt) {
+  if constexpr (requires(F f) { f.raw; typename F::value_type; }) {  // be/le: copy raw
+    F out;
+    if consteval {
+      for (std::size_t i = 0; i < out.raw.size(); ++i) out.raw[i] = p[BitOff / 8 + i];
+    } else {
+      std::memcpy(out.raw.data(), p + BitOff / 8, out.raw.size());
+    }
+    return out;
+  } else if constexpr (requires { F::order; F::bits; }) {  // ubits/ibits
+    return F{decode_field_at<F, BitOff>(p, dflt)};
+  } else if constexpr (is_byte_array_v<F>) {
+    F out{};
+    if consteval {
+      for (std::size_t i = 0; i < out.size(); ++i)
+        out[i] = static_cast<typename F::value_type>(p[BitOff / 8 + i]);
+    } else {
+      std::memcpy(out.data(), p + BitOff / 8, out.size());
+    }
+    return out;
+  } else if constexpr (is_std_array_v<F>) {
+    using E = typename F::value_type;
+    F out{};
+    constexpr std::size_t eb = wire<E>::bits;
+    for (std::size_t i = 0; i < out.size(); ++i)
+      out[i] = assign_field<E>(p, BitOff + i * eb, dflt);
+    return out;
+  } else if constexpr (std::integral<F> || std::floating_point<F>) {
+    return decode_field_at<F, BitOff>(p, dflt);
+  } else {  // nested described struct
+    return decode_struct_at<F, BitOff>(p, dflt);
+  }
+}
+
+/// Like decode_field, but produces the FIELD type (runtime bitoff overload for arrays).
 template <class F>
 NANOM_HD constexpr F assign_field(const std::byte* p, std::size_t bitoff, std::endian dflt) {
   if constexpr (requires(F f) { f.raw; typename F::value_type; }) {  // be/le: copy raw
     F out;
-    for (std::size_t i = 0; i < out.raw.size(); ++i) out.raw[i] = p[bitoff / 8 + i];
+    if consteval {
+      for (std::size_t i = 0; i < out.raw.size(); ++i) out.raw[i] = p[bitoff / 8 + i];
+    } else {
+      std::memcpy(out.raw.data(), p + bitoff / 8, out.raw.size());
+    }
     return out;
   } else if constexpr (requires { F::order; F::bits; }) {  // ubits/ibits
     return F{decode_field<F>(p, bitoff, dflt)};
+  } else if constexpr (is_byte_array_v<F>) {
+    F out{};
+    if consteval {
+      for (std::size_t i = 0; i < out.size(); ++i)
+        out[i] = static_cast<typename F::value_type>(p[bitoff / 8 + i]);
+    } else {
+      std::memcpy(out.data(), p + bitoff / 8, out.size());
+    }
+    return out;
   } else if constexpr (is_std_array_v<F>) {
     using E = typename F::value_type;
     F out{};
@@ -351,15 +642,26 @@ NANOM_HD constexpr F assign_field(const std::byte* p, std::size_t bitoff, std::e
   } else if constexpr (std::integral<F> || std::floating_point<F>) {
     return decode_field<F>(p, bitoff, dflt);
   } else {  // nested described struct
-    F out{};
-    constexpr auto offs = field_bit_offsets<F>();
-    std::size_t i = 0;
-    for_each_field<F>([&](auto f) {
-      out.*(decltype(f)::mem_ptr) =
-          assign_field<member_t<decltype(f)::mem_ptr>>(p, bitoff + offs[i++], dflt);
-    });
-    return out;
+    return decode_struct_at<F, 0>(p + bitoff / 8, dflt);
   }
+}
+
+template <Described T, std::size_t BaseBitOff, std::size_t... I>
+NANOM_HD NANOM_ALWAYS_INLINE constexpr T decode_struct_impl(const std::byte* p, std::endian dflt,
+                                                            std::index_sequence<I...>) {
+  T out{};
+  constexpr auto fs = describe<T>::fields();
+  constexpr auto offs = field_bit_offsets<T>();
+  ((out.*(std::tuple_element_t<I, decltype(fs)>::mem_ptr) =
+        assign_field_at<member_t<std::tuple_element_t<I, decltype(fs)>::mem_ptr>,
+                        BaseBitOff + offs[I]>(p, dflt)),
+   ...);
+  return out;
+}
+
+template <Described T, std::size_t BaseBitOff>
+NANOM_HD NANOM_ALWAYS_INLINE constexpr T decode_struct_at(const std::byte* p, std::endian dflt) {
+  return decode_struct_impl<T, BaseBitOff>(p, dflt, std::make_index_sequence<field_count_v<T>>{});
 }
 
 template <Described T, fixed_string Name>
@@ -375,6 +677,75 @@ template <Described T, std::size_t I>
 using field_type_at = member_t<std::remove_cvref_t<decltype(std::get<I>(describe<T>::fields()))>::mem_ptr>;
 
 }  // namespace detail
+
+// ---------------------------------------------------------------------------
+// 18b. public reflection & wire-layout queries (for downstream libraries)
+// ---------------------------------------------------------------------------
+
+/// One registered field descriptor: `name`, `mem_ptr`, and `value_type`.
+template <fixed_string Name, auto MemPtr>
+using field_desc = detail::fld<Name, MemPtr>;
+
+/// Member value type for a pointer-to-member `MemPtr`.
+template <auto MemPtr>
+using member_t = detail::member_t<MemPtr>;
+
+/// Number of registered fields in a Described struct.
+template <Described T>
+inline constexpr std::size_t field_count_v = detail::field_count_v<std::remove_cv_t<T>>;
+
+/// Visit every registered field of T in declaration order: `fn(field<Name, MemPtr>{})`.
+template <Described T, class Fn>
+NANOM_HD constexpr void for_each_field(Fn&& fn) {
+  detail::for_each_field<std::remove_cv_t<T>>(std::forward<Fn>(fn));
+}
+
+/// Visit every registered field of T with its compile-time bit offset as `std::integral_constant`.
+template <Described T, class Fn>
+NANOM_HD constexpr void for_each_field_with_offset(Fn&& fn) {
+  detail::for_each_field_with_offset<std::remove_cv_t<T>>(std::forward<Fn>(fn));
+}
+
+/// Index of field `Name` in T, or `std::size_t(-1)` if absent.
+template <Described T, fixed_string Name>
+NANOM_HD constexpr std::size_t field_index() {
+  return detail::field_index<std::remove_cv_t<T>, Name>();
+}
+
+template <Described T, fixed_string Name>
+inline constexpr std::size_t field_index_v = field_index<T, Name>();
+
+/// Member type of field `I` in T.
+template <Described T, std::size_t I>
+using field_type_t = detail::field_type_at<std::remove_cv_t<T>, I>;
+
+/// Compile-time bit offsets (msb0 from struct start) of every field in T.
+template <Described T>
+NANOM_HD constexpr auto field_bit_offsets() {
+  return detail::field_bit_offsets<std::remove_cv_t<T>>();
+}
+
+/// Compile-time bit offset of field `Name` in T (fails with static_assert if absent).
+template <Described T, fixed_string Name>
+inline constexpr std::size_t field_bit_offset_v = [] {
+  constexpr std::size_t i = field_index<T, Name>();
+  static_assert(i != std::size_t(-1), "nanom: unknown field name");
+  return field_bit_offsets<T>()[i];
+}();
+
+/// Width in bits of a wire field type F (scalar, be/le, ubits/ibits, array, or Described struct).
+template <class F>
+inline constexpr std::size_t wire_bits_v = detail::wire<F>::bits;
+
+/// Host-order decoded value type of a wire field type F.
+template <class F>
+using decoded_t = typename detail::wire<F>::decoded;
+
+/// Type traits for fixed-size arrays in wire structs.
+template <class T>
+inline constexpr bool is_std_array_v = detail::is_std_array_v<T>;
+template <class T>
+inline constexpr bool is_byte_array_v = detail::is_byte_array_v<T>;
 
 // ---------------------------------------------------------------------------
 // 19. strct<T>() — parse a registered struct by value; the workhorse
@@ -393,14 +764,7 @@ constexpr auto strct(std::endian dflt = std::endian::native) {
   return [dflt](input in) -> result<T> {
     constexpr std::size_t need = wire_size_v<T>;
     if (in.size() < need) return make_incomplete(in, need - in.size());
-    T out{};
-    constexpr auto offs = detail::field_bit_offsets<T>();
-    std::size_t i = 0;
-    detail::for_each_field<T>([&](auto f) {
-      out.*(decltype(f)::mem_ptr) =
-          detail::assign_field<detail::member_t<decltype(f)::mem_ptr>>(in.first, offs[i++], dflt);
-    });
-    return done{std::move(out), in.advance(need)};
+    return done{detail::decode_struct_at<T, 0>(in.first, dflt), in.advance(need)};
   };
 }
 
@@ -446,6 +810,18 @@ inline constexpr bool runtime_span_lifetime_is_enforced = false;
 /// Set true when in-place wire mutation behind a live view is runtime-detected.
 inline constexpr bool wire_mutation_is_runtime_detected = false;
 
+namespace detail {
+template <fixed_string Bad, fixed_string... Valid>
+struct field_not_found {
+  static constexpr bool value = false;
+};
+template <fixed_string Bad, class... Flds>
+consteval void diagnose_unknown_field(std::tuple<Flds...>) {
+  static_assert(field_not_found<Bad, Flds::name...>::value,
+                "nanom: unknown field name (see field_not_found template arguments for valid fields)");
+}
+}  // namespace detail
+
 /// A zero-copy overlay of T's wire format over the original buffer. Fields
 /// decode on access (endian conversion / bit extraction), nothing is stored.
 template <Described T>
@@ -459,7 +835,7 @@ struct view {
 
   NANOM_HD constexpr bool valid() const noexcept { return p != nullptr; }
 
-  /// Decoded value of the named field. Unknown names are a compile error.
+  /// Decoded value of the named field. Unknown names are a compile error listing valid fields.
   template <fixed_string Name>
   NANOM_HD constexpr auto get() const {
     detail::guard_view_pointer(p);
@@ -470,29 +846,31 @@ struct view {
     }
 #endif
     constexpr std::size_t I = detail::field_index<T, Name>();
-    static_assert(I != std::size_t(-1),
-                  "nanom: no such field in this struct — check NANOM_DESCRIBE");
-    using F = detail::field_type_at<T, I>;
-    constexpr std::size_t off = detail::field_bit_offsets<T>()[I];
-    if constexpr (Described<F>) {
-#if NANOM_GENERATION
-      return view<F>{p + off / 8, dflt, arena, gen};
-#else
-      return view<F>{p + off / 8, dflt};
-#endif
-    } else if constexpr (detail::is_byte_array_v<F>) {
-      // byte array (MAC / IPv4 / IPv6 address, name field…): the wire bytes ARE
-      // the value, so return a zero-copy span into the buffer instead of
-      // materializing a std::array. get<"src">()[0] is then a single byte load.
-#if NANOM_GENERATION
-      return bytes(reinterpret_cast<const std::byte*>(p + off / 8), std::tuple_size_v<F>, arena,
-                   gen);
-#else
-      return std::span<const typename F::value_type, std::tuple_size_v<F>>(
-          reinterpret_cast<const typename F::value_type*>(p + off / 8), std::tuple_size_v<F>);
-#endif
+    if constexpr (I == std::size_t(-1)) {
+      detail::diagnose_unknown_field<Name>(describe<T>::fields());
     } else {
-      return detail::decode_field<F>(p, off, dflt);
+      using F = detail::field_type_at<T, I>;
+      constexpr std::size_t off = detail::field_bit_offsets<T>()[I];
+      if constexpr (Described<F>) {
+#if NANOM_GENERATION
+        return view<F>{p + off / 8, dflt, arena, gen};
+#else
+        return view<F>{p + off / 8, dflt};
+#endif
+      } else if constexpr (detail::is_byte_array_v<F>) {
+        // byte array (MAC / IPv4 / IPv6 address, name field…): the wire bytes ARE
+        // the value, so return a zero-copy span into the buffer instead of
+        // materializing a std::array. get<"src">()[0] is then a single byte load.
+#if NANOM_GENERATION
+        return bytes(reinterpret_cast<const std::byte*>(p + off / 8), std::tuple_size_v<F>, arena,
+                     gen);
+#else
+        return std::span<const typename F::value_type, std::tuple_size_v<F>>(
+            reinterpret_cast<const typename F::value_type*>(p + off / 8), std::tuple_size_v<F>);
+#endif
+      } else {
+        return detail::decode_field_at<F, off>(p, dflt);
+      }
     }
   }
   /// The struct's raw wire bytes.
@@ -519,14 +897,7 @@ struct view {
       detail::check_wire_access(arena, gen, p, wire_size_v<T>, "view::to_struct");
     }
 #endif
-    T out{};
-    constexpr auto offs = detail::field_bit_offsets<T>();
-    std::size_t i = 0;
-    detail::for_each_field<T>([&](auto f) {
-      out.*(decltype(f)::mem_ptr) =
-          detail::assign_field<detail::member_t<decltype(f)::mem_ptr>>(p, offs[i++], dflt);
-    });
-    return out;
+    return detail::decode_struct_at<T, 0>(p, dflt);
   }
 };
 

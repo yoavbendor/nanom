@@ -86,6 +86,7 @@ nav:
       - vs Rust nom (runtime-composed parsers): RUNTIME_COMPOSE.md
       - vs nanotins (overlay decode): NANOTINS_COMPARISON.md
       - GPU / bulk: GPU.md
+      - Network decode and crafting (nanom_shark, checksums): PERF_NETWORK.md
   - API reference: https://yoavbendor.github.io/nanom/api/
   - Live benchmark chart: https://yoavbendor.github.io/nanom/dev/bench/
 

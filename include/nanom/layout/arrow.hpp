@@ -255,8 +255,16 @@ enum class enum_mode : std::uint8_t {
   both         ///< the dictionary column under the column name, then the integer codes as a
                ///< sibling named column + raw_suffix
 };
+/// How AUTOSAR signals with factor/offset are exported.
+enum class signal_mode : std::uint8_t {
+  automatic,  ///< both when the table has physical columns (decode_options::physical), else raw
+  raw,        ///< the raw integer column only (factor/offset/unit as metadata)
+  physical,   ///< the physical float64 column only, under the column name
+  both        ///< physical float64 under the column name, then the raw integers as column + raw_suffix
+};
 struct arrow_options {
   enum_mode enums = enum_mode::dictionary;
+  signal_mode signals = signal_mode::automatic;
   std::string raw_suffix = "#raw";  ///< enum_mode::both: name of the integer sibling = column + this
   /// Flat Arrow column names: the '.' between name components is replaced by this (Lance and
   /// several engines refuse '.' in top-level field names). "GFI[1].grab_index" -> "GFI[1]/grab_index".
@@ -280,11 +288,13 @@ inline std::string arrow_column_name(std::string_view column, std::string_view s
 namespace arrow_detail {
 struct column {
   std::string name, metadata;
+  std::int64_t nulls = 0;
   std::array<const void*, 2> buffers{nullptr, nullptr};
   std::array<const void*, 3> dict_buffers{nullptr, nullptr, nullptr};
   ArrowSchema schema{}, dict_schema{};
   ArrowArray array{}, dict_array{};
   std::vector<std::uint8_t> bitmap;
+  std::vector<std::uint8_t> validity;  ///< Arrow validity bitmap (nullable signal columns)
   std::unique_ptr<enum_dictionary> dict;  ///< dictionary columns
 };
 struct state {
@@ -335,6 +345,37 @@ inline std::vector<std::pair<std::string, std::string>> enum_metadata(const fiel
   return {{"nanom.layout.type", f.type}, {"nanom.enum.ref", std::to_string(f.enum_ref)},
           {"nanom.layout.storage", storage_name(f.st)}};
 }
+inline std::string md_num(double v) {
+  char b[40];
+  auto r = std::to_chars(b, b + sizeof b, v);
+  return std::string(b, r.ptr);
+}
+/// AUTOSAR signal metadata (fields that use any signal key).
+inline void signal_metadata(const plan& p, const field& f, std::vector<std::pair<std::string, std::string>>& md,
+                            const char* role) {
+  const field_signal& g = f.sig;
+  if (!g.any) return;
+  md.emplace_back("nanom.signal.role", role);  // raw / physical
+  md.emplace_back("nanom.signal.factor", md_num(g.factor));
+  md.emplace_back("nanom.signal.offset", md_num(g.offset));
+  if (!g.unit.empty()) md.emplace_back("nanom.signal.unit", g.unit);
+  if (g.min) md.emplace_back("nanom.signal.min", md_num(*g.min));
+  if (g.max) md.emplace_back("nanom.signal.max", md_num(*g.max));
+  md.emplace_back("nanom.signal.byte_order", g.order == byte_order::motorola ? "motorola"
+                                             : g.order == byte_order::intel  ? "intel"
+                                             : p.order() == std::endian::big ? "big" : "little");
+  md.emplace_back("nanom.signal.start_bit", std::to_string(f.bit_offset));
+  md.emplace_back("nanom.signal.bit_width", std::to_string(f.bit_width));
+  md.emplace_back("nanom.signal.raw_storage", storage_name(f.st));
+  if (g.multiplexor) md.emplace_back("nanom.signal.multiplexor", "true");
+  if (g.mux != field_signal::none) {
+    md.emplace_back("nanom.signal.mux_signal", p.fields()[g.mux].column);
+    std::string v = "[";
+    for (std::size_t i = 0; i < g.mux_values.size(); ++i) v += (i ? "," : "") + std::to_string(g.mux_values[i]);
+    md.emplace_back("nanom.signal.mux_values", v + "]");
+  }
+  if (g.update_bit) md.emplace_back("nanom.signal.update_bit", std::to_string(*g.update_bit));
+}
 }  // namespace arrow_detail
 
 /// Decode Arrow C metadata (the format encode_metadata writes) back into pairs; for tests/tools.
@@ -366,15 +407,44 @@ inline void export_arrow(table&& t, ArrowSchema* out_schema, ArrowArray* out_arr
     const field& f = tb.column_field(c);
     return o.enums != enum_mode::integer && f.fam == family::enumeration && f.enums && f.enums->size();
   };
+  // signals: 0 = raw only, 1 = physical only, 2 = physical + raw sibling
+  auto sig_mode = [&](std::size_t c) {
+    if (tb.physical(c).empty() || o.signals == signal_mode::raw) return 0;
+    return o.signals == signal_mode::physical ? 1 : 2;
+  };
   std::size_t n = 0;
-  for (std::size_t c = 0; c < tb.columns(); ++c) n += 1 + (is_dict(c) && o.enums == enum_mode::both);
+  for (std::size_t c = 0; c < tb.columns(); ++c)
+    n += sig_mode(c) ? std::size_t(sig_mode(c) == 2 ? 2 : 1) : 1 + (is_dict(c) && o.enums == enum_mode::both);
   st->cols.resize(n);
   std::size_t k = 0;
+  std::size_t cur = 0;  // table column being exported (validity)
   auto leaf = [&](column& col, const char* format) {
+    const auto v = tb.validity(cur);
+    std::int64_t flags = 0;
+    if (!v.empty()) {  // multiplexed / update-bit signal: nullable, Arrow validity bitmap
+      col.nulls = std::int64_t(tb.null_count(cur));
+      flags = ARROW_FLAG_NULLABLE;
+      if (col.nulls) {
+        col.validity.assign((v.size() + 7) / 8, 0);
+        for (std::size_t r = 0; r < v.size(); ++r)
+          if (v[r]) col.validity[r / 8] |= std::uint8_t(1u << (r % 8));
+        col.buffers[0] = col.validity.data();
+      }
+    }
     col.schema = ArrowSchema{format, col.name.c_str(), col.metadata.empty() ? nullptr : col.metadata.c_str(),
-                             0, 0, nullptr, nullptr, &release_child_schema, new holder(st)};
-    col.array = ArrowArray{rows, 0, 0, 2, 0, col.buffers.data(), nullptr, nullptr, &release_child_array,
+                             flags, 0, nullptr, nullptr, &release_child_schema, new holder(st)};
+    col.array = ArrowArray{rows, col.nulls, 0, 2, 0, col.buffers.data(), nullptr, nullptr, &release_child_array,
                            new holder(st)};
+  };
+  auto physical = [&](std::size_t c, std::string name) {
+    column& col = st->cols[k++];
+    const field& f = tb.column_field(c);
+    col.name = std::move(name);
+    std::vector<std::pair<std::string, std::string>> md;
+    signal_metadata(tb.source(), f, md, "physical");
+    col.metadata = encode_metadata(md);
+    col.buffers = {nullptr, tb.physical(c).data()};
+    leaf(col, "g");
   };
   auto plain = [&](std::size_t c, std::string name, bool with_names) {
     column& col = st->cols[k++];
@@ -401,6 +471,12 @@ inline void export_arrow(table&& t, ArrowSchema* out_schema, ArrowArray* out_arr
         }
         md.emplace_back("nanom.enum.names", j + "}");
       }
+      signal_metadata(tb.source(), f, md, "raw");
+      col.metadata = encode_metadata(md);
+    } else if (f.sig.any) {
+      std::vector<std::pair<std::string, std::string>> md{{"nanom.layout.type", f.type},
+                                                          {"nanom.layout.storage", storage_name(f.st)}};
+      signal_metadata(tb.source(), f, md, "raw");
       col.metadata = encode_metadata(md);
     }
     col.buffers = {nullptr, data};
@@ -420,6 +496,7 @@ inline void export_arrow(table&& t, ArrowSchema* out_schema, ArrowArray* out_arr
     }
     md.emplace_back("nanom.enum.values", vals + "]");
     md.emplace_back("nanom.enum.named", std::to_string(d.named));
+    signal_metadata(tb.source(), f, md, "raw");
     col.metadata = encode_metadata(md);
     col.buffers = {nullptr, d.index_data()};
     col.dict_buffers = {nullptr, d.offsets.data(), d.chars.data()};
@@ -431,7 +508,13 @@ inline void export_arrow(table&& t, ArrowSchema* out_schema, ArrowArray* out_arr
     col.array.dictionary = &col.dict_array;
   };
   for (std::size_t c = 0; c < tb.columns(); ++c) {
+    cur = c;
     const std::string name = arrow_column_name(tb.column_field(c).column, o.separator);
+    if (const int sm = sig_mode(c)) {
+      physical(c, name);
+      if (sm == 2) plain(c, name + o.raw_suffix, false);
+      continue;
+    }
     if (!is_dict(c)) { plain(c, name, o.enums == enum_mode::integer); continue; }
     dictionary(c, name);
     if (o.enums == enum_mode::both) plain(c, name + o.raw_suffix, false);

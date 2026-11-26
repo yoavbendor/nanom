@@ -8,6 +8,8 @@ profiles; CI's `perf-budget` job enforces `full/minimal ≤ 1.20×`. See [`docs/
 
 [`runtime_compose_bench.cpp`](runtime_compose_bench.cpp) / [`runtime_compose_static.cpp`](runtime_compose_static.cpp) / `rust_nom` bin `runtime_compose` — a parser built at **run time** from a spec (`nm::dyn` tree) vs the same layout composed statically vs Rust nom 8's `Rc<dyn Fn>`, with an equal-hash gate in [`runtime_compose_check.py`](runtime_compose_check.py). See [`docs/RUNTIME_COMPOSE.md`](../docs/RUNTIME_COMPOSE.md).
 
+[`nanom_shark_bench.cpp`](nanom_shark_bench.cpp) + [`automotive_gen.py`](automotive_gen.py) — nanom_shark on a synthetic automotive capture (zero-copy floor, bare walk, decode into tables, projected decode, streaming session; ns, allocations and page faults per packet), and [`craft_bench.cpp`](craft_bench.cpp) — building SOME/IP frames with `emit<>`, a patched template (full / RFC 1624 checksum), `nanom::craft` and `mut_view`. See [`docs/PERF_NETWORK.md`](../docs/PERF_NETWORK.md).
+
 `parse_bench.cpp` times **only the decode** — capture is read into memory once,
 the block scan is done once, and the timed loop is purely the per-packet
 L2/L3/L4 walk. No file I/O, no JSON, no output allocation in the loop. A FNV-1a
@@ -74,10 +76,10 @@ step would need batch/SIMD (nanotins' bulk path), not micro-tuning.
   and `soa<T>` — when you keep every column (tabulation); use `overlay<T>()` for
   a hot classification walk that reads a handful of fields.
 
-`result<T>` is 96 bytes (down from 168, after the error type was shrunk to 4
-context frames + 32-bit offsets); the profile showed it is not on the critical
-path for the overlay walk, so no further no-`expected` fast path is warranted
-for now.
+`result<u64>` is 56 bytes (40 bytes in lean/strict mode, down from 168 after the
+error type was shrunk to a 24-byte POD + thread-local context ring); the profile
+showed it is not on the critical path for the overlay walk, so no further
+no-`expected` fast path is warranted for now.
 
 ## Honest scorecard vs nanotins
 

@@ -189,45 +189,18 @@ std::size_t measure(state& st, const M& m, int depth) {
 
 // --- pass 2: write ---------------------------------------------------------------------------
 
-/// Stages small writes (keys, varints) in a local buffer and hands them to the sink in blocks;
-/// large payloads go straight through. After the first failure every write is a no-op.
+/// Stages small writes (keys, varints) via the shared buffered_writer.
 template <byte_sink S>
 struct writer {
-  writer(S& s, state& t) : sink(s), st(t) {}
-  S& sink;
+  writer(S& s, state& t) : st(t), bw(s, t.err) {}
   state& st;
-  std::size_t total = 0;
-  std::size_t len = 0;
-  std::byte buf[256];
+  detail::buffered_writer<S> bw;
 
-  void flush() {
-    if (st.err || !len) return;
-    if (!sink.put(buf, len)) return st.fail("the sink refused the bytes (full or failed)");
-    total += len;
-    len = 0;
-  }
-  void varint(std::uint64_t v) {
-    if (sizeof(buf) - len < leb128_max_bytes<std::uint64_t>) flush();
-    if (st.err) return;
-    len += uleb128_encode(v, buf + len);
-  }
-  void fixed(std::uint64_t u, std::size_t n) {
-    if (sizeof(buf) - len < 8) flush();
-    if (st.err) return;
-    for (std::size_t i = 0; i < n; ++i) buf[len++] = std::byte(std::uint8_t(u >> (8 * i)));
-  }
-  void raw(const std::byte* p, std::size_t n) {
-    if (st.err || !n) return;
-    if (n <= sizeof(buf) - len) {
-      std::memcpy(buf + len, p, n);
-      len += n;
-      return;
-    }
-    flush();
-    if (st.err) return;
-    if (!sink.put(p, n)) return st.fail("the sink refused the bytes (full or failed)");
-    total += n;
-  }
+  std::size_t total() const noexcept { return bw.total; }
+  void flush() { bw.flush(); }
+  void varint(std::uint64_t v) { bw.varint(v); }
+  void fixed(std::uint64_t u, std::size_t n) { bw.fixed_le(u, n); }
+  void raw(const std::byte* p, std::size_t n) { bw.raw(p, n); }
 };
 
 template <Message M, class W> void write_message(W& w, const M& m);
@@ -336,7 +309,7 @@ expected<std::size_t, encode_error> protobuf_encode(const M& m, S& sink) {
   detail::pb::write_message(w, m);
   w.flush();
   if (st.err) return unexpected<encode_error>(detail::pb::error_of<M>(st));
-  return w.total;
+  return w.total();
 }
 
 /// Append the encoding of m to `out`.

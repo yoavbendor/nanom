@@ -260,8 +260,10 @@ Parquet **and** Lance with no edit to any sink.
 
 `run_decode_pass()` (`nanom_shark/decode_pass.hpp`) is the one entry point every sink drains from:
 
-1. `nmpcap::scan_blocks()` walks the pcap/pcapng container structure (SHB/IDB/EPB or legacy pcap
-   records) — reused verbatim from `examples/nanotins_parity/`.
+1. `nmpcap::for_each_block()` walks the pcap/pcapng container structure (SHB/IDB/EPB or legacy
+   pcap records) — reused from `examples/nanotins_parity/` — and each block is decoded the moment
+   the walk reaches it, in one pass over the file (`scan_blocks()` is the same walk collecting a
+   `BlockRef` vector, for callers that want one).
 2. For each packet, `PacketRow{packet_id, file_offset, caplen, origlen}` is pushed unconditionally
    (regardless of decode outcome) — this is the table a byte-level sink anchors back to raw file bytes
    with (see [below](#the-heavier-sinks-nanoshark)).
@@ -286,7 +288,27 @@ Parquet **and** Lance with no edit to any sink.
 
 A malformed layer stops **that packet's** walk only (nanom's existing `walk_packet` contract) —
 `run_decode_pass()` itself returns `false` only when the pcap/pcapng container scan fails outright (a
-corrupt file, not a corrupt packet).
+corrupt file, not a corrupt packet); the packets before the malformed block are in the tables by
+then.
+
+### Projection: decode only the tables you read
+
+Every table starts enabled. `tables.enable_only({"packets", "someip"})`,
+`tables.set_enabled("eth", false)` or `tables.set_all_enabled(false)` switch tables off before the
+pass; a disabled table stores no rows and allocates nothing, and a protocol whose tables are **all**
+disabled is not even parsed (unless a JSON sink is attached — it still gets every layer). The base
+L2–L4 walk always runs, because it feeds every dispatch point. On the automotive benchmark capture,
+keeping only `packets` + `someip` takes the full decode from ~250 to ~175 ns/packet
+([PERF_NETWORK.md](PERF_NETWORK.md)).
+
+### Streaming: buffer tokens without allocating
+
+`StreamingDecodeSession::feed_epb` reports freed caller buffers in `FeedResult::released`, a
+`defrag::token_list`: the usual handful of tokens live inline in the result, so a tracked feed does
+not allocate per packet (it used to return a fresh `std::vector` every call). It reads like the
+vector did — `size()`, `[]`, `begin()`/`end()`, range-for, `std::find` — and `.to_vector()` makes a
+real one. `ReassemblyTable::retire(id, token_list&)` and `evict_stale(now, callback)` are the
+non-allocating forms of `retire(id)` / `evict_stale(now)`, which remain.
 
 ### Segmented input: parsing across disjoint byte ranges
 
@@ -376,6 +398,11 @@ for (const auto& ch : chunks) {
 }
 ```
 
+A chunk's `cols[i]` is a read-only byte buffer (`data()`, `size()`, `begin()`/`end()`, `[]`) whose
+storage the chunk owns: every column of a chunk lives in one 64-byte-aligned allocation, so
+`push()` is one fixed-size store per column at `base + row * width`, with no per-field growth
+check. A sealed chunk's column pointers stay valid for the life of the `soa`.
+
 `soa.hpp` itself takes no dependency on `<ranges>`: the two accessors are an index and a subscript, and
 the pipeline is assembled entirely on the caller's side, so a build that never composes anything pays
 nothing for the ability. `tests/test_nanom.cpp`'s `test_soa` asserts the indexed view and
@@ -423,6 +450,15 @@ every other table joins back to it by `packet_id` alone and never touches raw fi
 special case is a compile-time `if constexpr` on the row type with the name check nested inside, and
 nanoshark's `check_lance.py` asserts both directions of it — `payload_ref` present on `packets` with the
 recorded offsets, and absent from every other table.
+
+## Performance
+
+[PERF_NETWORK.md](PERF_NETWORK.md) has the numbers: on a synthetic 1.05 M-packet automotive capture
+(`bench/automotive_gen.py`, `bench/nanom_shark_bench.cpp`), the full decode into every table runs at
+~250 ns/packet, ~1.6 k instructions/packet and 0.19 heap allocations/packet (one reassembled
+datagram's bookkeeping, nothing per ordinary packet), against ~600 ns, ~7.4 k instructions and a
+vector growth path before; what remains is mostly memory — reading the file and first-touching
+~167 bytes/packet of fresh table columns.
 
 ## See also
 

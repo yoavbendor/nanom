@@ -330,6 +330,79 @@ void run() {
 
 }  // namespace bulk_null_pkt_ref
 
+// =============================================================================
+// 15. HOSTILE WIRE COUNT — length_count / count must not OOM via reserve(n)
+//     before elements are proven present in the input buffer.
+// =============================================================================
+namespace hostile_count_no_oom {
+
+void run() {
+  const std::uint8_t wire[] = {0xff, 0xff, 0xff, 0xff, 0x01};
+  auto r_complete = nm::length_count(nm::be_u32, nm::u8)(nm::from(wire, sizeof wire));
+  CHECK(!r_complete && r_complete.error().kind == nm::errk::err);
+
+  auto r_stream = nm::length_count(nm::be_u32, nm::u8)(nm::streaming(nm::from(wire, sizeof wire)));
+  CHECK(!r_stream && r_stream.error().kind == nm::errk::incomplete);
+
+  const std::uint8_t four[] = {0x00, 0x01, 0x00, 0x02};
+  auto r_direct = nm::count(nm::be_u16, 1'000'000'000ULL)(nm::from(four, sizeof four));
+  CHECK(!r_direct && r_direct.error().kind == nm::errk::err);
+}
+
+}  // namespace hostile_count_no_oom
+
+// =============================================================================
+// 16. DANGLING PATTERN/SET LIFETIME — take_until, is_a, is_not, one_of, none_of
+//     must own their needle/charset so parsers outlive ephemeral std::string.
+// =============================================================================
+namespace dangling_set_and_needle_patterns {
+
+void run() {
+  auto make_tu = [] {
+    std::string s = "LONG_HEAP_DELIMITER_MARKER_1234567890";
+    return nm::take_until(s);
+  };
+  auto make_ia = [] {
+    std::string s = "0123456789abcdefABCDEF_extra_heap_chars";
+    return nm::is_a(s);
+  };
+  auto make_ino = [] {
+    std::string s = " \t\r\n,;:!@#$%^&*()=[]{}|<>/?~`-+=0123456789";
+    return nm::is_not(s);
+  };
+  auto make_oo = [] {
+    std::string s = "+-*/%=!<>_extra_heap_chars_to_avoid_sso";
+    return nm::one_of(s);
+  };
+  auto make_no = [] {
+    std::string s = "\r\n\0_extra_heap_chars_to_avoid_sso";
+    return nm::none_of(s);
+  };
+
+  auto p_tu  = make_tu();
+  auto p_ia  = make_ia();
+  auto p_ino = make_ino();
+  auto p_oo  = make_oo();
+  auto p_no  = make_no();
+
+  auto r_tu = p_tu(nm::from(std::string_view("helloLONG_HEAP_DELIMITER_MARKER_1234567890tail")));
+  CHECK(r_tu && nm::as_str(r_tu->value) == "hello");
+
+  auto r_ia = p_ia(nm::from(std::string_view("deadBEEF!")));
+  CHECK(r_ia && nm::as_str(r_ia->value) == "deadBEEF");
+
+  auto r_ino = p_ino(nm::from(std::string_view("token,rest")));
+  CHECK(r_ino && nm::as_str(r_ino->value) == "token");
+
+  auto r_oo = p_oo(nm::from(std::string_view("+42")));
+  CHECK(r_oo && r_oo->value == '+');
+
+  auto r_no = p_no(nm::from(std::string_view("Z\n")));
+  CHECK(r_no && r_no->value == 'Z');
+}
+
+}  // namespace dangling_set_and_needle_patterns
+
 // ------------------------------------------------------------------ driver
 int main() {
   std::printf("nanom memory-safety tests (enforced guards)\n");
@@ -348,6 +421,8 @@ int main() {
   zero_consumption_hang_guard::run();
   incomplete_needed_saturation::run();
   bulk_null_pkt_ref::run();
+  hostile_count_no_oom::run();
+  dangling_set_and_needle_patterns::run();
 
   if (failures) {
     std::printf("%d FAILURE(S)\n", failures);

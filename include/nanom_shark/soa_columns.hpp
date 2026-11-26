@@ -41,10 +41,6 @@ template <class F>
 struct leaf_type_of {
   using type = typename nanom::detail::wire<F>::decoded;
 };
-template <class E, std::size_t N>
-struct leaf_type_of<std::array<E, N>> {
-  using type = std::array<E, N>;
-};
 template <class F>
 using leaf_type_of_t = typename leaf_type_of<F>::type;
 

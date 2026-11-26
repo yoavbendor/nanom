@@ -452,14 +452,7 @@ constexpr auto strct_seg(std::endian dflt = std::endian::native) {
     constexpr std::size_t need = wire_size_v<T>;
     seg_window<need>      w;
     if (!in.gather(w)) return seg_make_incomplete(in, need - in.size());
-    T out{};
-    constexpr auto offs = detail::field_bit_offsets<T>();
-    std::size_t    i    = 0;
-    detail::for_each_field<T>([&](auto f) {
-      out.*(decltype(f)::mem_ptr) =
-          detail::assign_field<detail::member_t<decltype(f)::mem_ptr>>(w.data(), offs[i++], dflt);
-    });
-    return seg_done{std::move(out), in.advance(need)};
+    return seg_done{detail::decode_struct_at<T, 0>(w.data(), dflt), in.advance(need)};
   };
 }
 

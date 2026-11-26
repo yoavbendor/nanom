@@ -91,22 +91,52 @@ struct kernel_pair {
   std::uint32_t key;  ///< bucket id: (mode, be, sign, store kind)
 };
 
+template <mode M, bool BE, bool Sign, sk K>
+inline kernel_pair make_kernel(std::uint32_t key) {
+  return kernel_pair{&fm_loop<M, BE, Sign, K>, &rm_loop<M, BE, Sign, K>, key};
+}
+
 inline kernel_pair pick_kernel(const access& a, storage st) {
   const sk k = store_kind(st);
   // Sign only matters when bits above `width` are stored: bit-fields, or narrower-than-column
-  // loads. Normalising it keeps natural copies on one kernel.
+  // loads. Byte order does not affect 1-byte loads or non-zero flag tests on natural loads.
+  // Normalising both keeps identical operations on one kernel and avoids dead instantiations.
   access n = a;
   if (k == sk::flag || (a.m <= mode::n64 && storage_size(st) * 8 <= a.width)) n.sign = false;
-  return dispatch_access(n, [&](auto M, auto B, auto S) {
+  if (n.m == mode::n8 || (n.m <= mode::n64 && k == sk::flag)) n.be = false;
+  return dispatch_access(n, [&](auto M, auto B, auto S) -> kernel_pair {
     constexpr mode m = decltype(M)::value;
     constexpr bool be = decltype(B)::value, sg = decltype(S)::value;
-    const std::uint32_t key = std::uint32_t(m) * 20 + (be ? 10 : 0) + (sg ? 5 : 0) + std::uint32_t(k);
-    switch (k) {
-      case sk::b1: return kernel_pair{&fm_loop<m, be, sg, sk::b1>, &rm_loop<m, be, sg, sk::b1>, key};
-      case sk::b2: return kernel_pair{&fm_loop<m, be, sg, sk::b2>, &rm_loop<m, be, sg, sk::b2>, key};
-      case sk::b4: return kernel_pair{&fm_loop<m, be, sg, sk::b4>, &rm_loop<m, be, sg, sk::b4>, key};
-      case sk::b8: return kernel_pair{&fm_loop<m, be, sg, sk::b8>, &rm_loop<m, be, sg, sk::b8>, key};
-      default: return kernel_pair{&fm_loop<m, be, sg, sk::flag>, &rm_loop<m, be, sg, sk::flag>, key};
+    // Prune combinations that plan.hpp + normalization above can never reach, cutting
+    // fm_loop/rm_loop instantiations from 140 pairs down to ~53.
+    if constexpr (m == mode::n8 && (be || sg)) return {};
+    else if constexpr (m == mode::n16 && sg) return {};
+    else if constexpr (m == mode::n32 && sg) return {};
+    else if constexpr (m == mode::n64 && sg) return {};
+    else {
+      const std::uint32_t key = std::uint32_t(m) * 20 + (be ? 10 : 0) + (sg ? 5 : 0) + std::uint32_t(k);
+      switch (k) {
+        case sk::b1:
+          if constexpr (m == mode::n8 || m == mode::bits64 || m == mode::small)
+            return make_kernel<m, be, sg, sk::b1>(key);
+          return {};
+        case sk::b2:
+          if constexpr (m == mode::n16 || m == mode::bits64 || m == mode::small)
+            return make_kernel<m, be, sg, sk::b2>(key);
+          return {};
+        case sk::b4:
+          if constexpr (m == mode::n32 || m == mode::bits64 || m == mode::small)
+            return make_kernel<m, be, sg, sk::b4>(key);
+          return {};
+        case sk::b8:
+          if constexpr (m == mode::n64 || m == mode::bits64 || m == mode::bits72 || m == mode::small)
+            return make_kernel<m, be, sg, sk::b8>(key);
+          return {};
+        default:
+          if constexpr (!sg && !(m <= mode::n64 && be))
+            return make_kernel<m, be, sg, sk::flag>(key);
+          return {};
+      }
     }
   });
 }
@@ -206,6 +236,12 @@ struct decode_options {
   std::size_t count = std::size_t(-1);
   bool allow_partial = false;  ///< a trailing partial record is an error unless set
   strategy strat = strategy::automatic;
+  /// AUTOSAR signals: add a double column (raw * factor + offset) for every selected field with
+  /// factor/offset (table::physical). Off by default; plain layouts never pay for it.
+  bool physical = false;
+  /// AUTOSAR signals: compute validity (table::validity) for multiplexed signals and signals with
+  /// an update bit. Only plans with such fields do any work.
+  bool validity = true;
 };
 
 /// Library-owned columns: one 64-byte-aligned contiguous buffer per selected field.
@@ -242,6 +278,117 @@ class table {
     auto c = find(name);
     return c ? column<T>(*c) : std::span<const T>{};
   }
+  /// Validity of column c, one byte per row (1 = value present): empty when every row is valid
+  /// (the field is neither multiplexed nor has an update bit, or decode_options::validity is off).
+  std::span<const std::uint8_t> validity(std::size_t c) const {
+    return c < valid_.size() ? std::span<const std::uint8_t>(valid_[c]) : std::span<const std::uint8_t>{};
+  }
+  /// Rows of column c whose validity byte is 0.
+  std::size_t null_count(std::size_t c) const { return c < nulls_.size() ? nulls_[c] : 0; }
+  bool valid(std::size_t row, std::size_t c) const {
+    return c >= valid_.size() || valid_[c].empty() || valid_[c][row];
+  }
+  /// Physical values of column c (raw * factor + offset): empty unless the field is scaled and
+  /// decode_options::physical was set. Invalid rows hold the physical value of the raw bits.
+  std::span<const double> physical(std::size_t c) const {
+    return c < phys_.size() ? phys_[c].span() : std::span<const double>{};
+  }
+  /// Fill validity / physical columns from the decoded raw columns (decode() calls this).
+  /// Every distinct condition (a multiplexor field, an update bit) is extracted from the records
+  /// once, however many signals depend on it.
+  void finish_signals(std::span<const std::byte> records, const decode_options& o) {
+    const plan& p = *plan_;
+    const std::size_t rows = rows_, stride = p.stride();
+    const std::byte* rec = records.data();
+    // one specialized loop per access (no per-row dispatch on the load mode)
+    const auto each = [&](const detail::access& a, auto&& body) {
+      detail::dispatch_access(a, [&](auto M, auto B, auto S) {
+        constexpr detail::mode m = decltype(M)::value;
+        constexpr bool be = decltype(B)::value, sg = decltype(S)::value;
+        const detail::access acc = a;
+        for (std::size_t r = 0; r < rows; ++r) body(r, detail::extract_t<m, be, sg>(rec + r * stride, acc));
+      });
+    };
+    if (o.validity && p.conditional()) {
+      valid_.assign(slots_.size(), {});
+      nulls_.assign(slots_.size(), 0);
+      std::map<std::uint32_t, std::vector<std::uint64_t>> mux_vals;   // mux field -> its values
+      std::map<std::uint64_t, std::vector<std::uint8_t>> update_vals;  // update bit -> 0/1
+      for (std::size_t c = 0; c < slots_.size(); ++c) {
+        const field_signal& g = column_field(c).sig;
+        if (!g.conditional()) continue;
+        auto& v = valid_[c];
+        v.resize(rows);
+        std::uint8_t* V = v.data();
+        if (g.update_bit) {
+          auto [it, fresh] = update_vals.try_emplace(*g.update_bit);
+          if (fresh) {
+            it->second.resize(rows);
+            std::uint8_t* U = it->second.data();
+            each(g.update, [U](std::size_t r, std::uint64_t x) { U[r] = std::uint8_t(x != 0); });
+          }
+          std::memcpy(V, it->second.data(), rows);
+        } else {
+          std::memset(V, 1, rows);
+        }
+        if (g.mux != field_signal::none) {
+          auto [it, fresh] = mux_vals.try_emplace(g.mux);
+          if (fresh) {
+            it->second.resize(rows);
+            std::uint64_t* X = it->second.data();
+            const auto sel = std::find(slots_.begin(), slots_.end(), g.mux);
+            if (sel != slots_.end()) {  // the multiplexor is a decoded column: no second pass over the records
+              const std::size_t mc = std::size_t(sel - slots_.begin());
+              for (std::size_t r = 0; r < rows; ++r) X[r] = cell(r, mc).bits;
+            } else {
+              each(p.fields()[g.mux].acc, [X](std::size_t r, std::uint64_t x) { X[r] = x; });
+            }
+          }
+          const std::uint64_t* X = it->second.data();
+          if (g.mux_values.size() == 1) {
+            const auto want = std::uint64_t(g.mux_values[0]);
+            for (std::size_t r = 0; r < rows; ++r) V[r] &= std::uint8_t(X[r] == want);
+          } else {
+            for (std::size_t r = 0; r < rows; ++r)
+              V[r] &= std::uint8_t(std::find(g.mux_values.begin(), g.mux_values.end(), std::int64_t(X[r])) !=
+                                   g.mux_values.end());
+          }
+        }
+        std::size_t valid = 0;
+        for (std::size_t r = 0; r < rows; ++r) valid += V[r];
+        nulls_[c] = rows - valid;
+      }
+    }
+    if (o.physical && p.scaled()) {
+      phys_.clear();
+      phys_.resize(slots_.size());
+      for (std::size_t c = 0; c < slots_.size(); ++c) {
+        const field& f = column_field(c);
+        if (!f.sig.scaled) continue;
+        phys_[c].reset(rows);
+        double* out = phys_[c].data();
+        const double k = f.sig.factor, b = f.sig.offset;
+        const std::byte* src = buf_.get() + offs_[c];
+        auto go = [out, src, rows, k, b]<class T>(T) {
+          const T* x = reinterpret_cast<const T*>(src);  // 64-byte aligned column of T
+          for (std::size_t r = 0; r < rows; ++r) out[r] = double(x[r]) * k + b;
+        };
+        switch (f.st) {
+          case storage::u8: case storage::boolean: go(std::uint8_t{}); break;
+          case storage::u16: go(std::uint16_t{}); break;
+          case storage::u32: go(std::uint32_t{}); break;
+          case storage::u64: go(std::uint64_t{}); break;
+          case storage::i8: go(std::int8_t{}); break;
+          case storage::i16: go(std::int16_t{}); break;
+          case storage::i32: go(std::int32_t{}); break;
+          case storage::i64: go(std::int64_t{}); break;
+          case storage::f32: go(float{}); break;
+          case storage::f64: go(double{}); break;
+        }
+      }
+    }
+  }
+
   /// One cell as a scalar (enum name, float, ... interpretation included).
   scalar cell(std::size_t row, std::size_t c) const {
     const field& f = column_field(c);
@@ -292,6 +439,21 @@ class table {
   std::vector<std::size_t> offs_;
   std::unique_ptr<std::byte, aligned_delete> buf_;
   std::size_t rows_ = 0, first_ = 0, tail_ = 0;
+  std::vector<std::vector<std::uint8_t>> valid_;  ///< per column; empty = all valid
+  std::vector<std::size_t> nulls_;
+  /// 64-byte aligned, uninitialized (finish_signals writes every element) double column.
+  struct dcol {
+    struct del { void operator()(double* q) const { ::operator delete(q, std::align_val_t(64)); } };
+    std::unique_ptr<double, del> p;
+    std::size_t n = 0;
+    void reset(std::size_t rows) {
+      p.reset(static_cast<double*>(::operator new(std::max<std::size_t>(rows, 1) * sizeof(double), std::align_val_t(64))));
+      n = rows;
+    }
+    double* data() { return p.get(); }
+    std::span<const double> span() const { return p ? std::span<const double>(p.get(), n) : std::span<const double>{}; }
+  };
+  std::vector<dcol> phys_;                        ///< per column; empty = not computed
 };
 
 /// The record range decode_options selects, validated against `data`.
@@ -339,6 +501,7 @@ inline lresult<table> decode(const plan& p, std::span<const std::byte> data, con
   const decoder dec(p, s);
   const auto outs = t.outs();
   dec.run_unchecked(data.data() + rr->first * p.stride(), rr->count, outs, o.strat);
+  if (p.has_signals()) t.finish_signals(data.subspan(rr->first * p.stride(), rr->count * p.stride()), o);
   return t;
 }
 /// Decode every field.
