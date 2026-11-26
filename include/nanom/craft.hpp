@@ -226,6 +226,11 @@ struct frame_crafter : crafter_tag {
         std::array<std::byte, hsz> tmp{};
         auto hr = ::nanom::emit(hdr, std::span<std::byte>(tmp), ctx, dflt);
         if (!hr) return hr;
+      } else {
+        // The computed fields need the payload, which counting does not keep; still refuse an
+        // out-of-range ordinary field, as writing the same frame would.
+        auto hr = ::nanom::detail::check_noncomputed_fields(hdr, dflt);
+        if (!hr) return hr;
       }
       if (!sink.put(nullptr, hsz)) return sink_refused(describe<H>::name());
       auto bn = body.write(sink);

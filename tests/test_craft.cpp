@@ -353,6 +353,33 @@ static void test_primitives_and_errors() {
   bad_vlan.vid = 5000;  // 12-bit max is 4095
   auto bad_frame = nc::frame(bad_vlan, nc::put_lit("x"));
   CHECK(!nc::size_of(bad_frame));
+
+  // ... and so does a header WITH computed fields: sizing refuses what writing refuses, naming the
+  // same field, while the computed fields themselves (filled from the payload) are not judged.
+  ipv4_hdr bad_ip{};
+  bad_ip.version = 4;
+  bad_ip.frag_off = 9000;  // 13-bit max is 8191
+  auto bad_ip_frame = nc::frame(bad_ip, nc::put_lit("ab"));
+  auto bad_size = nc::size_of(bad_ip_frame);
+  auto bad_write = nc::to_vector(bad_ip_frame);
+  CHECK(!bad_size && !bad_write);
+  CHECK(!bad_size && !bad_write && bad_size.error().field == bad_write.error().field);
+  ipv4_hdr ok_ip{};
+  ok_ip.version = 4;
+  ok_ip.frag_off = 8191;
+  ok_ip.ihl = 15;  // computed: overwritten when written, never judged by size_of
+  auto ok_ip_frame = nc::frame(ok_ip, nc::put_lit("ab"));
+  auto ok_size = nc::size_of(ok_ip_frame);
+  auto ok_write = nc::to_vector(ok_ip_frame);
+  CHECK(ok_size && ok_write && *ok_size == ok_write->size() && *ok_size == 22);
+
+  // nanom::expected compares like std::expected (the fallback used with clang + libstdc++ too).
+  nm::expected<std::size_t, nm::encode_error> sz22 = std::size_t{22};
+  CHECK(sz22 == 22u && !(sz22 == 23u) && sz22 != 23u);
+  nm::expected<int, int> e = nm::unexpected<int>(7);
+  nm::expected<int, int> v7 = 7, v7b = 7, v8 = 8;
+  CHECK(e == nm::unexpected<int>(7) && !(e == nm::unexpected<int>(8)) && !(e == 7));
+  CHECK(v7 == v7b && !(v7 == v8) && !(v7 == e) && v7 == 7);
 }
 
 int main() {
